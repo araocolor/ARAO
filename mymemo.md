@@ -18,3 +18,21 @@ SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
 
 ### 기타 
 
+현재 상태는 이렇게 정리할 수 있습니다.
+
+Next.js 프로젝트가 로컬에서 정상 실행됩니다.
+Clerk 로그인 연결이 되어 있습니다.
+Supabase 연결이 되어 있습니다.
+profiles 테이블이 생성되어 있고, 로그인 계정 정보가 연결됩니다.
+관리자 계정의 role을 admin으로 두면 /admin 접근이 가능합니다.
+/admin에서 관리자 화면 카드 4개가 정상 표시됩니다.
+/admin에 로그아웃 버튼을 추가했고, 로그아웃 후 다시 /sign-in으로 이동하는 흐름도 확인했습니다.
+/api/health가 ok: true를 반환해서 서버 상태 확인도 정상입니다.
+Vercel 배포까지 완료했습니다.
+즉 한 줄 요약하면:
+로그인 + 관리자 권한 + 로그아웃 + 배포까지 되는 기본 운영 뼈대가 완성된 상태입니다.
+
+다음 단계 후보는 보통 이 둘입니다.
+
+products / orders 기능 확장
+GitHub 정리 및 배포 운영 정리

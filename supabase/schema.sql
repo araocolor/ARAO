@@ -44,3 +44,9 @@ create table if not exists payments (
   currency text not null default 'KRW',
   created_at timestamptz not null default now()
 );
+
+create table if not exists landing_contents (
+  id text primary key,
+  content jsonb not null,
+  updated_at timestamptz not null default now()
+);

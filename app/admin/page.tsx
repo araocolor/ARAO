@@ -1,7 +1,8 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { SiteHeader } from "@/components/site-header";
+import { AdminDashboard } from "@/components/admin-dashboard";
+import { getLandingContent } from "@/lib/landing-content";
 import { syncProfile } from "@/lib/profiles";
 
 export default async function AdminPage() {
@@ -32,13 +33,6 @@ export default async function AdminPage() {
   if (profileError) {
     return (
       <main className="page stack">
-        <SiteHeader
-          links={[
-            { href: "/", label: "홈" },
-            { href: "/account", label: "계정" },
-          ]}
-        />
-
         <section className="section stack">
           <p className="muted">Admin</p>
           <h1>프로필 연결 오류</h1>
@@ -54,13 +48,6 @@ export default async function AdminPage() {
   if (!profile || profile.role !== "admin") {
     return (
       <main className="page stack">
-        <SiteHeader
-          links={[
-            { href: "/", label: "홈" },
-            { href: "/account", label: "계정" },
-          ]}
-        />
-
         <section className="section stack">
           <p className="muted">Admin</p>
           <h1>관리자 권한이 필요합니다</h1>
@@ -77,42 +64,11 @@ export default async function AdminPage() {
     );
   }
 
-  return (
-    <main className="page stack">
-      <SiteHeader
-        links={[
-          { href: "/", label: "홈" },
-          { href: "/orders", label: "주문" },
-          { href: "/sales", label: "매출" },
-          { href: "/settings", label: "설정" },
-        ]}
-      />
+  const landingContent = await getLandingContent();
 
-      <section className="section stack">
-        <p className="muted">Admin</p>
-        <h1>운영 관리 화면 스캐폴드</h1>
-        <p className="muted">
-          로그인 계정: {profile.email} / 역할: {profile.role}
-        </p>
-        <div className="grid">
-          <div className="section stack">
-            <strong>회원 관리</strong>
-            <span className="muted">Clerk + Supabase 프로필 테이블</span>
-          </div>
-          <div className="section stack">
-            <strong>주문 관리</strong>
-            <span className="muted">orders / order_items / payments 기준</span>
-          </div>
-          <div className="section stack">
-            <strong>매출 관리</strong>
-            <span className="muted">결제 완료 기준 집계, 환불 분리</span>
-          </div>
-          <div className="section stack">
-            <strong>인증 관리</strong>
-            <span className="muted">역할 기반 접근 제어 확장 예정</span>
-          </div>
-        </div>
-      </section>
+  return (
+    <main className="admin-page">
+      <AdminDashboard email={profile.email} role={profile.role} landingContent={landingContent} />
     </main>
   );
 }
