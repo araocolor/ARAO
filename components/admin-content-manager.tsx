@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { LandingContent } from "@/lib/landing-content";
 
 type AdminContentManagerProps = {
@@ -19,7 +19,34 @@ async function loadImageAsDataUrl(file: File) {
 export function AdminContentManager({ initialContent }: AdminContentManagerProps) {
   const [content, setContent] = useState(initialContent);
   const [status, setStatus] = useState<string>("");
-  const [saving, setSaving] = useState(false);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [pendingComparisonFiles, setPendingComparisonFiles] = useState({
+    beforeImage: false,
+    afterImage: false,
+  });
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [showUploadToast, setShowUploadToast] = useState(false);
+  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const progressHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasPendingComparisonFile =
+    pendingComparisonFiles.beforeImage || pendingComparisonFiles.afterImage;
+
+  useEffect(() => {
+    return () => {
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current);
+      }
+
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+
+      if (progressHideTimerRef.current) {
+        clearTimeout(progressHideTimerRef.current);
+      }
+    };
+  }, []);
 
   const updateReview = (index: number, key: "quote" | "name" | "detail", value: string) => {
     setContent((current) => ({
@@ -59,15 +86,40 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
           [key]: dataUrl,
         },
       }));
+      setPendingComparisonFiles((current) => ({
+        ...current,
+        [key]: true,
+      }));
       setStatus("이미지를 불러왔습니다. 저장하기를 누르면 반영됩니다.");
     } catch {
       setStatus("이미지를 불러오지 못했습니다.");
     }
   };
 
-  const save = async () => {
-    setSaving(true);
+  const save = async (key: string) => {
+    const requiresComparisonFileCheck = key === "comparison";
+
+    if (requiresComparisonFileCheck && !hasPendingComparisonFile) {
+      setStatus("먼저 Before 또는 After 이미지를 첨부해주세요.");
+      return;
+    }
+
+    setSavingKey(key);
     setStatus("");
+
+    const isComparisonSave = key === "comparison" || key === "all";
+
+    if (isComparisonSave) {
+      setUploadProgress(12);
+
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current);
+      }
+
+      progressTimerRef.current = setInterval(() => {
+        setUploadProgress((current) => (current >= 90 ? current : current + 9));
+      }, 180);
+    }
 
     try {
       const response = await fetch("/api/admin/landing-content", {
@@ -88,18 +140,64 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
 
       setContent(data as LandingContent);
       setStatus("저장되었습니다. 홈 화면을 새로고침하면 바로 반영됩니다.");
+
+      if (isComparisonSave) {
+        setPendingComparisonFiles({
+          beforeImage: false,
+          afterImage: false,
+        });
+
+        if (progressTimerRef.current) {
+          clearInterval(progressTimerRef.current);
+          progressTimerRef.current = null;
+        }
+
+        setUploadProgress(100);
+        setShowUploadToast(true);
+
+        if (progressHideTimerRef.current) {
+          clearTimeout(progressHideTimerRef.current);
+        }
+
+        progressHideTimerRef.current = setTimeout(() => {
+          setUploadProgress(0);
+        }, 250);
+
+        if (toastTimerRef.current) {
+          clearTimeout(toastTimerRef.current);
+        }
+
+        toastTimerRef.current = setTimeout(() => {
+          setShowUploadToast(false);
+        }, 2200);
+      }
     } catch {
       setStatus("저장 요청 중 문제가 발생했습니다.");
+      if (isComparisonSave) {
+        setUploadProgress(0);
+        setShowUploadToast(false);
+      }
     } finally {
-      setSaving(false);
+      if (isComparisonSave && progressTimerRef.current) {
+        clearInterval(progressTimerRef.current);
+        progressTimerRef.current = null;
+      }
+
+      setSavingKey(null);
     }
   };
 
   return (
     <div className="landing-manage stack">
+      {showUploadToast ? <div className="admin-upload-toast">업로드가 완료되었습니다.</div> : null}
       <div className="admin-toolbar">
-        <button className="sign-out-button" type="button" onClick={save} disabled={saving}>
-          {saving ? "저장 중..." : "저장하기"}
+        <button
+          className="sign-out-button"
+          type="button"
+          onClick={() => void save("all")}
+          disabled={savingKey !== null}
+        >
+          {savingKey === "all" ? "저장 중..." : "저장하기"}
         </button>
         {status ? <p className="muted">{status}</p> : null}
       </div>
@@ -107,8 +205,13 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
       <section className="admin-form-card stack">
         <div className="admin-section-heading">
           <span className="muted">Hero</span>
-          <button className="admin-save-button" type="button" onClick={save} disabled={saving}>
-            {saving ? "저장 중..." : "저장"}
+          <button
+            className="admin-save-button"
+            type="button"
+            onClick={() => void save("hero")}
+            disabled={savingKey !== null}
+          >
+            {savingKey === "hero" ? "저장 중..." : "저장"}
           </button>
         </div>
         <input
@@ -174,9 +277,6 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
       <section className="admin-form-card stack">
         <div className="admin-section-heading">
           <span className="muted">Before / After</span>
-          <button className="admin-save-button" type="button" onClick={save} disabled={saving}>
-            {saving ? "저장 중..." : "저장"}
-          </button>
         </div>
         <input
           className="admin-input"
@@ -249,13 +349,36 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
             <input type="file" accept="image/*" onChange={(event) => onImageChange("afterImage", event.target.files?.[0])} />
           </label>
         </div>
+        <div className="admin-section-actions">
+          <button
+            className={hasPendingComparisonFile ? "admin-save-button" : "admin-save-button admin-save-button-disabled"}
+            type="button"
+            onClick={() => void save("comparison")}
+            disabled={savingKey !== null || !hasPendingComparisonFile}
+          >
+            {savingKey === "comparison" ? "저장 중..." : "저장"}
+          </button>
+        </div>
+        {savingKey === "comparison" || uploadProgress > 0 ? (
+          <div className="admin-upload-progress" aria-live="polite">
+            <div
+              className="admin-upload-progress-bar"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        ) : null}
       </section>
 
       <section className="admin-form-card stack">
         <div className="admin-section-heading">
           <span className="muted">Reviews</span>
-          <button className="admin-save-button" type="button" onClick={save} disabled={saving}>
-            {saving ? "저장 중..." : "저장"}
+          <button
+            className="admin-save-button"
+            type="button"
+            onClick={() => void save("reviews")}
+            disabled={savingKey !== null}
+          >
+            {savingKey === "reviews" ? "저장 중..." : "저장"}
           </button>
         </div>
         <input
@@ -300,8 +423,13 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
       <section className="admin-form-card stack">
         <div className="admin-section-heading">
           <span className="muted">Footer</span>
-          <button className="admin-save-button" type="button" onClick={save} disabled={saving}>
-            {saving ? "저장 중..." : "저장"}
+          <button
+            className="admin-save-button"
+            type="button"
+            onClick={() => void save("footer")}
+            disabled={savingKey !== null}
+          >
+            {savingKey === "footer" ? "저장 중..." : "저장"}
           </button>
         </div>
         <input

@@ -1,5 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { LandingPageHeader } from "@/components/landing-page-header";
+import { UserDashboard } from "@/components/user-dashboard";
 import { syncProfile } from "@/lib/profiles";
 
 export default async function AccountPage() {
@@ -28,22 +30,35 @@ export default async function AccountPage() {
   }
 
   return (
-    <main className="page stack">
-      <section className="section stack">
-        <p className="muted">Account</p>
-        <h1>회원 계정 페이지</h1>
-        <p className="muted">Clerk 사용자 정보와 Supabase profile 확장 필드를 함께 사용합니다.</p>
-        <p className="muted">Clerk 이메일: {email ?? "없음"}</p>
+    <>
+      <LandingPageHeader />
+      <main className="admin-page">
         {profileError ? (
-          <>
+          <section className="section stack">
+            <p className="muted">Account</p>
+            <h1>프로필 연결 오류</h1>
+            <p className="muted">이 계정의 profile을 읽는 중 문제가 발생했습니다.</p>
             <p className="muted">message: {profileError.message ?? "없음"}</p>
             <p className="muted">hint: {profileError.hint ?? "없음"}</p>
-          </>
-        ) : null}
-        <p className="muted">이메일: {profile?.email ?? "없음"}</p>
-        <p className="muted">역할: {profile?.role ?? "없음"}</p>
-        <p className="muted">이름: {profile?.full_name ?? "없음"}</p>
-      </section>
-    </main>
+            <p className="muted">로그인 이메일: {email ?? "없음"}</p>
+          </section>
+        ) : profile ? (
+          <UserDashboard
+            email={profile.email}
+            fullName={profile.full_name}
+            role={profile.role}
+            username={profile.username}
+            hasPassword={Boolean(profile.password_hash)}
+            phone={profile.phone}
+          />
+        ) : (
+          <section className="section stack">
+            <p className="muted">Account</p>
+            <h1>회원 정보를 불러오지 못했습니다</h1>
+            <p className="muted">다시 로그인한 뒤 시도해주세요.</p>
+          </section>
+        )}
+      </main>
+    </>
   );
 }

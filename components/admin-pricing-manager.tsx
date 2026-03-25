@@ -10,7 +10,7 @@ type AdminPricingManagerProps = {
 export function AdminPricingManager({ initialContent }: AdminPricingManagerProps) {
   const [content, setContent] = useState(initialContent);
   const [status, setStatus] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
 
   const updatePlan = (
     index: number,
@@ -48,8 +48,8 @@ export function AdminPricingManager({ initialContent }: AdminPricingManagerProps
     }));
   };
 
-  const save = async () => {
-    setSaving(true);
+  const save = async (key: string) => {
+    setSavingKey(key);
     setStatus("");
 
     try {
@@ -74,15 +74,20 @@ export function AdminPricingManager({ initialContent }: AdminPricingManagerProps
     } catch {
       setStatus("저장 요청 중 문제가 발생했습니다.");
     } finally {
-      setSaving(false);
+      setSavingKey(null);
     }
   };
 
   return (
     <div className="landing-manage stack">
       <div className="admin-toolbar">
-        <button className="sign-out-button" type="button" onClick={save} disabled={saving}>
-          {saving ? "저장 중..." : "전체 저장"}
+        <button
+          className="sign-out-button"
+          type="button"
+          onClick={() => void save("all")}
+          disabled={savingKey !== null}
+        >
+          {savingKey === "all" ? "저장 중..." : "전체 저장"}
         </button>
         {status ? <p className="muted">{status}</p> : null}
       </div>
@@ -90,8 +95,13 @@ export function AdminPricingManager({ initialContent }: AdminPricingManagerProps
       <section className="admin-form-card stack">
         <div className="admin-section-heading">
           <span className="muted">Pricing Hero</span>
-          <button className="admin-save-button" type="button" onClick={save} disabled={saving}>
-            {saving ? "저장 중..." : "저장"}
+          <button
+            className="admin-save-button"
+            type="button"
+            onClick={() => void save("pricing-hero")}
+            disabled={savingKey !== null}
+          >
+            {savingKey === "pricing-hero" ? "저장 중..." : "저장"}
           </button>
         </div>
         <input
@@ -134,8 +144,13 @@ export function AdminPricingManager({ initialContent }: AdminPricingManagerProps
         <section key={`${plan.name}-${index}`} className="admin-form-card stack">
           <div className="admin-section-heading">
             <span className="muted">Plan {index + 1}</span>
-            <button className="admin-save-button" type="button" onClick={save} disabled={saving}>
-              {saving ? "저장 중..." : "저장"}
+            <button
+              className="admin-save-button"
+              type="button"
+              onClick={() => void save(`plan-${index}`)}
+              disabled={savingKey !== null}
+            >
+              {savingKey === `plan-${index}` ? "저장 중..." : "저장"}
             </button>
           </div>
           <div className="admin-form-grid">
