@@ -1,47 +1,96 @@
-# Expansion Architecture Backup
+# Arao — Next.js Expansion Architecture
 
-이 폴더는 현재 정적 랜딩 프로젝트를 나중에 확장형 서비스 구조로 옮길 때 참고할 수 있도록 만든 백업 스캐폴드입니다.
+정적 랜딩을 확장형 서비스 구조로 전환한 풀스택 프로젝트입니다.
 
-## 목표 스택
+## 배포
 
-- `Next.js`
-- `Vercel`
-- `Supabase`
-- `Clerk`
-- `PortOne`
-- `Stripe`
+- **Production:** https://arao-test-7gxt.vercel.app
+- **GitHub:** https://github.com/araocolor/arao_test
+- **플랫폼:** Vercel (GitHub 연동 자동 배포)
 
-## 용도
+## 기술 스택
 
-- 회원관리
-- 인증관리
-- 주문관리
-- 결제
-- 매출관리
-- 관리자 페이지 확장
-- 글로벌 시장 대응
+| 역할 | 기술 |
+|------|------|
+| 프레임워크 | Next.js (App Router) |
+| 인증 | Clerk |
+| 데이터베이스 | Supabase (PostgreSQL) |
+| 파일 저장 | Supabase Storage |
+| 국내 결제 | PortOne (스텁 상태) |
+| 글로벌 결제 | Stripe (스텁 상태) |
+| 배포 | Vercel |
 
-## 현재 포함된 내용
+## 페이지 구조
 
-- Next.js 기본 폴더 구조
-- Supabase 클라이언트/서버 유틸
-- Clerk 기반 레이아웃 예시
-- PortOne / Stripe 결제 모듈 스텁
-- 환경변수 예시
-- Supabase용 기본 테이블 스키마 예시
+### 랜딩 (공개)
+- `/` — 홈 (Hero, Before/After, 리뷰, 가격)
+- `/arao` — 소개 페이지
+- `/gallery` — 갤러리
+- `/pricing` — 가격 안내
+- `/manual` — 사용 가이드
 
-## 주의
+### 인증
+- `/sign-in` — Clerk 로그인
+- `/sign-up` — Clerk 회원가입
 
-- 이 폴더는 백업/참고용 구조입니다.
-- 아직 의존성을 설치하지 않았습니다.
-- 현재 정적 프로젝트와는 별개입니다.
+### 사용자 (로그인 필요)
+- `/account` — 프로필 설정 (아이디·연락처·비밀번호 수정)
+- `/account/withdraw` — 회원탈퇴 (UI만, 미연결)
 
-## 시작 순서
+### 관리자 (role = admin 필요)
+- `/admin` — 관리자 대시보드
+  - 콘텐츠 관리 (랜딩 텍스트·이미지 수정 → Supabase 저장)
+  - 상품가격 관리 (pricing 페이지 내용 수정)
+  - 회원·주문·매출·인증 관리 (UI 스텁, 미연결)
 
-1. 이 폴더로 이동
-2. 패키지 설치
-3. `.env.example`를 복사해 `.env.local` 작성
-4. Supabase 프로젝트 생성
-5. Clerk 프로젝트 생성
-6. PortOne / Stripe 키 연결
-7. 페이지와 비즈니스 로직 확장
+## API Routes
+
+| 경로 | 메서드 | 설명 |
+|------|--------|------|
+| `/api/health` | GET | 서버 상태 확인 |
+| `/api/admin/landing-content` | GET, PUT | 랜딩 콘텐츠 조회/저장 (admin only) |
+| `/api/account/general` | POST | 사용자 정보 수정 (username, phone, password) |
+
+## Supabase 테이블
+
+```
+profiles         — 사용자 프로필 (Clerk 연동, role 기반 권한)
+products         — 상품
+orders           — 주문
+order_items      — 주문 상세
+payments         — 결제
+landing_contents — 랜딩 페이지 콘텐츠 (id = 'main')
+```
+
+Supabase Storage 버킷: `landing-assets` (Before/After 이미지)
+
+## 환경변수
+
+`.env.example` 참고. 실제 값은 `.env.local`(로컬) 또는 Vercel 환경변수에 설정.
+
+```
+NEXT_PUBLIC_APP_URL
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_STORAGE_BUCKET
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+CLERK_SECRET_KEY
+PORTONE_API_SECRET
+PORTONE_STORE_ID
+STRIPE_SECRET_KEY
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+STRIPE_WEBHOOK_SECRET
+```
+
+## 관리자 계정 설정 방법
+
+Supabase → profiles 테이블에서 해당 계정의 `role` 값을 `admin`으로 변경.
+
+## 현재 미연결 항목
+
+- PortOne 실결제
+- Stripe 실결제
+- 주문/매출 관리 UI
+- 회원탈퇴 처리 로직
+- 주문·상담·후기 데이터 연결
