@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LandingPageFooter } from "@/components/landing-page-footer";
 import { LandingPageHeader } from "@/components/landing-page-header";
+import { LandingVideoSection } from "@/components/landing-video-section";
 import { getLandingContent } from "@/lib/landing-content";
 
 export default async function HomePage() {
@@ -63,6 +64,12 @@ export default async function HomePage() {
             ))}
           </div>
         </section>
+
+        <LandingVideoSection
+          label="ARAO 유튜브 영상"
+          title="프로파일 적용하면 유튜브 컨텐츠도 빠르게 쉽게"
+          videoId="3GJbE7dMUpc"
+        />
 
         <LandingPageFooter content={landingContent.footer} />
       </div>
