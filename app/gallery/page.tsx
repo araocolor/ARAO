@@ -3,10 +3,14 @@ import { LandingPageHeader } from "@/components/landing-page-header";
 import { GalleryHeroItem } from "@/components/gallery-hero-item";
 import { getLandingContent } from "@/lib/landing-content";
 
+const GALLERY_SECTIONS = [
+  { category: "people" as const, label: "인물" },
+  { category: "outdoor" as const, label: "환경야외" },
+  { category: "indoor" as const, label: "실내카페" },
+];
+
 export default async function GalleryPage() {
   const landingContent = await getLandingContent();
-
-  const { beforeImageFull, afterImageFull } = landingContent.comparison;
 
   return (
     <main className="landing-page">
@@ -21,20 +25,20 @@ export default async function GalleryPage() {
           </p>
         </section>
 
-        <section className="landing-stack-sm">
-          <h2 className="gallery-section-title">인물</h2>
-          <GalleryHeroItem beforeImage={beforeImageFull} afterImage={afterImageFull} label="인물" />
-        </section>
-
-        <section className="landing-stack-sm">
-          <h2 className="gallery-section-title">환경야외</h2>
-          <GalleryHeroItem beforeImage={beforeImageFull} afterImage={afterImageFull} label="환경야외" />
-        </section>
-
-        <section className="landing-stack-sm">
-          <h2 className="gallery-section-title">실내카페</h2>
-          <GalleryHeroItem beforeImage={beforeImageFull} afterImage={afterImageFull} label="실내카페" />
-        </section>
+        {GALLERY_SECTIONS.map(({ category, label }) => {
+          const item = landingContent.gallery[category];
+          if (!item) return null;
+          return (
+            <section key={category} className="landing-stack-sm">
+              <h2 className="gallery-section-title">{label}</h2>
+              <GalleryHeroItem
+                beforeImage={item.beforeImageFull}
+                afterImage={item.afterImageFull}
+                label={label}
+              />
+            </section>
+          );
+        })}
 
         <LandingPageFooter content={landingContent.footer} />
       </div>

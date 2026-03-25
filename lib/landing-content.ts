@@ -2,6 +2,16 @@ import sharp from "sharp";
 import { unstable_noStore as noStore } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
+export { GALLERY_CATEGORIES, type GalleryCategory } from "@/lib/gallery-categories";
+import type { GalleryCategory } from "@/lib/gallery-categories";
+
+export type GalleryItem = {
+  beforeImage: string;
+  beforeImageFull: string;
+  afterImage: string;
+  afterImageFull: string;
+};
+
 export type LandingReview = {
   quote: string;
   name: string;
@@ -59,6 +69,7 @@ export type LandingContent = {
     address: string;
     links: Array<{ label: string; href: string }>;
   };
+  gallery: Partial<Record<GalleryCategory, GalleryItem>>;
 };
 
 export const defaultLandingContent: LandingContent = {
@@ -159,6 +170,7 @@ export const defaultLandingContent: LandingContent = {
       { label: "고객지원", href: "#" },
     ],
   },
+  gallery: {},
 };
 
 type LandingContentRow = {
@@ -190,7 +202,7 @@ function parseDataUrl(dataUrl: string) {
   };
 }
 
-async function uploadLandingImage(pathPrefix: "before" | "after", imageValue: string) {
+async function uploadLandingImage(pathPrefix: string, imageValue: string) {
   if (!isDataUrl(imageValue)) {
     return { thumb: imageValue, full: imageValue };
   }
@@ -268,6 +280,10 @@ function mergeLandingContent(input?: Partial<LandingContent> | null): LandingCon
             }))
           : defaultLandingContent.footer.links,
     },
+    gallery: {
+      ...defaultLandingContent.gallery,
+      ...(input?.gallery ?? {}),
+    },
   };
 }
 
@@ -300,6 +316,26 @@ export async function saveLandingContent(content: LandingContent) {
     uploadLandingImage("after", mergedContent.comparison.afterImage),
   ]);
 
+  const galleryCategories = (Object.keys(mergedContent.gallery) as GalleryCategory[]).filter(
+    (cat) => mergedContent.gallery[cat] !== undefined,
+  );
+  const galleryEntries = await Promise.all(
+    galleryCategories.map(async (category) => {
+      const item = mergedContent.gallery[category]!;
+      const [beforeRes, afterRes] = await Promise.all([
+        uploadLandingImage(`gallery-${category}-before`, item.beforeImage),
+        uploadLandingImage(`gallery-${category}-after`, item.afterImage),
+      ]);
+      return [category, {
+        beforeImage: beforeRes.thumb,
+        beforeImageFull: beforeRes.full,
+        afterImage: afterRes.thumb,
+        afterImageFull: afterRes.full,
+      }] as [GalleryCategory, GalleryItem];
+    }),
+  );
+  const processedGallery = Object.fromEntries(galleryEntries) as Partial<Record<GalleryCategory, GalleryItem>>;
+
   const nextContent: LandingContent = {
     ...mergedContent,
     comparison: {
@@ -309,6 +345,7 @@ export async function saveLandingContent(content: LandingContent) {
       afterImage: afterResult.thumb,
       afterImageFull: afterResult.full,
     },
+    gallery: processedGallery,
   };
 
   const { data, error } = await supabase

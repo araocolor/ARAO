@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { GALLERY_CATEGORIES, type GalleryCategory } from "@/lib/gallery-categories";
 import type { LandingContent } from "@/lib/landing-content";
 
 type AdminContentManagerProps = {
@@ -21,6 +22,11 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
   const [status, setStatus] = useState<string>("");
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [pendingComparisonFiles, setPendingComparisonFiles] = useState({
+    beforeImage: false,
+    afterImage: false,
+  });
+  const [selectedGalleryCategory, setSelectedGalleryCategory] = useState<GalleryCategory>("people");
+  const [pendingGalleryFiles, setPendingGalleryFiles] = useState({
     beforeImage: false,
     afterImage: false,
   });
@@ -96,10 +102,44 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
     }
   };
 
+  const onGalleryImageChange = async (key: "beforeImage" | "afterImage", file?: File) => {
+    if (!file) return;
+    try {
+      const dataUrl = await loadImageAsDataUrl(file);
+      setContent((current) => {
+        const existing = current.gallery[selectedGalleryCategory];
+        return {
+          ...current,
+          gallery: {
+            ...current.gallery,
+            [selectedGalleryCategory]: {
+              beforeImage: existing?.beforeImage ?? "",
+              beforeImageFull: existing?.beforeImageFull ?? "",
+              afterImage: existing?.afterImage ?? "",
+              afterImageFull: existing?.afterImageFull ?? "",
+              [key]: dataUrl,
+            },
+          },
+        };
+      });
+      setPendingGalleryFiles((current) => ({ ...current, [key]: true }));
+      setStatus("이미지를 불러왔습니다. 저장하기를 누르면 반영됩니다.");
+    } catch {
+      setStatus("이미지를 불러오지 못했습니다.");
+    }
+  };
+
   const save = async (key: string) => {
     const requiresComparisonFileCheck = key === "comparison";
+    const requiresGalleryFileCheck = key === "gallery";
+    const hasPendingGalleryFile = pendingGalleryFiles.beforeImage || pendingGalleryFiles.afterImage;
 
     if (requiresComparisonFileCheck && !hasPendingComparisonFile) {
+      setStatus("먼저 Before 또는 After 이미지를 첨부해주세요.");
+      return;
+    }
+
+    if (requiresGalleryFileCheck && !hasPendingGalleryFile) {
       setStatus("먼저 Before 또는 After 이미지를 첨부해주세요.");
       return;
     }
@@ -107,7 +147,7 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
     setSavingKey(key);
     setStatus("");
 
-    const isComparisonSave = key === "comparison" || key === "all";
+    const isComparisonSave = key === "comparison" || key === "gallery" || key === "all";
 
     if (isComparisonSave) {
       setUploadProgress(12);
@@ -142,10 +182,8 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
       setStatus("저장되었습니다. 홈 화면을 새로고침하면 바로 반영됩니다.");
 
       if (isComparisonSave) {
-        setPendingComparisonFiles({
-          beforeImage: false,
-          afterImage: false,
-        });
+        setPendingComparisonFiles({ beforeImage: false, afterImage: false });
+        setPendingGalleryFiles({ beforeImage: false, afterImage: false });
 
         if (progressTimerRef.current) {
           clearInterval(progressTimerRef.current);
@@ -477,6 +515,79 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
           }
           placeholder="유튜브 주소 (예: https://www.youtube.com/watch?v=...)"
         />
+      </section>
+
+      <section className="admin-form-card stack">
+        <div className="admin-section-heading">
+          <span className="muted">Gallery</span>
+        </div>
+        <div className="admin-form-grid">
+          <div>
+            <span className="muted" style={{ display: "block", marginBottom: "6px" }}>카테고리</span>
+            <select
+              className="admin-input"
+              value={selectedGalleryCategory}
+              onChange={(event) => {
+                setSelectedGalleryCategory(event.target.value as GalleryCategory);
+                setPendingGalleryFiles({ beforeImage: false, afterImage: false });
+              }}
+            >
+              {GALLERY_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="admin-form-grid">
+          <label className="admin-upload stack">
+            <span className="muted">Before 이미지</span>
+            {content.gallery[selectedGalleryCategory]?.beforeImage ? (
+              <img
+                className="admin-image-preview"
+                src={content.gallery[selectedGalleryCategory]!.beforeImage}
+                alt="Before preview"
+              />
+            ) : (
+              <div className="admin-image-preview admin-image-empty">미등록</div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => void onGalleryImageChange("beforeImage", event.target.files?.[0])}
+            />
+          </label>
+          <label className="admin-upload stack">
+            <span className="muted">After 이미지</span>
+            {content.gallery[selectedGalleryCategory]?.afterImage ? (
+              <img
+                className="admin-image-preview"
+                src={content.gallery[selectedGalleryCategory]!.afterImage}
+                alt="After preview"
+              />
+            ) : (
+              <div className="admin-image-preview admin-image-empty">미등록</div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => void onGalleryImageChange("afterImage", event.target.files?.[0])}
+            />
+          </label>
+        </div>
+        <div className="admin-section-actions">
+          <button
+            className={
+              (pendingGalleryFiles.beforeImage || pendingGalleryFiles.afterImage)
+                ? "admin-save-button"
+                : "admin-save-button admin-save-button-disabled"
+            }
+            type="button"
+            onClick={() => void save("gallery")}
+            disabled={savingKey !== null || (!pendingGalleryFiles.beforeImage && !pendingGalleryFiles.afterImage)}
+          >
+            {savingKey === "gallery" ? "저장 중..." : "저장"}
+          </button>
+        </div>
       </section>
 
       <section className="admin-form-card stack">
