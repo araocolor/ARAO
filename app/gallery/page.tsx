@@ -37,7 +37,7 @@ export default async function GalleryPage() {
                 ))}
               </p>
               <GalleryHeroItem
-                beforeImage={beforeSrc}
+                beforeImage={item.beforeImage || beforeSrc}
                 afterImage={afterSrc}
                 label={GALLERY_CATEGORY_LABELS[category]}
               />
