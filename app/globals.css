@@ -51,6 +51,32 @@ a {
   padding: 24px 16px 64px;
 }
 
+.page-loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 0%;
+  background: #2563eb;
+  z-index: 9999;
+  transition: opacity 0.3s ease;
+  animation: page-loading-fill 2.4s cubic-bezier(0.1, 0.6, 0.4, 1) forwards;
+}
+
+.page-loading-bar.complete {
+  width: 100% !important;
+  animation: none;
+  opacity: 0;
+}
+
+@keyframes page-loading-fill {
+  0%   { width: 0%; }
+  40%  { width: 60%; }
+  70%  { width: 78%; }
+  90%  { width: 88%; }
+  100% { width: 92%; }
+}
+
 .landing-page {
   width: min(100%, 480px);
   margin: 0 auto;
