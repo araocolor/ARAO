@@ -7,7 +7,6 @@ export default function Loading() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#ffffff",
         zIndex: 9999,
       }}
     >
