@@ -90,6 +90,18 @@ export function SiteHeader({
   return (
     <header className={fullWidth ? "header header-full" : "header"}>
       <div className={fullWidth ? "header-inner" : "header-inner-inline"}>
+        <button
+          aria-expanded={menuOpen}
+          aria-label="Open menu"
+          className="header-menu-toggle"
+          type="button"
+          ref={menuToggleRef}
+          onClick={() => (menuOpen ? closeMenu() : openMenu())}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
         <Link className="brand" href="/">
           <Image src="/logo.svg" alt="ARAO logo" width={80} height={28} priority />
         </Link>
@@ -106,18 +118,6 @@ export function SiteHeader({
         </div>
         <div className="header-mobile-actions">
           {mobileProfile}
-          <button
-            aria-expanded={menuOpen}
-            aria-label="Open menu"
-            className="header-menu-toggle"
-            type="button"
-            ref={menuToggleRef}
-            onClick={() => (menuOpen ? closeMenu() : openMenu())}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
         </div>
       </div>
 
@@ -142,9 +142,7 @@ export function SiteHeader({
             {mobileLeading ?? leading ? (
               <div className="header-menu-extra">{mobileLeading ?? leading}</div>
             ) : null}
-            {mobileLogout ? (
-              <div className="header-menu-extra">{mobileLogout}</div>
-            ) : null}
+            {mobileLogout}
           </div>
         </div>
       ) : null}

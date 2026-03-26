@@ -1538,11 +1538,22 @@ a {
     display: inline-flex;
   }
 
+  .header-inner {
+    position: relative;
+  }
+
+  .brand {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-right: 0;
+  }
+
   .header-menu-popover {
     display: flex;
     position: fixed;
     inset: 0;
-    justify-content: flex-end;
+    justify-content: flex-start;
     align-items: flex-start;
     padding: 64px 12px 12px;
     background: rgba(17, 17, 17, 0.16);
@@ -1573,7 +1584,7 @@ a {
   }
 
   .header-menu-sheet.is-closing {
-    transform: translateX(18px);
+    transform: translateX(-18px);
     opacity: 0;
   }
 
@@ -1581,8 +1592,8 @@ a {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    align-items: flex-end;
-    text-align: right;
+    align-items: flex-start;
+    text-align: left;
   }
 
   .header-menu-list a {
@@ -1600,7 +1611,7 @@ a {
   .header-menu-extra .auth-switch {
     width: 100%;
     flex-direction: column;
-    align-items: flex-end;
+    align-items: flex-start;
   }
 
   .header-logout-button {

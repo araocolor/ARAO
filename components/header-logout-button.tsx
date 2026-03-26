@@ -9,12 +9,14 @@ export function HeaderLogoutButton() {
   if (!isSignedIn) return null;
 
   return (
-    <button
-      className="header-logout-button"
-      type="button"
-      onClick={() => void signOut({ redirectUrl: "/" })}
-    >
-      Logout
-    </button>
+    <div className="header-menu-extra">
+      <button
+        className="header-logout-button"
+        type="button"
+        onClick={() => void signOut({ redirectUrl: "/" })}
+      >
+        Logout
+      </button>
+    </div>
   );
 }
