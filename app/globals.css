@@ -516,6 +516,13 @@ a {
   height: auto;
   display: block;
   pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.gallery-hero-image-before {
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 @media (max-width: 480px) {

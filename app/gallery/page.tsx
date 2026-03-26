@@ -24,8 +24,9 @@ export default async function GalleryPage() {
 
         {GALLERY_CATEGORIES.map((category) => {
           const item = landingContent.gallery[category];
-          const beforeSrc = item?.beforeImageFull || item?.beforeImage || "";
-          const afterSrc = item?.afterImageFull || item?.afterImage || "";
+          if (!item) return null;
+          const beforeSrc = item.beforeImageFull || item.beforeImage || "";
+          const afterSrc = item.afterImageFull || item.afterImage || "";
           if (!beforeSrc || !afterSrc) return null;
           const title = item.title || GALLERY_CATEGORY_LABELS[category];
           const body = item.body || GALLERY_CATEGORY_DEFAULTS[category];
@@ -39,7 +40,7 @@ export default async function GalleryPage() {
                 ))}
               </p>
               <GalleryHeroItem
-                beforeImage={item.beforeImage || beforeSrc}
+                beforeImage={beforeSrc}
                 afterImage={afterSrc}
                 label={GALLERY_CATEGORY_LABELS[category]}
               />

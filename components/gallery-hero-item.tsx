@@ -40,9 +40,19 @@ export function GalleryHeroItem({ beforeImage, afterImage, label }: GalleryHeroI
     >
       <img
         className="gallery-hero-image"
-        src={showBefore ? beforeImage : afterImage}
+        src={afterImage}
         alt={label ?? ""}
         draggable={false}
+        loading="lazy"
+        style={{ opacity: showBefore ? 0 : 1 }}
+      />
+      <img
+        className="gallery-hero-image gallery-hero-image-before"
+        src={beforeImage}
+        alt=""
+        draggable={false}
+        loading="lazy"
+        style={{ opacity: showBefore ? 1 : 0 }}
       />
       <span className="gallery-before-btn">{showBefore ? "Before" : "Arao"}</span>
     </div>
