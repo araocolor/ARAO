@@ -6,6 +6,22 @@ import { GalleryHeroItem } from "@/components/gallery-hero-item";
 import { getLandingContent } from "@/lib/landing-content";
 import { GALLERY_CATEGORIES, GALLERY_CATEGORY_LABELS, GALLERY_CATEGORY_DEFAULTS } from "@/lib/gallery-categories";
 
+function formatGalleryExifCaption(item: { caption?: string; exif?: { camera?: string; lens?: string; iso?: string; aperture?: string; exposureMode?: string } }) {
+  if (item.caption) {
+    return item.caption;
+  }
+
+  const parts = [
+    item.exif?.camera,
+    item.exif?.lens,
+    item.exif?.iso ? `ISO ${item.exif.iso}` : "",
+    item.exif?.aperture,
+    item.exif?.exposureMode,
+  ].filter(Boolean);
+
+  return parts.join(" / ");
+}
+
 export default async function GalleryPage() {
   const landingContent = await getLandingContent();
 
@@ -30,6 +46,7 @@ export default async function GalleryPage() {
           if (!beforeSrc || !afterSrc) return null;
           const title = item.title || GALLERY_CATEGORY_LABELS[category];
           const body = item.body || GALLERY_CATEGORY_DEFAULTS[category];
+          const caption = formatGalleryExifCaption(item);
           const bodyLines = body.split("\n");
           return (
             <section key={category} className="gallery-section">
@@ -44,9 +61,10 @@ export default async function GalleryPage() {
                   beforeImage={beforeSrc}
                   afterImage={afterSrc}
                   label={GALLERY_CATEGORY_LABELS[category]}
+                  aspectRatio={item.aspectRatio}
                 />
-                {item.caption ? (
-                  <p className="gallery-caption">{item.caption}</p>
+                {caption ? (
+                  <p className="gallery-caption">{caption}</p>
                 ) : null}
               </div>
             </section>

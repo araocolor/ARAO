@@ -6,9 +6,10 @@ type GalleryHeroItemProps = {
   beforeImage: string;
   afterImage: string;
   label?: string;
+  aspectRatio?: string;
 };
 
-export function GalleryHeroItem({ beforeImage, afterImage, label }: GalleryHeroItemProps) {
+export function GalleryHeroItem({ beforeImage, afterImage, label, aspectRatio }: GalleryHeroItemProps) {
   const [showBefore, setShowBefore] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -32,6 +33,7 @@ export function GalleryHeroItem({ beforeImage, afterImage, label }: GalleryHeroI
   return (
     <div
       className="gallery-hero-image-wrap"
+      style={aspectRatio ? { aspectRatio } : undefined}
       onMouseDown={handlePressStart}
       onMouseUp={handlePressEnd}
       onMouseLeave={handlePressEnd}

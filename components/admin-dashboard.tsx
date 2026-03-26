@@ -10,11 +10,18 @@ import { AdminSignOut } from "@/components/admin-sign-out";
 
 const adminSections = [
   {
-    id: "content",
-    menu: "콘텐츠 관리",
-    eyebrow: "Content",
-    title: "콘텐츠 관리",
-    description: "랜딩 페이지의 제목, 설명, 리뷰, 푸터, Before / After 이미지를 Supabase와 연결해서 수정합니다.",
+    id: "gallery",
+    menu: "갤러리 관리",
+    eyebrow: "Gallery",
+    title: "갤러리 관리",
+    description: "카테고리별 Before / After 이미지, 제목, 문구, 촬영 정보를 관리합니다.",
+  },
+  {
+    id: "landing",
+    menu: "랜딩페이지 관리",
+    eyebrow: "Landing",
+    title: "랜딩페이지 관리",
+    description: "Hero, Before/After, 리뷰, YouTube, 푸터 섹션을 수정합니다.",
   },
   {
     id: "pricing",
@@ -183,17 +190,15 @@ export function AdminDashboard({ email, role, landingContent }: AdminDashboardPr
 
       <div className="admin-panel stack" onClick={() => (menuOpen ? closeMenu() : null)}>
         <p className="muted">Admin</p>
-        <h1>운영 관리 화면</h1>
-        <p className="muted">
-          로그인 계정: {email} / 역할: {role}
-        </p>
         <div className="admin-panel-card stack">
           <p className="muted">{activeSection.eyebrow}</p>
           <h2>{activeSection.title}</h2>
           <p className="muted">{activeSection.description}</p>
 
-          {activeSection.id === "content" ? (
-            <AdminContentManager initialContent={landingContent} />
+          {activeSection.id === "gallery" ? (
+            <AdminContentManager initialContent={landingContent} view="gallery" />
+          ) : activeSection.id === "landing" ? (
+            <AdminContentManager initialContent={landingContent} view="landing" />
           ) : activeSection.id === "pricing" ? (
             <AdminPricingManager initialContent={landingContent} />
           ) : (

@@ -2,10 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 import { GALLERY_CATEGORIES, GALLERY_CATEGORY_LABELS, type GalleryCategory } from "@/lib/gallery-categories";
-import type { LandingContent } from "@/lib/landing-content";
+import type { GalleryExif, GalleryItem, LandingContent } from "@/lib/landing-content";
 
 type AdminContentManagerProps = {
   initialContent: LandingContent;
+  view?: "gallery" | "landing";
+};
+
+type GalleryExifField = keyof GalleryExif;
+
+const GALLERY_EXIF_FIELDS: GalleryExifField[] = ["camera", "lens", "iso", "aperture", "exposureMode"];
+
+const GALLERY_EXIF_LABELS: Record<GalleryExifField, string> = {
+  camera: "카메라 정보",
+  lens: "렌즈 정보",
+  iso: "ISO",
+  aperture: "F값",
+  exposureMode: "노출모드",
 };
 
 async function loadImageAsDataUrl(file: File) {
@@ -17,39 +30,158 @@ async function loadImageAsDataUrl(file: File) {
   });
 }
 
-async function readExifCaption(file: File): Promise<string | null> {
+function compactString(value: string | null | undefined) {
+  return value?.replace(/\s+/g, " ").trim() ?? "";
+}
+
+function createEmptyGalleryItem(): GalleryItem {
+  return {
+    beforeImage: "",
+    beforeImageFull: "",
+    afterImage: "",
+    afterImageFull: "",
+  };
+}
+
+function normalizeGalleryExif(exif?: GalleryExif | null) {
+  if (!exif) {
+    return undefined;
+  }
+
+  const normalized = Object.fromEntries(
+    Object.entries(exif).filter(([, value]) => Boolean(value)),
+  ) as GalleryExif;
+
+  return Object.keys(normalized).length ? normalized : undefined;
+}
+
+function buildCameraLabel(makeRaw: string | null | undefined, modelRaw: string | null | undefined) {
+  const make = compactString(makeRaw);
+  const model = compactString(modelRaw);
+
+  if (!make && !model) {
+    return "";
+  }
+
+  if (!make) {
+    return model;
+  }
+
+  if (!model) {
+    return make;
+  }
+
+  const dedupedModel = model.replace(new RegExp(`^${make}`, "i"), "").trim();
+  return compactString(`${make} ${dedupedModel || model}`);
+}
+
+function formatNumericValue(value: unknown) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "";
+  }
+
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
+function formatIsoValue(tags: Record<string, unknown>) {
+  const iso = tags.ISO ?? tags.ISOSpeedRatings ?? tags.PhotographicSensitivity ?? tags.RecommendedExposureIndex;
+  if (iso == null) {
+    return "";
+  }
+
+  if (Array.isArray(iso)) {
+    return String(iso[0] ?? "");
+  }
+
+  return String(iso);
+}
+
+function formatApertureValue(value: unknown) {
+  const numeric = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numeric)) {
+    return "";
+  }
+
+  return `f/${formatNumericValue(numeric)}`;
+}
+
+function buildGalleryCaption(exif?: GalleryExif | null) {
+  const normalized = normalizeGalleryExif(exif);
+  if (!normalized) {
+    return "";
+  }
+
+  const parts = [
+    normalized.camera,
+    normalized.lens,
+    normalized.iso ? `ISO ${normalized.iso}` : "",
+    normalized.aperture,
+    normalized.exposureMode,
+  ].filter(Boolean);
+
+  return parts.join(" / ");
+}
+
+async function readGalleryExif(file: File): Promise<GalleryExif | null> {
   try {
     const exifr = await import("exifr");
-    const tags = await exifr.parse(file, ["Make", "Model", "LensModel", "FocalLength", "FNumber"]);
-    if (!tags) return null;
+    const tags = (await exifr.parse(file, {
+      tiff: true,
+      exif: true,
+      gps: false,
+      interop: false,
+      ifd0: true,
+      ifd1: false,
+      mergeOutput: true,
+      translateKeys: true,
+      translateValues: true,
+      pick: [
+        "Make",
+        "Model",
+        "LensModel",
+        "FocalLength",
+        "FNumber",
+        "ISO",
+        "ISOSpeedRatings",
+        "PhotographicSensitivity",
+        "RecommendedExposureIndex",
+        "ExposureMode",
+        "ExposureProgram",
+      ],
+    })) as Record<string, unknown> | null;
 
-    const makeRaw: string = tags.Make ?? "";
-    const modelRaw: string = tags.Model ?? "";
-    const lensModelRaw: string = tags.LensModel ?? "";
-
-    // Clean up make prefix duplicated in model (e.g. "NIKON CORPORATION" + "NIKON ZF" → "Nikon ZF")
-    const make = makeRaw.split(" ")[0] ?? makeRaw;
-    const model = modelRaw.replace(new RegExp(make, "i"), "").trim() || modelRaw;
-    const camera = `${make} ${model}`.trim();
-
-    // Use LensModel if available, otherwise focal length + aperture
-    let lens = "";
-    if (lensModelRaw) {
-      lens = lensModelRaw;
-    } else if (tags.FocalLength != null && tags.FNumber != null) {
-      lens = `${Math.round(tags.FocalLength as number)}mm f${tags.FNumber}`;
+    if (!tags) {
+      return null;
     }
 
-    const parts = [camera, lens].filter(Boolean);
-    if (parts.length === 0) return null;
+    const lensModel = compactString(typeof tags.LensModel === "string" ? tags.LensModel : "");
+    const focalLength = formatNumericValue(tags.FocalLength);
+    const aperture = formatApertureValue(tags.FNumber);
+    const exif = normalizeGalleryExif({
+      camera: buildCameraLabel(
+        typeof tags.Make === "string" ? tags.Make : "",
+        typeof tags.Model === "string" ? tags.Model : "",
+      ),
+      lens: lensModel || [focalLength ? `${focalLength}mm` : "", aperture].filter(Boolean).join(" "),
+      iso: formatIsoValue(tags),
+      aperture,
+      exposureMode: compactString(
+        typeof tags.ExposureMode === "string"
+          ? tags.ExposureMode
+          : typeof tags.ExposureProgram === "string"
+            ? tags.ExposureProgram
+            : "",
+      ),
+    });
 
-    return `${parts.join(" / ")} / ARAO / SOOC / 무보정 Jpeg`;
+    return exif ?? null;
   } catch {
     return null;
   }
 }
 
-export function AdminContentManager({ initialContent }: AdminContentManagerProps) {
+export function AdminContentManager({ initialContent, view }: AdminContentManagerProps) {
   const [content, setContent] = useState(initialContent);
   const [status, setStatus] = useState<string>("");
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -64,7 +196,9 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
   });
   const [pendingGalleryText, setPendingGalleryText] = useState(false);
   const [galleryStatus, setGalleryStatus] = useState<string>("");
-  const [exifDebug, setExifDebug] = useState<Record<string, unknown> | null>(null);
+  const [galleryExifOptions, setGalleryExifOptions] = useState<
+    Partial<Record<GalleryCategory, Partial<Record<GalleryExifField, string[]>>>>
+  >({});
   const galleryStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showUploadToast, setShowUploadToast] = useState(false);
@@ -118,6 +252,65 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
     }));
   };
 
+  const updateSelectedGalleryItem = (updater: (current: GalleryItem) => GalleryItem) => {
+    setContent((current) => {
+      const existing = current.gallery[selectedGalleryCategory] ?? createEmptyGalleryItem();
+      return {
+        ...current,
+        gallery: {
+          ...current.gallery,
+          [selectedGalleryCategory]: updater(existing),
+        },
+      };
+    });
+  };
+
+  const updateGalleryExifOptions = (category: GalleryCategory, exif?: GalleryExif | null) => {
+    if (!exif) {
+      return;
+    }
+
+    setGalleryExifOptions((current) => {
+      const categoryOptions = current[category] ?? {};
+      const nextCategoryOptions = { ...categoryOptions };
+
+      for (const field of GALLERY_EXIF_FIELDS) {
+        const value = exif[field];
+        if (!value) {
+          continue;
+        }
+
+        nextCategoryOptions[field] = Array.from(new Set([...(categoryOptions[field] ?? []), value]));
+      }
+
+      return {
+        ...current,
+        [category]: nextCategoryOptions,
+      };
+    });
+  };
+
+  const handleGalleryExifChange = (field: GalleryExifField, value: string) => {
+    setPendingGalleryText(true);
+    updateSelectedGalleryItem((existing) => {
+      const nextExif = normalizeGalleryExif({
+        ...existing.exif,
+        [field]: value || undefined,
+      });
+      const previousAutoCaption = buildGalleryCaption(existing.exif);
+      const nextAutoCaption = buildGalleryCaption(nextExif);
+      const nextCaption = !existing.caption || existing.caption === previousAutoCaption
+        ? nextAutoCaption
+        : existing.caption;
+
+      return {
+        ...existing,
+        exif: nextExif,
+        caption: nextCaption,
+      };
+    });
+  };
+
   const onImageChange = async (key: "beforeImage" | "afterImage", file?: File) => {
     if (!file) {
       return;
@@ -145,36 +338,30 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
   const onGalleryImageChange = async (key: "beforeImage" | "afterImage", file?: File) => {
     if (!file) return;
     try {
-      const exifr = await import("exifr");
-      const [dataUrl, exifCaption, allTags] = await Promise.all([
+      const [dataUrl, extractedExif] = await Promise.all([
         loadImageAsDataUrl(file),
-        readExifCaption(file),
-        exifr.parse(file).catch(() => null),
+        readGalleryExif(file),
       ]);
-      setExifDebug(allTags as Record<string, unknown> | null);
-      setContent((current) => {
-        const existing = current.gallery[selectedGalleryCategory];
-        const caption = exifCaption ?? existing?.caption ?? "";
+      updateSelectedGalleryItem((existing) => {
+        const previousAutoCaption = buildGalleryCaption(existing.exif);
+        const nextExif = extractedExif ?? existing.exif;
+        const nextAutoCaption = buildGalleryCaption(nextExif);
+        const nextCaption = extractedExif && (!existing.caption || existing.caption === previousAutoCaption)
+          ? nextAutoCaption
+          : existing.caption ?? "";
+
         return {
-          ...current,
-          gallery: {
-            ...current.gallery,
-            [selectedGalleryCategory]: {
-              beforeImage: existing?.beforeImage ?? "",
-              beforeImageFull: existing?.beforeImageFull ?? "",
-              afterImage: existing?.afterImage ?? "",
-              afterImageFull: existing?.afterImageFull ?? "",
-              title: existing?.title ?? "",
-              body: existing?.body ?? "",
-              caption,
-              [key]: dataUrl,
-            },
-          },
+          ...existing,
+          [key]: dataUrl,
+          caption: nextCaption,
+          aspectRatio: existing.aspectRatio ?? "",
+          exif: nextExif,
         };
       });
-      if (exifCaption) setPendingGalleryText(true);
+      updateGalleryExifOptions(selectedGalleryCategory, extractedExif);
+      if (extractedExif) setPendingGalleryText(true);
       setPendingGalleryFiles((current) => ({ ...current, [key]: true }));
-      setStatus(exifCaption ? "이미지와 촬영 정보를 불러왔습니다." : "이미지를 불러왔습니다. 저장하기를 누르면 반영됩니다.");
+      setStatus(extractedExif ? "이미지와 EXIF 정보를 불러왔습니다." : "이미지를 불러왔습니다. 저장하기를 누르면 반영됩니다.");
     } catch {
       setStatus("이미지를 불러오지 못했습니다.");
     }
@@ -286,19 +473,23 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
   return (
     <div className="landing-manage stack">
       {showUploadToast ? <div className="admin-upload-toast">업로드가 완료되었습니다.</div> : null}
-      <div className="admin-toolbar">
-        <button
-          className="sign-out-button"
-          type="button"
-          onClick={() => void save("all")}
-          disabled={savingKey !== null}
-        >
-          {savingKey === "all" ? "저장 중..." : "저장하기"}
-        </button>
-        {status ? <p className="muted">{status}</p> : null}
-      </div>
+      {view !== "gallery" ? (
+        <div className="admin-toolbar">
+          <button
+            className="sign-out-button"
+            type="button"
+            onClick={() => void save("all")}
+            disabled={savingKey !== null}
+          >
+            {savingKey === "all" ? "저장 중..." : "저장하기"}
+          </button>
+          {status ? <p className="muted">{status}</p> : null}
+        </div>
+      ) : null}
 
-      <section className="admin-form-card stack">
+      {view !== "gallery" ? (
+        <>
+        <section className="admin-form-card stack">
         <div className="admin-section-heading">
           <span className="muted">Hero</span>
           <button
@@ -574,12 +765,15 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
           placeholder="유튜브 주소 (예: https://www.youtube.com/watch?v=...)"
         />
       </section>
+        </>
+      ) : null}
 
+      {view !== "landing" ? (
       <section className="admin-form-card stack">
         <div className="admin-section-heading">
           <span className="muted">Gallery</span>
         </div>
-        <div className="admin-form-grid">
+        <div className="admin-gallery-top-row">
           <div>
             <span className="muted" style={{ display: "block", marginBottom: "6px" }}>카테고리</span>
             <select
@@ -596,30 +790,37 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
               ))}
             </select>
           </div>
+          <div>
+            <span className="muted" style={{ display: "block", marginBottom: "6px" }}>이미지 비율</span>
+            <select
+              className="admin-input admin-input-compact"
+              value={content.gallery[selectedGalleryCategory]?.aspectRatio ?? ""}
+              onChange={(event) => {
+                setPendingGalleryText(true);
+                updateSelectedGalleryItem((existing) => ({
+                  ...existing,
+                  aspectRatio: event.target.value,
+                }));
+              }}
+            >
+              <option value="">선택</option>
+              <option value="9/16">9:16</option>
+              <option value="2/3">2:3</option>
+              <option value="1/1">1:1</option>
+              <option value="4/3">4:3</option>
+              <option value="12/9">12:9</option>
+            </select>
+          </div>
         </div>
         <input
           className="admin-input"
           value={content.gallery[selectedGalleryCategory]?.title ?? ""}
           onChange={(event) => {
             setPendingGalleryText(true);
-            setContent((current) => {
-              const existing = current.gallery[selectedGalleryCategory];
-              return {
-                ...current,
-                gallery: {
-                  ...current.gallery,
-                  [selectedGalleryCategory]: {
-                    beforeImage: existing?.beforeImage ?? "",
-                    beforeImageFull: existing?.beforeImageFull ?? "",
-                    afterImage: existing?.afterImage ?? "",
-                    afterImageFull: existing?.afterImageFull ?? "",
-                    title: event.target.value,
-                    body: existing?.body ?? "",
-                    caption: existing?.caption ?? "",
-                  },
-                },
-              };
-            });
+            updateSelectedGalleryItem((existing) => ({
+              ...existing,
+              title: event.target.value,
+            }));
           }}
           placeholder="섹션 제목"
         />
@@ -629,24 +830,10 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
           value={content.gallery[selectedGalleryCategory]?.body ?? ""}
           onChange={(event) => {
             setPendingGalleryText(true);
-            setContent((current) => {
-              const existing = current.gallery[selectedGalleryCategory];
-              return {
-                ...current,
-                gallery: {
-                  ...current.gallery,
-                  [selectedGalleryCategory]: {
-                    beforeImage: existing?.beforeImage ?? "",
-                    beforeImageFull: existing?.beforeImageFull ?? "",
-                    afterImage: existing?.afterImage ?? "",
-                    afterImageFull: existing?.afterImageFull ?? "",
-                    title: existing?.title ?? "",
-                    body: event.target.value,
-                    caption: existing?.caption ?? "",
-                  },
-                },
-              };
-            });
+            updateSelectedGalleryItem((existing) => ({
+              ...existing,
+              body: event.target.value,
+            }));
           }}
           placeholder="섹션 문구"
         />
@@ -655,27 +842,42 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
           value={content.gallery[selectedGalleryCategory]?.caption ?? ""}
           onChange={(event) => {
             setPendingGalleryText(true);
-            setContent((current) => {
-              const existing = current.gallery[selectedGalleryCategory];
-              return {
-                ...current,
-                gallery: {
-                  ...current.gallery,
-                  [selectedGalleryCategory]: {
-                    beforeImage: existing?.beforeImage ?? "",
-                    beforeImageFull: existing?.beforeImageFull ?? "",
-                    afterImage: existing?.afterImage ?? "",
-                    afterImageFull: existing?.afterImageFull ?? "",
-                    title: existing?.title ?? "",
-                    body: existing?.body ?? "",
-                    caption: event.target.value,
-                  },
-                },
-              };
-            });
+            updateSelectedGalleryItem((existing) => ({
+              ...existing,
+              caption: event.target.value,
+            }));
           }}
           placeholder="촬영 정보 (예: Nikon ZF / 40mm f2 / Profile : ARAO)"
         />
+        <div className="admin-form-grid">
+          {GALLERY_EXIF_FIELDS.map((field) => {
+            const currentExif = content.gallery[selectedGalleryCategory]?.exif;
+            const options = Array.from(
+              new Set([
+                ...(galleryExifOptions[selectedGalleryCategory]?.[field] ?? []),
+                currentExif?.[field] ?? "",
+              ].filter(Boolean)),
+            );
+
+            return (
+              <div key={field} className="landing-stack-xs">
+                <span className="muted">{GALLERY_EXIF_LABELS[field]}</span>
+                <select
+                  className="admin-input"
+                  value={currentExif?.[field] ?? ""}
+                  onChange={(event) => handleGalleryExifChange(field, event.target.value)}
+                >
+                  <option value="">정보 없음</option>
+                  {options.map((option) => (
+                    <option key={`${field}-${option}`} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            );
+          })}
+        </div>
         <div className="admin-form-grid">
           <label className="admin-upload stack">
             <span className="muted">Before 이미지</span>
@@ -712,16 +914,6 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
             />
           </label>
         </div>
-        {exifDebug ? (
-          <details className="admin-exif-debug">
-            <summary>EXIF 정보 보기</summary>
-            <pre className="admin-exif-pre">
-              {(["Model", "FNumber", "ExposureProgram", "ISO", "SensitivityType", "GainControl", "LensModel"] as const)
-                .map((k) => `${k}: ${exifDebug[k] != null ? String(exifDebug[k]) : "-"}`)
-                .join("\n")}
-            </pre>
-          </details>
-        ) : null}
 
         <div className="admin-section-actions">
           {galleryStatus ? <p className="admin-gallery-status">{galleryStatus}</p> : null}
@@ -739,7 +931,9 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
           </button>
         </div>
       </section>
+      ) : null}
 
+      {view !== "gallery" ? (
       <section className="admin-form-card stack">
         <div className="admin-section-heading">
           <span className="muted">Footer</span>
@@ -791,6 +985,7 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
           </div>
         ))}
       </section>
+      ) : null}
     </div>
   );
 }

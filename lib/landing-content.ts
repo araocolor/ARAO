@@ -5,6 +5,14 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 export { GALLERY_CATEGORIES, type GalleryCategory } from "@/lib/gallery-categories";
 import type { GalleryCategory } from "@/lib/gallery-categories";
 
+export type GalleryExif = {
+  camera?: string;
+  lens?: string;
+  iso?: string;
+  aperture?: string;
+  exposureMode?: string;
+};
+
 export type GalleryItem = {
   beforeImage: string;
   beforeImageFull: string;
@@ -13,6 +21,8 @@ export type GalleryItem = {
   title?: string;
   body?: string;
   caption?: string;
+  aspectRatio?: string;
+  exif?: GalleryExif;
 };
 
 export type LandingReview = {
@@ -343,6 +353,8 @@ export async function saveLandingContent(content: LandingContent) {
         title: item.title,
         body: item.body,
         caption: item.caption,
+        aspectRatio: item.aspectRatio,
+        exif: item.exif,
       }] as [GalleryCategory, GalleryItem];
     }),
   );
