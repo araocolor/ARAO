@@ -1,3 +1,5 @@
+export const revalidate = 0;
+
 import { LandingPageFooter } from "@/components/landing-page-footer";
 import { LandingPageHeader } from "@/components/landing-page-header";
 import { GalleryHeroItem } from "@/components/gallery-hero-item";
