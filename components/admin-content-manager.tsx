@@ -17,6 +17,38 @@ async function loadImageAsDataUrl(file: File) {
   });
 }
 
+async function readExifCaption(file: File): Promise<string | null> {
+  try {
+    const exifr = await import("exifr");
+    const tags = await exifr.parse(file, ["Make", "Model", "LensModel", "FocalLength", "FNumber"]);
+    if (!tags) return null;
+
+    const makeRaw: string = tags.Make ?? "";
+    const modelRaw: string = tags.Model ?? "";
+    const lensModelRaw: string = tags.LensModel ?? "";
+
+    // Clean up make prefix duplicated in model (e.g. "NIKON CORPORATION" + "NIKON ZF" → "Nikon ZF")
+    const make = makeRaw.split(" ")[0] ?? makeRaw;
+    const model = modelRaw.replace(new RegExp(make, "i"), "").trim() || modelRaw;
+    const camera = `${make} ${model}`.trim();
+
+    // Use LensModel if available, otherwise focal length + aperture
+    let lens = "";
+    if (lensModelRaw) {
+      lens = lensModelRaw;
+    } else if (tags.FocalLength != null && tags.FNumber != null) {
+      lens = `${Math.round(tags.FocalLength as number)}mm f${tags.FNumber}`;
+    }
+
+    const parts = [camera, lens].filter(Boolean);
+    if (parts.length === 0) return null;
+
+    return `${parts.join(" / ")} / ARAO / SOOC / 무보정 Jpeg`;
+  } catch {
+    return null;
+  }
+}
+
 export function AdminContentManager({ initialContent }: AdminContentManagerProps) {
   const [content, setContent] = useState(initialContent);
   const [status, setStatus] = useState<string>("");
@@ -32,6 +64,7 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
   });
   const [pendingGalleryText, setPendingGalleryText] = useState(false);
   const [galleryStatus, setGalleryStatus] = useState<string>("");
+  const [exifDebug, setExifDebug] = useState<Record<string, unknown> | null>(null);
   const galleryStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showUploadToast, setShowUploadToast] = useState(false);
@@ -112,9 +145,16 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
   const onGalleryImageChange = async (key: "beforeImage" | "afterImage", file?: File) => {
     if (!file) return;
     try {
-      const dataUrl = await loadImageAsDataUrl(file);
+      const exifr = await import("exifr");
+      const [dataUrl, exifCaption, allTags] = await Promise.all([
+        loadImageAsDataUrl(file),
+        readExifCaption(file),
+        exifr.parse(file).catch(() => null),
+      ]);
+      setExifDebug(allTags as Record<string, unknown> | null);
       setContent((current) => {
         const existing = current.gallery[selectedGalleryCategory];
+        const caption = exifCaption ?? existing?.caption ?? "";
         return {
           ...current,
           gallery: {
@@ -126,14 +166,15 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
               afterImageFull: existing?.afterImageFull ?? "",
               title: existing?.title ?? "",
               body: existing?.body ?? "",
-              caption: existing?.caption ?? "",
+              caption,
               [key]: dataUrl,
             },
           },
         };
       });
+      if (exifCaption) setPendingGalleryText(true);
       setPendingGalleryFiles((current) => ({ ...current, [key]: true }));
-      setStatus("이미지를 불러왔습니다. 저장하기를 누르면 반영됩니다.");
+      setStatus(exifCaption ? "이미지와 촬영 정보를 불러왔습니다." : "이미지를 불러왔습니다. 저장하기를 누르면 반영됩니다.");
     } catch {
       setStatus("이미지를 불러오지 못했습니다.");
     }
@@ -574,6 +615,7 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
                     afterImageFull: existing?.afterImageFull ?? "",
                     title: event.target.value,
                     body: existing?.body ?? "",
+                    caption: existing?.caption ?? "",
                   },
                 },
               };
@@ -600,6 +642,7 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
                     afterImageFull: existing?.afterImageFull ?? "",
                     title: existing?.title ?? "",
                     body: event.target.value,
+                    caption: existing?.caption ?? "",
                   },
                 },
               };
@@ -669,6 +712,17 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
             />
           </label>
         </div>
+        {exifDebug ? (
+          <details className="admin-exif-debug">
+            <summary>EXIF 정보 보기</summary>
+            <pre className="admin-exif-pre">
+              {(["Model", "FNumber", "ExposureProgram", "ISO", "SensitivityType", "GainControl", "LensModel"] as const)
+                .map((k) => `${k}: ${exifDebug[k] != null ? String(exifDebug[k]) : "-"}`)
+                .join("\n")}
+            </pre>
+          </details>
+        ) : null}
+
         <div className="admin-section-actions">
           {galleryStatus ? <p className="admin-gallery-status">{galleryStatus}</p> : null}
           <button
