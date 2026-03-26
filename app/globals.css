@@ -1549,6 +1549,10 @@ a {
     margin-right: 0;
   }
 
+  .header-mobile-actions {
+    margin-left: auto;
+  }
+
   .header-menu-popover {
     display: flex;
     position: fixed;
