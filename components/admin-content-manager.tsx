@@ -124,6 +124,8 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
               beforeImageFull: existing?.beforeImageFull ?? "",
               afterImage: existing?.afterImage ?? "",
               afterImageFull: existing?.afterImageFull ?? "",
+              title: existing?.title ?? "",
+              body: existing?.body ?? "",
               [key]: dataUrl,
             },
           },

@@ -1,3 +1,5 @@
+export const maxDuration = 60;
+
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { getLandingContent, saveLandingContent, type LandingContent } from "@/lib/landing-content";
