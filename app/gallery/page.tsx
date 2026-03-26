@@ -22,7 +22,9 @@ export default async function GalleryPage() {
 
         {GALLERY_CATEGORIES.map((category) => {
           const item = landingContent.gallery[category];
-          if (!item || !item.beforeImageFull || !item.afterImageFull) return null;
+          const beforeSrc = item?.beforeImageFull || item?.beforeImage || "";
+          const afterSrc = item?.afterImageFull || item?.afterImage || "";
+          if (!beforeSrc || !afterSrc) return null;
           const title = item.title || GALLERY_CATEGORY_LABELS[category];
           const body = item.body || GALLERY_CATEGORY_DEFAULTS[category];
           const bodyLines = body.split("\n");
@@ -35,8 +37,8 @@ export default async function GalleryPage() {
                 ))}
               </p>
               <GalleryHeroItem
-                beforeImage={item.beforeImageFull}
-                afterImage={item.afterImageFull}
+                beforeImage={beforeSrc}
+                afterImage={afterSrc}
                 label={GALLERY_CATEGORY_LABELS[category]}
               />
             </section>
