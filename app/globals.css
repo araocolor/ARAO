@@ -1349,7 +1349,7 @@ a {
   display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .grid {
     grid-template-columns: 1fr;
   }
@@ -1647,7 +1647,7 @@ a {
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .admin-page {
     padding: 24px 0 64px;
   }
@@ -1666,7 +1666,7 @@ a {
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .landing-page {
     width: min(calc(100% - 48px), var(--tablet-width));
     padding-top: 0;

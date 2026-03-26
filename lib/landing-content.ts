@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import { unstable_cache, revalidatePath } from "next/cache";
+import { unstable_cache, revalidatePath, revalidateTag } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export { GALLERY_CATEGORIES, type GalleryCategory } from "@/lib/gallery-categories";
@@ -309,7 +309,7 @@ const fetchLandingContent = unstable_cache(
     }
   },
   ["landing-content"],
-  { revalidate: 3600 },
+  { revalidate: 3600, tags: ["landing-content"] },
 );
 
 export async function getLandingContent() {
@@ -374,6 +374,7 @@ export async function saveLandingContent(content: LandingContent) {
     throw error;
   }
 
+  revalidateTag("landing-content");
   revalidatePath("/");
   revalidatePath("/gallery");
 
