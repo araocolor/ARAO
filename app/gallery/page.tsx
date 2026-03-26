@@ -23,11 +23,17 @@ export default async function GalleryPage() {
         {GALLERY_CATEGORIES.map((category) => {
           const item = landingContent.gallery[category];
           if (!item) return null;
+          const title = item.title || GALLERY_CATEGORY_LABELS[category];
           const body = item.body || GALLERY_CATEGORY_DEFAULTS[category];
+          const bodyLines = body.split("\n");
           return (
-            <section key={category} className="landing-stack-sm">
-              <h2 className="gallery-section-title">{GALLERY_CATEGORY_LABELS[category]}</h2>
-              <p className="gallery-section-body">{body}</p>
+            <section key={category} className="gallery-section">
+              <h2 className="gallery-section-title">{title}</h2>
+              <p className="gallery-section-body">
+                {bodyLines.map((line, i) => (
+                  <span key={i}>{line}{i < bodyLines.length - 1 ? <br /> : null}</span>
+                ))}
+              </p>
               <GalleryHeroItem
                 beforeImage={item.beforeImageFull}
                 afterImage={item.afterImageFull}

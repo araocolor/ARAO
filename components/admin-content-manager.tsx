@@ -30,6 +30,9 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
     beforeImage: false,
     afterImage: false,
   });
+  const [pendingGalleryText, setPendingGalleryText] = useState(false);
+  const [galleryStatus, setGalleryStatus] = useState<string>("");
+  const galleryStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showUploadToast, setShowUploadToast] = useState(false);
   const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -50,6 +53,10 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
 
       if (progressHideTimerRef.current) {
         clearTimeout(progressHideTimerRef.current);
+      }
+
+      if (galleryStatusTimerRef.current) {
+        clearTimeout(galleryStatusTimerRef.current);
       }
     };
   }, []);
@@ -139,8 +146,8 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
       return;
     }
 
-    if (requiresGalleryFileCheck && !hasPendingGalleryFile) {
-      setStatus("먼저 Before 또는 After 이미지를 첨부해주세요.");
+    if (requiresGalleryFileCheck && !hasPendingGalleryFile && !pendingGalleryText) {
+      setStatus("제목, 문구 또는 이미지를 먼저 수정해주세요.");
       return;
     }
 
@@ -184,6 +191,13 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
       if (isComparisonSave) {
         setPendingComparisonFiles({ beforeImage: false, afterImage: false });
         setPendingGalleryFiles({ beforeImage: false, afterImage: false });
+        setPendingGalleryText(false);
+
+        if (key === "gallery") {
+          setGalleryStatus("입력이 완료되었습니다.");
+          if (galleryStatusTimerRef.current) clearTimeout(galleryStatusTimerRef.current);
+          galleryStatusTimerRef.current = setTimeout(() => setGalleryStatus(""), 3000);
+        }
 
         if (progressTimerRef.current) {
           clearInterval(progressTimerRef.current);
@@ -530,6 +544,7 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
               onChange={(event) => {
                 setSelectedGalleryCategory(event.target.value as GalleryCategory);
                 setPendingGalleryFiles({ beforeImage: false, afterImage: false });
+                setPendingGalleryText(false);
               }}
             >
               {GALLERY_CATEGORIES.map((cat) => (
@@ -538,11 +553,11 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
             </select>
           </div>
         </div>
-        <textarea
-          className="admin-textarea"
-          rows={3}
-          value={content.gallery[selectedGalleryCategory]?.body ?? ""}
-          onChange={(event) =>
+        <input
+          className="admin-input"
+          value={content.gallery[selectedGalleryCategory]?.title ?? ""}
+          onChange={(event) => {
+            setPendingGalleryText(true);
             setContent((current) => {
               const existing = current.gallery[selectedGalleryCategory];
               return {
@@ -554,12 +569,39 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
                     beforeImageFull: existing?.beforeImageFull ?? "",
                     afterImage: existing?.afterImage ?? "",
                     afterImageFull: existing?.afterImageFull ?? "",
+                    title: event.target.value,
+                    body: existing?.body ?? "",
+                  },
+                },
+              };
+            });
+          }}
+          placeholder="섹션 제목"
+        />
+        <textarea
+          className="admin-textarea"
+          rows={3}
+          value={content.gallery[selectedGalleryCategory]?.body ?? ""}
+          onChange={(event) => {
+            setPendingGalleryText(true);
+            setContent((current) => {
+              const existing = current.gallery[selectedGalleryCategory];
+              return {
+                ...current,
+                gallery: {
+                  ...current.gallery,
+                  [selectedGalleryCategory]: {
+                    beforeImage: existing?.beforeImage ?? "",
+                    beforeImageFull: existing?.beforeImageFull ?? "",
+                    afterImage: existing?.afterImage ?? "",
+                    afterImageFull: existing?.afterImageFull ?? "",
+                    title: existing?.title ?? "",
                     body: event.target.value,
                   },
                 },
               };
-            })
-          }
+            });
+          }}
           placeholder="섹션 문구"
         />
         <div className="admin-form-grid">
@@ -599,15 +641,16 @@ export function AdminContentManager({ initialContent }: AdminContentManagerProps
           </label>
         </div>
         <div className="admin-section-actions">
+          {galleryStatus ? <p className="admin-gallery-status">{galleryStatus}</p> : null}
           <button
             className={
-              (pendingGalleryFiles.beforeImage || pendingGalleryFiles.afterImage)
+              (pendingGalleryFiles.beforeImage || pendingGalleryFiles.afterImage || pendingGalleryText)
                 ? "admin-save-button"
                 : "admin-save-button admin-save-button-disabled"
             }
             type="button"
             onClick={() => void save("gallery")}
-            disabled={savingKey !== null || (!pendingGalleryFiles.beforeImage && !pendingGalleryFiles.afterImage)}
+            disabled={savingKey !== null || (!pendingGalleryFiles.beforeImage && !pendingGalleryFiles.afterImage && !pendingGalleryText)}
           >
             {savingKey === "gallery" ? "저장 중..." : "저장"}
           </button>

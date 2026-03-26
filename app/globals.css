@@ -524,10 +524,30 @@ a {
   }
 }
 
+.gallery-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 56px;
+}
+
+.gallery-section:last-of-type {
+  margin-bottom: 0;
+}
+
 .gallery-section-title {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0;
+}
+
+.gallery-section-body {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: rgba(17, 17, 17, 0.55);
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-line;
 }
 
 .gallery-before-btn {
@@ -827,7 +847,15 @@ a {
 
 .admin-section-actions {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.admin-gallery-status {
+  font-size: 0.8rem;
+  color: rgba(17, 17, 17, 0.5);
+  margin: 0;
 }
 
 .admin-upload-progress {

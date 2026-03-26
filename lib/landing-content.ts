@@ -10,6 +10,7 @@ export type GalleryItem = {
   beforeImageFull: string;
   afterImage: string;
   afterImageFull: string;
+  title?: string;
   body?: string;
 };
 
@@ -338,6 +339,8 @@ export async function saveLandingContent(content: LandingContent) {
         beforeImageFull: beforeRes.full,
         afterImage: afterRes.thumb,
         afterImageFull: afterRes.full,
+        title: item.title,
+        body: item.body,
       }] as [GalleryCategory, GalleryItem];
     }),
   );
@@ -372,6 +375,7 @@ export async function saveLandingContent(content: LandingContent) {
   }
 
   revalidatePath("/");
+  revalidatePath("/gallery");
 
   return data.content;
 }
