@@ -63,6 +63,7 @@ export function AccountNavLinks({ mobile, footer }: NavLinksProps) {
             <Link
               key={section.id}
               href={`/account/${section.id}`}
+              prefetch={true}
               className={`account-footer-item${isActive(section.id) ? " active" : ""}`}
               title={section.menu}
             >
@@ -82,6 +83,7 @@ export function AccountNavLinks({ mobile, footer }: NavLinksProps) {
           <Link
             key={section.id}
             href={`/account/${section.id}`}
+            prefetch={true}
             className={`account-mobile-menu-item${isActive(section.id) ? " active" : ""}`}
           >
             <span className={`account-menu-icon account-menu-icon-${section.icon}`} aria-hidden="true" />
@@ -104,6 +106,7 @@ export function AccountNavLinks({ mobile, footer }: NavLinksProps) {
         <Link
           key={section.id}
           href={`/account/${section.id}`}
+          prefetch={true}
           className={`admin-menu-item${isActive(section.id) ? " active" : ""}`}
         >
           <span className="account-menu-item-content">
