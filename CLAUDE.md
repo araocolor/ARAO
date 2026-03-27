@@ -1,16 +1,20 @@
-# claude.md
+# CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with this repository. See **frontend.md**, **backend.md**, and **share.md** for detailed specifications.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. See **frontend.md**, **backend.md**, and **share.md** for detailed specifications.
 
 ## Quick Start
 
 ```bash
-npm install        # Install dependencies
-npm run dev        # Start dev server (localhost:3000)
-npm run build      # Build for production
-npm run start      # Start production server
-npm run lint       # Run linting
+npm install                    # Install dependencies
+cp .env.example .env.local     # Copy environment template
+# Edit .env.local with Supabase and Clerk credentials
+npm run dev                    # Start dev server (localhost:3000)
+npm run build                  # Build for production
+npm run start                  # Start production server
+npm run lint                   # Check code quality
 ```
+
+**Available ports:** Dev uses port 3000 (or 3001 if 3000 is in use)
 
 ## Project Overview
 
@@ -31,12 +35,29 @@ npm run lint       # Run linting
 - **Server Components:** Data fetching, auth checks, admin operations
 - **Client Components:** Interactive UI with state management
 - **API Routes:** Bridge for client operations requiring auth/permissions
+- **Import alias:** `@/` maps to project root (use `@/components`, `@/lib`, `@/hooks`)
 
-### Authentication
+### Authentication & Protected Routes
 - Users log in via Clerk (`/sign-in`, `/sign-up`)
 - `syncProfile()` auto-creates Supabase profiles on first login
-- Middleware protects `/admin`, `/account`, `/article` routes
-- Admin role: `profiles.role = 'admin'` (Supabase table)
+- **Middleware** (`middleware.ts`) enforces auth via `clerkMiddleware()`:
+  - `/admin/*` — Admin only (requires `profiles.role = 'admin'`)
+  - `/account/*` — Authenticated users only
+  - `/article/*` — Admin only
+  - All other routes are public
+
+### Critical: Next.js 16 Dynamic Routes
+Dynamic routes now require awaiting `params` (it's a Promise). TypeScript won't catch missed awaits:
+```typescript
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;  // ← Must await!
+  // Rest of logic
+}
+```
+See **backend.md** for API route patterns.
 
 ### Key Features
 - User profile management
@@ -71,6 +92,15 @@ app/globals.css   # Global styles (500+ lines)
 
 **Inquiry Status:** `pending` (red) → `in_progress` → `resolved` (blue) → `closed`
 
+## Styling & Layout
+
+- **Approach:** CSS-first with custom styles in `app/globals.css` (500+ lines)
+- **Mobile-first:** Baseline design targets mobile phones
+- **Responsive:** Scales to tablet (1024px max-width)
+- **No desktop layout:** Desktop uses same responsive design as tablet
+- **Breakpoint:** `1024px` separates mobile/tablet from desktop considerations
+- **Consultation badges:** `.consulting-status-*` classes with color codes (red=pending, blue=resolved, gray=closed)
+
 ## Key Components
 
 **Frontend:** `consulting-section`, `admin-dashboard`, `gallery-hero-item`, headers/footers
@@ -90,7 +120,24 @@ app/globals.css   # Global styles (500+ lines)
 
 ## Before You Start
 
-1. Read **share.md** for authentication and user preferences
-2. Read **frontend.md** or **backend.md** based on your task
-3. Run `npm run dev` to start development
-4. Verify locally before pushing
+1. **Setup:** Copy `.env.example` to `.env.local` and fill in Supabase/Clerk credentials
+2. **Documentation:** Read **share.md** for auth/preferences, then **frontend.md** or **backend.md** based on task
+3. **Development:** Run `npm run dev` (starts on localhost:3000 or 3001)
+4. **Verify:** Test locally before committing
+
+## Pre-Push Checklist
+
+Before committing/pushing changes:
+1. **Build test:** `npm run build` (catches TypeScript/build errors)
+2. **Lint check:** `npm run lint`
+3. **Manual test:** Verify changes in dev server
+4. **Permission:** User preference — **always request approval before committing**
+
+## Common Gotchas
+
+| Issue | Solution |
+|-------|----------|
+| "Type is not assignable to Promise" | Next.js 16: must `await params` in dynamic routes |
+| Cache corruption in dev | Delete `.next/` folder and restart `npm run dev` |
+| Port 3000 in use | Dev server auto-uses 3001; check `package.json` scripts |
+| RLS policy errors | Check Supabase Row-Level Security policies match auth checks |
