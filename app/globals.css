@@ -737,6 +737,8 @@ a {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .landing-footer-brand {
@@ -1505,6 +1507,75 @@ a {
   display: none;
 }
 
+/* Account page base styles (all viewports) */
+.account-page {
+  display: flex;
+  justify-content: center;
+  padding: 24px 16px 100px;
+}
+
+.account-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: min(100%, 480px);
+  max-width: 100%;
+}
+
+.account-footer-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100vw;
+  height: 80px;
+  background: rgba(245, 245, 247, 0.96);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line);
+  z-index: 39;
+}
+
+.account-footer-menu {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  height: 100%;
+  align-items: center;
+  justify-items: center;
+}
+
+.account-footer-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  text-decoration: none;
+}
+
+.account-footer-item:hover {
+  opacity: 0.8;
+}
+
+.account-footer-item.active {
+  opacity: 1;
+  color: #000;
+}
+
+.account-footer-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60px;
+}
+
 @media (max-width: 1024px) {
   .grid {
     grid-template-columns: 1fr;
@@ -1690,6 +1761,10 @@ a {
     background: rgba(255, 255, 255, 0.82);
   }
 
+  .account-footer-nav {
+    margin-left: calc(50% - 50vw);
+  }
+
   .header-actions {
     display: none;
   }
@@ -1847,6 +1922,10 @@ a {
     padding: 24px 0 64px;
   }
 
+  .account-page {
+    padding: 24px 0 100px;
+  }
+
   .admin-layout-root {
     width: min(calc(100% - 48px), var(--tablet-width));
   }
@@ -1877,6 +1956,10 @@ a {
 
   .landing-shell {
     gap: 32px;
+  }
+
+  .account-content {
+    width: min(calc(100% - 48px), var(--tablet-width));
   }
 
   .landing-hero {
@@ -2027,6 +2110,7 @@ a {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  counter-reset: consulting-item;
 }
 
 .consulting-item {
@@ -2057,6 +2141,18 @@ a {
   font-weight: 600;
   margin: 0;
   flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.consulting-item-header h4::before {
+  counter-increment: consulting-item;
+  content: counter(consulting-item) ".";
+  display: inline-block;
+  min-width: 22px;
+  margin-right: 6px;
+  font-weight: 700;
+  color: var(--muted);
 }
 
 .consulting-status {

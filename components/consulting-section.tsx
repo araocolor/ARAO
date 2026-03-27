@@ -38,7 +38,7 @@ export function ConsultingSection({
     try {
       setIsLoading(true);
       const response = await fetch(
-        `/api/account/consulting?type=${type}&limit=20`
+        `/api/account/consulting?type=${type}&limit=100`
       );
       if (response.ok) {
         const data = (await response.json()) as {
