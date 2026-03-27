@@ -16,6 +16,7 @@ export default function RootLayout({
     <ClerkProvider
       telemetry={false}
       unsafe_disableDevelopmentModeConsoleWarning
+      sessionExpiresInSeconds={3600}
     >
       <html lang="ko">
         <body>{children}</body>
