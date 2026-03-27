@@ -15,7 +15,16 @@ import { getCached, setCached } from "./use-prefetch-cache";
  */
 export function useAccountPrefetch() {
   useEffect(() => {
-    // 인증된 사용자 확인 (layout에서 로그인 체크 됨)
+    // 모든 캐시가 이미 있으면 prefetch 스킵 (효율성)
+    if (
+      getCached("orders") &&
+      getCached("general") &&
+      getCached("consulting") &&
+      getCached("general_inquiries")
+    ) {
+      return;
+    }
+
     // 1초 후 백그라운드 prefetch 시작
     const timer = setTimeout(() => {
       prefetchAccountData();
