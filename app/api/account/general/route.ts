@@ -4,6 +4,31 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { hashPassword, validateEnglishNumberPassword } from "@/lib/password";
 import { syncProfile } from "@/lib/profiles";
 
+export async function GET() {
+  const { userId } = await auth();
+
+  if (!userId) {
+    return NextResponse.json({ message: "로그인이 필요합니다." }, { status: 401 });
+  }
+
+  const user = await currentUser();
+  const email = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses[0]?.emailAddress;
+  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || null;
+  const profile = await syncProfile({ email, fullName });
+
+  if (!profile) {
+    return NextResponse.json({ message: "회원 정보를 찾을 수 없습니다." }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    email: profile.email,
+    fullName: profile.full_name,
+    username: profile.username,
+    hasPassword: Boolean(profile.password_hash),
+    phone: profile.phone,
+  });
+}
+
 function validateUsername(username: string) {
   const trimmedUsername = username.trim().toLowerCase();
 

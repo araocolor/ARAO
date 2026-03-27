@@ -9,6 +9,7 @@ import { getCached, setCached } from "./use-prefetch-cache";
  *
  * prefetch 데이터:
  * - orders: GET /api/account/orders
+ * - general: GET /api/account/general
  * - consulting: GET /api/account/consulting?type=consulting
  * - general_inquiries: GET /api/account/consulting?type=general
  */
@@ -29,6 +30,7 @@ async function prefetchAccountData() {
     // 병렬로 모든 API 호출
     await Promise.allSettled([
       prefetchOrders(),
+      prefetchGeneral(),
       prefetchConsulting("consulting"),
       prefetchConsulting("general"),
     ]);
@@ -52,6 +54,24 @@ async function prefetchOrders() {
     setCached("orders", data);
   } catch (error) {
     console.error("[Prefetch Error] Failed to prefetch orders:", error);
+  }
+}
+
+/**
+ * General settings API prefetch
+ */
+async function prefetchGeneral() {
+  try {
+    // 캐시된 데이터가 있으면 스킵
+    if (getCached("general")) return;
+
+    const res = await fetch("/api/account/general");
+    if (!res.ok) return;
+
+    const data = await res.json();
+    setCached("general", data);
+  } catch (error) {
+    console.error("[Prefetch Error] Failed to prefetch general:", error);
   }
 }
 

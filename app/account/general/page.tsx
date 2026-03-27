@@ -1,47 +1,75 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import { syncProfile } from "@/lib/profiles";
+"use client";
+
+import { useEffect, useState } from "react";
 import { GeneralSettingsForm } from "@/components/general-settings-form";
+import { getCached, setCached } from "@/hooks/use-prefetch-cache";
 
-export default async function AccountGeneralPage() {
-  const { userId } = await auth();
+interface GeneralData {
+  email: string;
+  fullName: string | null;
+  username: string | null;
+  hasPassword: boolean;
+  phone: string | null;
+}
 
-  if (!userId) {
-    redirect("/sign-in");
+export default function AccountGeneralPage() {
+  const [data, setData] = useState<GeneralData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        // 1. 캐시된 데이터 확인
+        const cachedData = getCached<GeneralData>("general");
+        if (cachedData) {
+          setData(cachedData);
+          setLoading(false);
+          return;
+        }
+
+        // 2. 캐시 없으면 API 호출
+        const res = await fetch("/api/account/general");
+        if (!res.ok) throw new Error("Failed to fetch general data");
+
+        const generalData = await res.json();
+        setData(generalData);
+        setCached("general", generalData);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unknown error");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="admin-panel-card stack account-section-card">
+        <p className="muted">로딩 중...</p>
+      </div>
+    );
   }
 
-  const user = await currentUser();
-  const email = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses[0]?.emailAddress;
-  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || null;
-
-  let profile = null;
-
-  try {
-    profile = await syncProfile({ email, fullName });
-  } catch (error) {
-    console.error("Failed to sync profile:", error);
-  }
-
-  if (!profile) {
+  if (error || !data) {
     return (
       <div className="admin-panel-card stack">
         <h1>오류</h1>
-        <p className="muted">프로필 정보를 불러올 수 없습니다.</p>
+        <p className="muted">{error || "프로필 정보를 불러올 수 없습니다."}</p>
       </div>
     );
   }
 
   return (
-    <div className="admin-panel-card stack">
-      <p className="muted">General</p>
-      <h2>일반설정</h2>
-      <p className="muted">기본 계정 정보와 프로필 상태를 확인하고 이후 알림, 연락처, 비밀번호 변경 기능을 이 영역으로 확장할 수 있습니다.</p>
+    <div className="admin-panel-card stack account-section-card">
       <GeneralSettingsForm
-        email={profile.email}
-        fullName={profile.full_name}
-        username={profile.username}
-        hasPassword={Boolean(profile.password_hash)}
-        phone={profile.phone}
+        email={data.email}
+        fullName={data.fullName}
+        username={data.username}
+        hasPassword={data.hasPassword}
+        phone={data.phone}
       />
     </div>
   );
