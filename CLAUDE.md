@@ -63,6 +63,7 @@ See **backend.md** for API route patterns.
 - User profile management
 - Admin content/pricing editing
 - 1:1 consultation system (create, reply, track status)
+- **Order system** (list, detail, status tracking) ← NEW
 - Real-time notification badges (60s polling)
 - Gallery with EXIF metadata
 
@@ -88,9 +89,16 @@ app/globals.css   # Global styles (500+ lines)
 - `inquiries` — Consultations (type, status, content)
 - `inquiry_replies` — Admin responses
 - `landing_contents` — Editable content
-- Commerce tables (stubs)
+- `orders` — User orders (user_id, status, total_amount) ← NEW
+- `payments` — Order payments (order_id, provider, amount) ← NEW
+- `products` — Product catalog ← NEW
+- `product_options` — Product variants (soft/bw/std) ← NEW
 
 **Inquiry Status:** `pending` (red) → `in_progress` → `resolved` (blue) → `closed`
+
+**Order Status:** `결제완료` (blue) → `환불진행중` (yellow) → `환불완료` (purple) → `결제오류` (red)
+
+**See DATABASE_SCHEMA.md** for complete database structure.
 
 ## Styling & Layout
 
@@ -104,8 +112,10 @@ app/globals.css   # Global styles (500+ lines)
 ## Key Components
 
 **Frontend:** `consulting-section`, `admin-dashboard`, `gallery-hero-item`, headers/footers
-**Backend:** API routes for consulting, notifications, landing content
+**Orders:** `app/account/orders/page.tsx` (list), `app/account/orders/[id]/page.tsx` (detail) ← NEW
+**Backend:** API routes for consulting, orders, notifications, landing content ← orders API routes added
 **Hooks:** `use-notification-count`, `use-admin-pending-count` (60s polling)
+**Utilities:** `lib/consulting.ts`, `lib/orders.ts` ← orders utilities added
 
 ## Documentation
 
@@ -115,6 +125,8 @@ app/globals.css   # Global styles (500+ lines)
 | **frontend.md** | Components, styling, client patterns |
 | **backend.md** | APIs, database, server patterns |
 | **share.md** | Routing, auth, workflows, deployment, preferences |
+| **DATABASE_SCHEMA.md** | Complete database structure (all tables) ← NEW |
+| **WORK_SUMMARY_20260327.md** | Order system implementation summary ← NEW |
 | **README.md** | Full project details |
 | **START_CHECKLIST.md** | Completed/pending tasks |
 
