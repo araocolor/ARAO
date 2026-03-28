@@ -246,7 +246,7 @@ a {
   background: rgba(255, 255, 255, 0.82);
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .header-profile-avatar {
@@ -256,6 +256,8 @@ a {
   object-position: center;
   display: block;
   flex-shrink: 0;
+  border-radius: 999px;
+  overflow: hidden;
 }
 
 .header-profile-icon {
