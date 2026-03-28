@@ -22,12 +22,12 @@ export async function getNotificationsForProfile(
   const items: NotificationItem[] = [];
   let unreadCount = 0;
 
-  // 1. settings 알림: username, password_hash, phone이 모두 없으면 표시 (항상 맨 위)
-  if (!profile.username || !profile.password_hash || !profile.phone) {
+  // 1. settings 알림: username이 없을 때만 표시 (항상 맨 위)
+  if (!profile.username) {
     items.push({
       id: "settings-notif",
       type: "settings",
-      title: "사용자 아이디, 비밀번호, 전화번호를 모두 등록하세요",
+      title: "사용자 아이디를 등록하세요",
       link: "/account/general",
       is_read: false,
       created_at: new Date().toISOString(),
