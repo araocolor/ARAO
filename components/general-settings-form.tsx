@@ -141,7 +141,10 @@ export function GeneralSettingsForm({
     }
 
     // 팝오버 닫고 아이콘을 미리보기 이미지로 즉시 반영
-    if (previewImage) setIconImage(previewImage);
+    if (previewImage) {
+      setIconImage(previewImage);
+      window.dispatchEvent(new CustomEvent("avatar-updated", { detail: { iconImage: previewImage } }));
+    }
     setIsEditingAvatar(false);
     setPreviewImage(null);
     setSavingKey(null);

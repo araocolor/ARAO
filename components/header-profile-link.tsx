@@ -19,6 +19,12 @@ export function HeaderProfileLink() {
   const [drawerMounted, setDrawerMounted] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [iconImage, setIconImage] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("header-avatar") ?? null;
+    }
+    return null;
+  });
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 배지 카운트: items 중 is_read = false인 개수
@@ -32,8 +38,16 @@ export function HeaderProfileLink() {
         const data = (await response.json()) as {
           unreadCount: number;
           items: NotificationItem[];
+          iconImage?: string | null;
         };
         setItems(data.items);
+        const img = data.iconImage ?? null;
+        setIconImage(img);
+        if (img) {
+          localStorage.setItem("header-avatar", img);
+        } else {
+          localStorage.removeItem("header-avatar");
+        }
       }
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
@@ -48,6 +62,17 @@ export function HeaderProfileLink() {
       void fetchNotificationItems();
     }
   }, [isSignedIn]);
+
+  // 아바타 업데이트 이벤트 수신
+  useEffect(() => {
+    function handleAvatarUpdated(e: Event) {
+      const detail = (e as CustomEvent<{ iconImage: string }>).detail;
+      setIconImage(detail.iconImage);
+      localStorage.setItem("header-avatar", detail.iconImage);
+    }
+    window.addEventListener("avatar-updated", handleAvatarUpdated);
+    return () => window.removeEventListener("avatar-updated", handleAvatarUpdated);
+  }, []);
 
   // 드로어 오픈
   function openDrawer() {
@@ -95,10 +120,14 @@ export function HeaderProfileLink() {
         aria-label="알림"
         type="button"
       >
-        <span className="header-profile-icon" aria-hidden="true">
-          <span className="header-profile-head" />
-          <span className="header-profile-body" />
-        </span>
+        {iconImage ? (
+          <img src={iconImage} className="header-profile-avatar" alt="avatar" aria-hidden="true" />
+        ) : (
+          <span className="header-profile-icon" aria-hidden="true">
+            <span className="header-profile-head" />
+            <span className="header-profile-body" />
+          </span>
+        )}
         {isSignedIn && badgeCount > 0 && (
           <span className="header-profile-badge">{badgeCount}</span>
         )}
