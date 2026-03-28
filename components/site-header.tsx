@@ -153,6 +153,7 @@ export function SiteHeader({
                   </Link>
                 </div>
               ))}
+              {mobileLogout && <hr className="header-menu-divider" />}
               {mobileLogout}
             </div>
             {mobileLeading ?? leading ? (
