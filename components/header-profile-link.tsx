@@ -1,27 +1,113 @@
 "use client";
 
-import Link from "next/link";
+import { useRef, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { useNotificationCount } from "@/hooks/use-notification-count";
 import { useAdminPendingCount } from "@/hooks/use-admin-pending-count";
+import { NotificationDrawer } from "@/components/notification-drawer";
+import type { NotificationItem } from "@/lib/consulting";
 
 export function HeaderProfileLink() {
   const { isSignedIn } = useUser();
+  const router = useRouter();
   const unreadCount = useNotificationCount(isSignedIn ?? false);
   const pendingCount = useAdminPendingCount(isSignedIn ?? false);
+
+  // 드로어 상태
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerMounted, setDrawerMounted] = useState(false);
+  const [items, setItems] = useState<NotificationItem[]>([]);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 관리자면 pending count, 아니면 unread count
   const badgeCount = pendingCount > 0 ? pendingCount : unreadCount;
 
+  // 알림 목록 조회
+  async function fetchNotificationItems() {
+    try {
+      setIsLoadingNotifications(true);
+      const response = await fetch("/api/account/notifications");
+      if (response.ok) {
+        const data = (await response.json()) as {
+          unreadCount: number;
+          items: NotificationItem[];
+        };
+        setItems(data.items);
+      }
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+    } finally {
+      setIsLoadingNotifications(false);
+    }
+  }
+
+  // 드로어 오픈
+  function openDrawer() {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+
+    setDrawerMounted(true);
+    setDrawerOpen(true);
+    fetchNotificationItems();
+  }
+
+  // 드로어 닫기
+  function closeDrawer() {
+    setDrawerOpen(false);
+    closeTimerRef.current = setTimeout(() => {
+      setDrawerMounted(false);
+    }, 180); // CSS transition duration과 동일
+  }
+
+  // 정리
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
+
+  // 클릭 핸들러
+  function handleClick() {
+    if (!isSignedIn) {
+      router.push("/sign-in");
+      return;
+    }
+
+    openDrawer();
+  }
+
   return (
-    <Link aria-label="사용자 프로필" className={`header-profile-link ${isSignedIn ? "signed-in" : ""}`} href={isSignedIn ? "/account" : "/sign-in"}>
-      <span className="header-profile-icon" aria-hidden="true">
-        <span className="header-profile-head" />
-        <span className="header-profile-body" />
-      </span>
-      {isSignedIn && badgeCount > 0 && (
-        <span className="header-profile-badge">{badgeCount}</span>
+    <>
+      <button
+        className={`header-profile-link ${isSignedIn ? "signed-in" : ""}`}
+        onClick={handleClick}
+        aria-label="알림"
+        type="button"
+      >
+        <span className="header-profile-icon" aria-hidden="true">
+          <span className="header-profile-head" />
+          <span className="header-profile-body" />
+        </span>
+        {isSignedIn && badgeCount > 0 && (
+          <span className="header-profile-badge">{badgeCount}</span>
+        )}
+      </button>
+
+      {/* 알림 드로어 */}
+      {drawerMounted && (
+        <NotificationDrawer
+          isOpen={drawerOpen}
+          isMounted={drawerMounted}
+          items={items}
+          onClose={closeDrawer}
+        />
       )}
-    </Link>
+    </>
   );
 }
