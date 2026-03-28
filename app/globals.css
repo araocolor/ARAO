@@ -3248,8 +3248,7 @@ a {
 .account-avatar-popover {
   position: absolute;
   top: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
   z-index: 200;
   background: var(--surface);
   border: 1px solid var(--line);
