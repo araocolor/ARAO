@@ -9,8 +9,7 @@ import { NotificationDrawer } from "@/components/notification-drawer";
 import type { NotificationItem } from "@/lib/notifications";
 
 export function HeaderProfileLink() {
-  const { isSignedIn, user } = useUser();
-  const email = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress ?? null;
+  const { isSignedIn } = useUser();
   const router = useRouter();
   const unreadCount = useNotificationCount(isSignedIn ?? false);
   const pendingCount = useAdminPendingCount(isSignedIn ?? false);
@@ -21,9 +20,7 @@ export function HeaderProfileLink() {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [iconImage, setIconImage] = useState<string | null>(null);
-  const [tooltipVisible, setTooltipVisible] = useState(false);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 배지 카운트: items 중 is_read = false인 개수
   const badgeCount = items.filter((item) => !item.is_read).length;
@@ -126,19 +123,7 @@ export function HeaderProfileLink() {
         onClick={handleClick}
         aria-label="알림"
         type="button"
-        onMouseEnter={() => {
-          if (!isSignedIn || !email) return;
-          setTooltipVisible(true);
-          tooltipTimerRef.current = setTimeout(() => setTooltipVisible(false), 1000);
-        }}
-        onMouseLeave={() => {
-          if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
-          setTooltipVisible(false);
-        }}
       >
-        {isSignedIn && email && tooltipVisible && (
-          <span className="header-profile-email-tooltip">{email}</span>
-        )}
         {iconImage ? (
           <img src={iconImage} className="header-profile-avatar" alt="avatar" aria-hidden="true" />
         ) : (
