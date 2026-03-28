@@ -9,7 +9,8 @@ import { NotificationDrawer } from "@/components/notification-drawer";
 import type { NotificationItem } from "@/lib/notifications";
 
 export function HeaderProfileLink() {
-  const { isSignedIn } = useUser();
+  const { isSignedIn, user } = useUser();
+  const email = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress ?? null;
   const router = useRouter();
   const unreadCount = useNotificationCount(isSignedIn ?? false);
   const pendingCount = useAdminPendingCount(isSignedIn ?? false);
@@ -124,6 +125,9 @@ export function HeaderProfileLink() {
         aria-label="알림"
         type="button"
       >
+        {isSignedIn && email && (
+          <span className="header-profile-email-tooltip">{email}</span>
+        )}
         {iconImage ? (
           <img src={iconImage} className="header-profile-avatar" alt="avatar" aria-hidden="true" />
         ) : (
