@@ -3200,6 +3200,7 @@ a {
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  position: relative;
 }
 
 .account-username-avatar {
@@ -3241,14 +3242,24 @@ a {
 }
 
 .account-avatar-form {
+  display: none;
+}
+
+.account-avatar-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow-soft);
+  padding: 14px;
+  width: 220px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  background: var(--surface-soft);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  max-width: 300px;
+  gap: 10px;
 }
 
 .account-avatar-input {

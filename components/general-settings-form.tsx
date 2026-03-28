@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState, useRef } from "react";
+import { FormEvent, useState, useRef, useEffect } from "react";
 import Link from "next/link";
 
 type GeneralSettingsFormProps = {
@@ -41,6 +41,8 @@ export function GeneralSettingsForm({
   const [iconImage, setIconImage] = useState(initialIconImage ?? "");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarPopoverRef = useRef<HTMLDivElement>(null);
+  const avatarButtonRef = useRef<HTMLButtonElement>(null);
 
   async function submitUsername(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -171,6 +173,23 @@ export function GeneralSettingsForm({
     }
   }
 
+  useEffect(() => {
+    if (!isEditingAvatar) return;
+
+    function handlePointerDown(e: PointerEvent) {
+      const target = e.target as Node;
+      if (
+        avatarPopoverRef.current?.contains(target) ||
+        avatarButtonRef.current?.contains(target)
+      ) return;
+      setIsEditingAvatar(false);
+      setPreviewImage(null);
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [isEditingAvatar]);
+
   function handleAvatarFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -233,11 +252,7 @@ export function GeneralSettingsForm({
           <div className="account-username-section">
             <div className="account-avatar-column">
               {iconImage ? (
-                <img
-                  src={iconImage}
-                  alt={username}
-                  className="account-username-avatar"
-                />
+                <img src={iconImage} alt={username} className="account-username-avatar" />
               ) : (
                 <img
                   src={`https://api.dicebear.com/9.x/avataaars/svg?seed=${username}`}
@@ -245,65 +260,64 @@ export function GeneralSettingsForm({
                   className="account-username-avatar"
                 />
               )}
-              {!isEditingAvatar ? (
-                <button
-                  className="account-avatar-edit-button"
-                  type="button"
-                  onClick={() => {
-                    setIsEditingAvatar(true);
-                    setAvatarMessage(null);
-                  }}
-                >
-                  edit
-                </button>
-              ) : (
-                <form className="account-avatar-form" onSubmit={submitAvatar}>
-                  {previewImage && (
-                    <div className="account-avatar-preview-container">
-                      <img
-                        src={previewImage}
-                        alt="미리보기"
-                        className="account-avatar-preview"
-                      />
-                    </div>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    name="avatar-file"
-                    accept="image/jpeg,image/png,image/gif"
-                    className="account-avatar-input-hidden"
-                    onChange={handleAvatarFileChange}
-                  />
-                  <button
-                    type="button"
-                    className="account-avatar-file-button"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    파일 선택
-                  </button>
-                  <div className="account-avatar-help">jpg, png, gif 파일로 용량 1MB 이내</div>
-                  <div className="account-avatar-actions">
-                    <button
-                      type="submit"
-                      className="account-avatar-upload-button"
-                      disabled={savingKey === "avatar"}
-                    >
-                      {savingKey === "avatar" ? "업로드 중..." : "업로드"}
-                    </button>
+              <button
+                ref={avatarButtonRef}
+                className="account-avatar-edit-button"
+                type="button"
+                onClick={() => {
+                  setIsEditingAvatar((v) => !v);
+                  setAvatarMessage(null);
+                }}
+              >
+                edit
+              </button>
+
+              {isEditingAvatar && (
+                <div className="account-avatar-popover" ref={avatarPopoverRef}>
+                  <form onSubmit={submitAvatar}>
+                    {previewImage && (
+                      <div className="account-avatar-preview-container">
+                        <img src={previewImage} alt="미리보기" className="account-avatar-preview" />
+                      </div>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      name="avatar-file"
+                      accept="image/jpeg,image/png,image/gif"
+                      className="account-avatar-input-hidden"
+                      onChange={handleAvatarFileChange}
+                    />
                     <button
                       type="button"
-                      className="account-avatar-cancel-button"
-                      onClick={() => {
-                        setIsEditingAvatar(false);
-                        setPreviewImage(null);
-                      }}
+                      className="account-avatar-file-button"
+                      onClick={() => fileInputRef.current?.click()}
                     >
-                      취소
+                      파일 선택
                     </button>
-                  </div>
-                  {avatarMessage ? <div className="muted">{avatarMessage}</div> : null}
-                </form>
+                    <div className="account-avatar-help">jpg, png, gif 파일로 용량 1MB 이내</div>
+                    <div className="account-avatar-actions">
+                      <button
+                        type="submit"
+                        className="account-avatar-upload-button"
+                        disabled={savingKey === "avatar"}
+                      >
+                        {savingKey === "avatar" ? "업로드 중..." : "업로드"}
+                      </button>
+                      <button
+                        type="button"
+                        className="account-avatar-cancel-button"
+                        onClick={() => {
+                          setIsEditingAvatar(false);
+                          setPreviewImage(null);
+                        }}
+                      >
+                        취소
+                      </button>
+                    </div>
+                    {avatarMessage && <div className="muted">{avatarMessage}</div>}
+                  </form>
+                </div>
               )}
             </div>
             <div className="account-username-info">
