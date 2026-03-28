@@ -3187,16 +3187,24 @@ a {
   font-size: 13px;
 }
 
+
 /* 사용자 아이디 아바타 */
-.account-username-display {
+.account-username-section {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
 }
 
+.account-avatar-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
 .account-username-avatar {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: 2px solid var(--line);
   object-fit: cover;
@@ -3215,24 +3223,8 @@ a {
   flex-shrink: 0;
 }
 
-/* 아바타 업로드 */
-.account-username-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.account-username-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 2px solid var(--line);
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
 .account-avatar-edit-button {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
   background: none;
   border: none;
@@ -3241,6 +3233,7 @@ a {
   text-decoration: underline;
   opacity: 0.7;
   transition: opacity 120ms ease;
+  white-space: nowrap;
 }
 
 .account-avatar-edit-button:active {

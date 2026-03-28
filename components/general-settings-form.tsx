@@ -173,7 +173,7 @@ export function GeneralSettingsForm({
         </div>
         {username ? (
           <div className="account-username-section">
-            <div className="account-username-display">
+            <div className="account-avatar-column">
               {iconImage ? (
                 <img
                   src={iconImage}
@@ -187,47 +187,47 @@ export function GeneralSettingsForm({
                   className="account-username-avatar"
                 />
               )}
-              <div className="account-setting-static account-username-static">{username}</div>
+              {!isEditingAvatar ? (
+                <button
+                  className="account-avatar-edit-button"
+                  type="button"
+                  onClick={() => {
+                    setIsEditingAvatar(true);
+                    setAvatarMessage(null);
+                  }}
+                >
+                  edit
+                </button>
+              ) : (
+                <form className="account-avatar-form" onSubmit={submitAvatar}>
+                  <input
+                    type="file"
+                    name="avatar-file"
+                    accept="image/jpeg,image/png,image/gif"
+                    className="account-avatar-input"
+                  />
+                  <div className="account-avatar-help">jpg, png, gif 파일로 용량 1MB 이내</div>
+                  <div className="account-avatar-actions">
+                    <button
+                      type="submit"
+                      className="account-avatar-upload-button"
+                      disabled={savingKey === "avatar"}
+                    >
+                      {savingKey === "avatar" ? "업로드 중..." : "업로드"}
+                    </button>
+                    <button
+                      type="button"
+                      className="account-avatar-cancel-button"
+                      onClick={() => setIsEditingAvatar(false)}
+                    >
+                      취소
+                    </button>
+                  </div>
+                  {avatarMessage ? <div className="muted">{avatarMessage}</div> : null}
+                </form>
+              )}
             </div>
-            {!isEditingAvatar ? (
-              <button
-                className="account-avatar-edit-button"
-                type="button"
-                onClick={() => {
-                  setIsEditingAvatar(true);
-                  setAvatarMessage(null);
-                }}
-              >
-                edit
-              </button>
-            ) : (
-              <form className="account-avatar-form" onSubmit={submitAvatar}>
-                <input
-                  type="file"
-                  name="avatar-file"
-                  accept="image/jpeg,image/png,image/gif"
-                  className="account-avatar-input"
-                />
-                <div className="account-avatar-help">jpg, png, gif 파일로 용량 1MB 이내</div>
-                <div className="account-avatar-actions">
-                  <button
-                    type="submit"
-                    className="account-avatar-upload-button"
-                    disabled={savingKey === "avatar"}
-                  >
-                    {savingKey === "avatar" ? "업로드 중..." : "업로드"}
-                  </button>
-                  <button
-                    type="button"
-                    className="account-avatar-cancel-button"
-                    onClick={() => setIsEditingAvatar(false)}
-                  >
-                    취소
-                  </button>
-                </div>
-                {avatarMessage ? <div className="muted">{avatarMessage}</div> : null}
-              </form>
-            )}
+            <div className="account-setting-static account-username-static">{username}</div>
           </div>
         ) : (
           <>
