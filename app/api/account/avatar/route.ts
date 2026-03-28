@@ -3,8 +3,6 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { syncProfile } from "@/lib/profiles";
 
-const MAX_FILE_SIZE = 1024 * 1024; // 1MB
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif"];
 
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -35,22 +33,6 @@ export async function POST(request: Request) {
     if (!file || file.size === 0) {
       return NextResponse.json(
         { message: "파일을 선택해주세요." },
-        { status: 400 }
-      );
-    }
-
-    // 파일 타입 검증
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return NextResponse.json(
-        { message: "jpg, png, gif 파일만 업로드 가능합니다." },
-        { status: 400 }
-      );
-    }
-
-    // 파일 크기 검증
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { message: "파일 크기는 1MB 이내여야 합니다." },
         { status: 400 }
       );
     }

@@ -120,16 +120,17 @@ export function GeneralSettingsForm({
     setSavingKey("avatar");
     setAvatarMessage(null);
 
-    const file = fileInputRef.current?.files?.[0];
-
-    if (!file || file.size === 0) {
+    if (!previewImage) {
       setAvatarMessage("파일을 선택해주세요.");
       setSavingKey(null);
       return;
     }
 
+    // 이미 canvas에서 256×256 압축된 dataURL을 Blob으로 변환해서 전송
+    const res = await fetch(previewImage);
+    const blob = await res.blob();
     const formData = new FormData();
-    formData.append("avatar-file", file);
+    formData.append("avatar-file", blob, "avatar.jpg");
 
     const response = await fetch("/api/account/avatar", {
       method: "POST",
