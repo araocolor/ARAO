@@ -21,7 +21,7 @@ export function HeaderLogoutButton() {
       type="button"
       onClick={() => void signOut({ redirectUrl: "/" })}
     >
-      logout
+      로그아웃
     </button>
   );
 }
