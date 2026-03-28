@@ -60,12 +60,14 @@ export async function GET(
 See **backend.md** for API route patterns.
 
 ### Key Features
-- User profile management
+- User profile management with custom avatar upload
 - Admin content/pricing editing
 - 1:1 consultation system (create, reply, track status)
-- **Order system** (list, detail, status tracking) ← NEW
+- Order system (list, detail, status tracking)
+- Unified notification system (6 types: settings, orders, consulting, reviews, gallery)
+- Reviews board with replies and likes
+- Gallery with comments, likes, and EXIF metadata
 - Real-time notification badges (60s polling)
-- Gallery with EXIF metadata
 
 ## Project Structure
 
@@ -85,18 +87,29 @@ app/globals.css   # Global styles (500+ lines)
 ## Database Overview
 
 **Core Tables:**
-- `profiles` — User accounts (Clerk sync)
+- `profiles` — User accounts (Clerk sync, includes `icon_image` bytea, `role`, `created_at`)
 - `inquiries` — Consultations (type, status, content)
 - `inquiry_replies` — Admin responses
 - `landing_contents` — Editable content
-- `orders` — User orders (user_id, status, total_amount) ← NEW
-- `payments` — Order payments (order_id, provider, amount) ← NEW
-- `products` — Product catalog ← NEW
-- `product_options` — Product variants (soft/bw/std) ← NEW
+- `orders` — User orders (user_id, status, total_amount)
+- `payments` — Order payments (order_id, provider, amount)
+- `products` — Product catalog
+- `product_options` — Product variants (soft/bw/std)
+
+**Notification System Tables:**
+- `notifications` — Aggregated alerts (orders, reviews, gallery, etc)
+- `reviews` — User reviews with categories
+- `review_likes` — Review likes tracking
+- `review_replies` — Replies to reviews
+- `gallery_comments` — Comments on gallery items
+- `gallery_comment_likes` — Likes on gallery comments
+- `gallery_item_likes` — Likes on gallery images
 
 **Inquiry Status:** `pending` (red) → `in_progress` → `resolved` (blue) → `closed`
 
 **Order Status:** `결제완료` (blue) → `환불진행중` (yellow) → `환불완료` (purple) → `결제오류` (red)
+
+**Notification Types:** `settings` | `order_shipped` | `order_cancelled` | `consulting` | `review_reply` | `gallery_like`
 
 **See DATABASE_SCHEMA.md** for complete database structure.
 
@@ -111,11 +124,34 @@ app/globals.css   # Global styles (500+ lines)
 
 ## Key Components
 
-**Frontend:** `consulting-section`, `admin-dashboard`, `gallery-hero-item`, headers/footers
-**Orders:** `app/account/orders/page.tsx` (list), `app/account/orders/[id]/page.tsx` (detail) ← NEW
-**Backend:** API routes for consulting, orders, notifications, landing content ← orders API routes added
+**User Profile:**
+- `general-settings-form.tsx` — Avatar upload, username, password, phone, role/join date display
+- `app/api/account/avatar/route.ts` — Avatar upload API
+- `app/account/general/page.tsx` — Settings page
+
+**Notifications & Alerts:**
+- `notification-drawer.tsx` — Unified notification drawer (6 types)
+- `header-profile-link.tsx` — Notification badge & drawer trigger
+- `lib/notifications.ts` — Notification aggregation logic
+
+**Reviews System:**
+- `app/account/reviews/page.tsx` — Review list
+- `app/account/reviews/write/page.tsx` — Create review
+- `app/account/reviews/[id]/page.tsx` — Review detail with replies
+- `lib/reviews.ts` — Review CRUD & like/reply logic
+
+**Gallery Interactions:**
+- `gallery-like-button.tsx` — Like button for images
+- `gallery-comment-modal.tsx` — Comment & like UI
+- `lib/gallery-interactions.ts` — Comments & likes API
+
+**Orders:**
+- `app/account/orders/page.tsx` (list), `app/account/orders/[id]/page.tsx` (detail)
+- `lib/orders.ts` — Order utilities
+
 **Hooks:** `use-notification-count`, `use-admin-pending-count` (60s polling)
-**Utilities:** `lib/consulting.ts`, `lib/orders.ts` ← orders utilities added
+
+**Utilities:** `lib/consulting.ts`, `lib/orders.ts`, `lib/notifications.ts`, `lib/reviews.ts`, `lib/gallery-interactions.ts`
 
 ## Documentation
 
@@ -153,3 +189,7 @@ Before committing/pushing changes:
 | Cache corruption in dev | Delete `.next/` folder and restart `npm run dev` |
 | Port 3000 in use | Dev server auto-uses 3001; check `package.json` scripts |
 | RLS policy errors | Check Supabase Row-Level Security policies match auth checks |
+| Notification table not found | Run DB migration: `alter table profiles add column if not exists icon_image bytea` |
+| Avatar upload fails | Ensure `icon_image` bytea column exists on profiles table |
+| Notification count mismatch | Items must be loaded on mount, not on drawer open (HeaderProfileLink.tsx) |
+| Invalid date in join date | formatDate function handles null/invalid dates (returns "날짜 오류") |
