@@ -10,6 +10,8 @@ type GeneralSettingsFormProps = {
   hasPassword: boolean;
   phone: string | null;
   iconImage?: string;
+  role: string;
+  createdAt: string;
 };
 
 export function GeneralSettingsForm({
@@ -19,6 +21,8 @@ export function GeneralSettingsForm({
   hasPassword: initialHasPassword,
   phone: initialPhone,
   iconImage: initialIconImage,
+  role,
+  createdAt,
 }: GeneralSettingsFormProps) {
   const [username, setUsername] = useState(initialUsername ?? "");
   const [hasPassword, setHasPassword] = useState(initialHasPassword);
@@ -227,7 +231,15 @@ export function GeneralSettingsForm({
                 </form>
               )}
             </div>
-            <div className="account-setting-static account-username-static">{username}</div>
+            <div className="account-username-info">
+              <div className="account-username-row">
+                <div className="account-setting-static account-username-static">{username}</div>
+                <div className="account-user-role">{role === 'admin' ? '관리자' : '사용자'}</div>
+              </div>
+              <div className="account-created-date">
+                가입일: {new Date(createdAt).toLocaleDateString('ko-KR')}
+              </div>
+            </div>
           </div>
         ) : (
           <>

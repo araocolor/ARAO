@@ -39,6 +39,8 @@ export async function GET() {
     hasPassword: Boolean(profile.password_hash),
     phone: profile.phone,
     iconImage,
+    role: profile.role,
+    createdAt: profile.created_at,
   });
 }
 
