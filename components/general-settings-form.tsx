@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useRef } from "react";
 import Link from "next/link";
 
 type GeneralSettingsFormProps = {
@@ -40,6 +40,7 @@ export function GeneralSettingsForm({
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
   const [iconImage, setIconImage] = useState(initialIconImage ?? "");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function submitUsername(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -267,12 +268,20 @@ export function GeneralSettingsForm({
                     </div>
                   )}
                   <input
+                    ref={fileInputRef}
                     type="file"
                     name="avatar-file"
                     accept="image/jpeg,image/png,image/gif"
-                    className="account-avatar-input"
+                    className="account-avatar-input-hidden"
                     onChange={handleAvatarFileChange}
                   />
+                  <button
+                    type="button"
+                    className="account-avatar-file-button"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    파일 선택
+                  </button>
                   <div className="account-avatar-help">jpg, png, gif 파일로 용량 1MB 이내</div>
                   <div className="account-avatar-actions">
                     <button

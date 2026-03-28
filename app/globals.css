@@ -3342,3 +3342,22 @@ a {
   border: 2px solid var(--line);
   object-fit: cover;
 }
+
+.account-avatar-input-hidden {
+  display: none;
+}
+
+.account-avatar-file-button {
+  padding: 8px 12px;
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.account-avatar-file-button:active {
+  background: var(--bg);
+}
