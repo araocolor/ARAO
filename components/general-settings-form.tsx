@@ -39,6 +39,7 @@ export function GeneralSettingsForm({
   const [isEditingAvatar, setIsEditingAvatar] = useState(false);
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
   const [iconImage, setIconImage] = useState(initialIconImage ?? "");
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   async function submitUsername(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -169,6 +170,43 @@ export function GeneralSettingsForm({
     }
   }
 
+  function handleAvatarFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const maxSize = 256;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          height = Math.round((height * maxSize) / width);
+          width = maxSize;
+        } else {
+          width = Math.round((width * maxSize) / height);
+          height = maxSize;
+        }
+
+        canvas.width = maxSize;
+        canvas.height = maxSize;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.fillStyle = "#f5f5f7";
+          ctx.fillRect(0, 0, maxSize, maxSize);
+          ctx.drawImage(img, (maxSize - width) / 2, (maxSize - height) / 2, width, height);
+        }
+
+        setPreviewImage(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+
   const hasUsernameInput = usernameInput.trim().length > 0;
   const hasPhoneInput = phoneInput.trim().length > 0;
   const hasPasswordInput = passwordInput.trim().length > 0;
@@ -219,11 +257,21 @@ export function GeneralSettingsForm({
                 </button>
               ) : (
                 <form className="account-avatar-form" onSubmit={submitAvatar}>
+                  {previewImage && (
+                    <div className="account-avatar-preview-container">
+                      <img
+                        src={previewImage}
+                        alt="미리보기"
+                        className="account-avatar-preview"
+                      />
+                    </div>
+                  )}
                   <input
                     type="file"
                     name="avatar-file"
                     accept="image/jpeg,image/png,image/gif"
                     className="account-avatar-input"
+                    onChange={handleAvatarFileChange}
                   />
                   <div className="account-avatar-help">jpg, png, gif 파일로 용량 1MB 이내</div>
                   <div className="account-avatar-actions">
@@ -237,7 +285,10 @@ export function GeneralSettingsForm({
                     <button
                       type="button"
                       className="account-avatar-cancel-button"
-                      onClick={() => setIsEditingAvatar(false)}
+                      onClick={() => {
+                        setIsEditingAvatar(false);
+                        setPreviewImage(null);
+                      }}
                     >
                       취소
                     </button>

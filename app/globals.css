@@ -3328,3 +3328,17 @@ a {
   font-size: 11px;
   color: var(--muted);
 }
+
+.account-avatar-preview-container {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.account-avatar-preview {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  object-fit: cover;
+}
