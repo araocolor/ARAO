@@ -1,22 +1,82 @@
-export default function AccountReviewsPage() {
-  const items = [
-    "작성 후기 목록",
-    "노출 여부 확인",
-    "후기 수정 준비",
-  ];
+import Link from "next/link";
+import { getReviews } from "@/lib/reviews";
+
+export default async function AccountReviewsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: pageStr } = await searchParams;
+  const page = parseInt(pageStr || "1");
+  const limit = 10;
+
+  const { reviews, total } = await getReviews(page, limit);
+  const totalPages = Math.ceil(total / limit);
 
   return (
     <div className="admin-panel-card stack">
       <p className="muted">Reviews</p>
-      <h2>나의 후기</h2>
-      <p className="muted">작성한 후기와 공개 상태를 확인하고 수정 흐름을 연결할 수 있도록 비워둔 영역입니다.</p>
-      <div className="admin-checklist">
-        {items.map((item) => (
-          <div key={item} className="admin-check-item">
-            {item}
-          </div>
-        ))}
+      <h2>사용자 후기</h2>
+
+      {/* 글쓰기 버튼 */}
+      <div className="review-write-btn-container">
+        <Link href="/account/reviews/write" className="btn-primary">
+          글쓰기
+        </Link>
       </div>
+
+      {/* 리뷰 목록 테이블 */}
+      {reviews.length === 0 ? (
+        <div className="review-empty">작성된 후기가 없습니다.</div>
+      ) : (
+        <table className="review-table">
+          <thead>
+            <tr>
+              <th style={{ width: "50px" }}>순번</th>
+              <th style={{ width: "100px" }}>카테고리</th>
+              <th>제목</th>
+              <th style={{ width: "120px" }}>작성자</th>
+              <th style={{ width: "100px" }}>날짜</th>
+              <th style={{ width: "50px" }}>좋아요</th>
+            </tr>
+          </thead>
+          <tbody>
+            {reviews.map((review, idx) => (
+              <tr key={review.id}>
+                <td>{total - (page - 1) * limit - idx}</td>
+                <td>{review.category}</td>
+                <td>
+                  <Link href={`/account/reviews/${review.id}`} className="link-text">
+                    {review.title}
+                  </Link>
+                </td>
+                <td>{review.author_username || review.author_fullname || "익명"}</td>
+                <td>{new Date(review.created_at).toLocaleDateString("ko-KR")}</td>
+                <td>❤️ {review.like_count}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {/* 페이지네이션 */}
+      {totalPages > 1 && (
+        <div className="review-pagination">
+          {page > 1 && (
+            <Link href={`/account/reviews?page=${page - 1}`} className="page-link">
+              이전
+            </Link>
+          )}
+          <span className="page-info">
+            {page} / {totalPages}
+          </span>
+          {page < totalPages && (
+            <Link href={`/account/reviews?page=${page + 1}`} className="page-link">
+              다음
+            </Link>
+          )}
+        </div>
+      )}
     </div>
   );
 }

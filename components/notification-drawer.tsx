@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type NotificationItem } from "@/lib/consulting";
+import { type NotificationItem } from "@/lib/notifications";
 
 type NotificationDrawerProps = {
   isOpen: boolean;
@@ -39,16 +39,24 @@ function formatRelativeTime(isoString: string): string {
   });
 }
 
-// 카테고리 라벨 매핑
-const CATEGORY_LABEL: Record<string, string> = {
+// 알림 타입별 라벨 매핑
+const TYPE_LABEL: Record<string, string> = {
+  settings: "계정 설정",
+  order_shipped: "주문 발송",
+  order_cancelled: "결제 취소",
   consulting: "1:1 상담",
-  general: "일반 문의",
+  review_reply: "사용자 후기",
+  gallery_like: "갤러리",
 };
 
-// 카테고리 아이콘 이모지
-const CATEGORY_ICON: Record<string, string> = {
+// 알림 타입별 아이콘 이모지
+const TYPE_ICON: Record<string, string> = {
+  settings: "⚙️",
+  order_shipped: "📦",
+  order_cancelled: "⚠️",
   consulting: "💬",
-  general: "📋",
+  review_reply: "📝",
+  gallery_like: "❤️",
 };
 
 export function NotificationDrawer({
@@ -59,18 +67,19 @@ export function NotificationDrawer({
 }: NotificationDrawerProps) {
   if (!isMounted) return null;
 
-  // 카테고리별로 알림을 그룹화
-  const groupedItems = items.reduce(
-    (acc, item) => {
-      const category = item.type as "consulting" | "general";
-      if (!acc[category]) {
-        acc[category] = [];
+  const handleItemClick = async (item: NotificationItem) => {
+    // settings/consulting 제외, 나머지는 읽음 처리
+    if (item.type !== "settings" && item.type !== "consulting" && !item.is_read) {
+      try {
+        await fetch(`/api/account/notifications/${item.id}`, {
+          method: "PATCH",
+        });
+      } catch (err) {
+        console.error("Failed to mark notification as read:", err);
       }
-      acc[category].push(item);
-      return acc;
-    },
-    {} as Record<string, NotificationItem[]>
-  );
+    }
+    onClose();
+  };
 
   return (
     <>
@@ -105,40 +114,27 @@ export function NotificationDrawer({
           <div className="notif-empty">알림이 없습니다.</div>
         ) : (
           <div className="notif-list">
-            {(["consulting", "general"] as const).map((type) => {
-              const categoryItems = groupedItems[type];
-              if (!categoryItems || categoryItems.length === 0) return null;
-
-              return (
-                <div key={type}>
-                  <span className="notif-category-label">
-                    {CATEGORY_LABEL[type]}
-                  </span>
-                  {categoryItems.map((item) => (
-                    <Link
-                      key={item.id}
-                      href={`/account/consulting`}
-                      className={`notif-item ${
-                        item.has_unread_reply ? "is-unread" : ""
-                      }`}
-                      onClick={onClose}
-                    >
-                      <div
-                        className={`notif-item-icon notif-icon-${item.type}`}
-                      >
-                        {CATEGORY_ICON[item.type]}
-                      </div>
-                      <div className="notif-item-body">
-                        <p className="notif-item-title">{item.title}</p>
-                        <p className="notif-item-time">
-                          {formatRelativeTime(item.updated_at)}
-                        </p>
-                      </div>
-                    </Link>
-                  ))}
+            {items.map((item) => (
+              <Link
+                key={item.id}
+                href={item.link}
+                className={`notif-item ${
+                  !item.is_read ? "is-unread" : ""
+                }`}
+                onClick={() => handleItemClick(item)}
+              >
+                <div className={`notif-item-icon notif-icon-${item.type}`}>
+                  {TYPE_ICON[item.type] || "🔔"}
                 </div>
-              );
-            })}
+                <div className="notif-item-body">
+                  <p className="notif-item-title">{item.title}</p>
+                  <p className="notif-item-category">{TYPE_LABEL[item.type] || item.type}</p>
+                  <p className="notif-item-time">
+                    {formatRelativeTime(item.created_at)}
+                  </p>
+                </div>
+              </Link>
+            ))}
           </div>
         )}
 

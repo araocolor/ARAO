@@ -1,5 +1,5 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { getUnreadInquiryCount, getNotificationItems } from "@/lib/consulting";
+import { getNotificationsForProfile } from "@/lib/notifications";
 import { syncProfile } from "@/lib/profiles";
 import { NextResponse } from "next/server";
 
@@ -24,11 +24,11 @@ export async function GET() {
       return NextResponse.json({ unreadCount: 0, items: [] });
     }
 
-    // 병렬로 카운트와 목록 조회
-    const [unreadCount, items] = await Promise.all([
-      getUnreadInquiryCount(profile.id),
-      getNotificationItems(profile.id, 20),
-    ]);
+    // 모든 알림 소스 집계 (settings, consulting, notifications 테이블)
+    const { items, unreadCount } = await getNotificationsForProfile(profile.id, {
+      username: profile.username,
+      password_hash: profile.password_hash,
+    });
 
     return NextResponse.json({ unreadCount, items });
   } catch (error) {

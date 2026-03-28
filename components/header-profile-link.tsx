@@ -6,7 +6,7 @@ import { useUser } from "@clerk/nextjs";
 import { useNotificationCount } from "@/hooks/use-notification-count";
 import { useAdminPendingCount } from "@/hooks/use-admin-pending-count";
 import { NotificationDrawer } from "@/components/notification-drawer";
-import type { NotificationItem } from "@/lib/consulting";
+import type { NotificationItem } from "@/lib/notifications";
 
 export function HeaderProfileLink() {
   const { isSignedIn } = useUser();
@@ -21,8 +21,8 @@ export function HeaderProfileLink() {
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 관리자면 pending count, 아니면 unread count
-  const badgeCount = pendingCount > 0 ? pendingCount : unreadCount;
+  // 배지 카운트: items 중 is_read = false인 개수
+  const badgeCount = items.filter((item) => !item.is_read).length;
 
   // 알림 목록 조회
   async function fetchNotificationItems() {

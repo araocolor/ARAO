@@ -28,15 +28,6 @@ export type InquiryWithReplies = Inquiry & {
   replies: InquiryReply[];
 };
 
-export type NotificationItem = {
-  id: string;
-  type: "consulting" | "general";
-  title: string;
-  status: "pending" | "in_progress" | "resolved" | "closed";
-  has_unread_reply: boolean;
-  updated_at: string;
-};
-
 // 사용자 문의 목록 조회 + 자동 읽음처리
 export async function getInquiriesByProfile(
   profileId: string,
@@ -164,27 +155,6 @@ export async function getUnreadInquiryCount(profileId: string) {
   return count ?? 0;
 }
 
-// 알림 목록 조회 (드로어 미리보기용, 읽음처리 없음)
-export async function getNotificationItems(
-  profileId: string,
-  limit: number = 20
-): Promise<NotificationItem[]> {
-  const supabase = createSupabaseAdminClient();
-
-  const { data, error } = await supabase
-    .from("inquiries")
-    .select("id, type, title, status, has_unread_reply, updated_at")
-    .eq("profile_id", profileId)
-    .order("updated_at", { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    console.error("getNotificationItems error:", error);
-    return [];
-  }
-
-  return (data ?? []) as NotificationItem[];
-}
 
 // 관리자: 전체 문의 목록 조회
 export async function getAllInquiries(
@@ -257,7 +227,7 @@ export async function createReply(
 ) {
   const supabase = createSupabaseAdminClient();
 
-  const [replyRes, updateRes] = await Promise.all([
+  const [replyRes] = await Promise.all([
     supabase
       .from("inquiry_replies")
       .insert({

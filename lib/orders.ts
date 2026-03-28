@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createNotification } from "@/lib/notifications";
 
 // Types
 export type Product = {
@@ -141,7 +142,21 @@ export async function createOrder(
   });
 
   if (error) throw error;
-  return data?.[0] || null;
+
+  const order = (data?.[0] as unknown as Order) || null;
+
+  // 주문 생성 시 알림 생성 (status = "결제완료"인 경우)
+  if (order && status === "결제완료") {
+    await createNotification(
+      userId,
+      "order_shipped",
+      "상품이 최종결제되어 발송되었습니다.",
+      `/account/orders/${order.id}`,
+      order.id
+    );
+  }
+
+  return order;
 }
 
 export async function updateOrderStatus(id: string, status: string): Promise<Order | null> {
@@ -155,5 +170,19 @@ export async function updateOrderStatus(id: string, status: string): Promise<Ord
     .single();
 
   if (error) throw error;
-  return data || null;
+
+  const order = data || null;
+
+  // 상태 변경 시 알림 생성
+  if (order && status === "결제오류") {
+    await createNotification(
+      order.user_id,
+      "order_cancelled",
+      "카드결제가 취소처리되었습니다.",
+      `/account/orders/${id}`,
+      id
+    );
+  }
+
+  return order;
 }

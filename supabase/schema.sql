@@ -80,3 +80,76 @@ create table if not exists inquiry_replies (
 
 create index if not exists inquiries_profile_id_idx on inquiries (profile_id);
 create index if not exists inquiry_replies_inquiry_id_idx on inquiry_replies (inquiry_id);
+
+-- 알림 통합 테이블 (주문, 리뷰, 갤러리 알림)
+create table if not exists notifications (
+  id         uuid primary key default gen_random_uuid(),
+  profile_id uuid not null references profiles(id) on delete cascade,
+  type       text not null,
+  title      text not null,
+  link       text not null,
+  source_id  text,
+  is_read    boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists notifications_profile_id_idx on notifications (profile_id);
+
+-- 리뷰 게시판
+create table if not exists reviews (
+  id         uuid primary key default gen_random_uuid(),
+  profile_id uuid not null references profiles(id) on delete cascade,
+  category   text not null default 'general',
+  title      text not null,
+  content    text not null,
+  like_count int not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists reviews_profile_id_idx on reviews (profile_id);
+
+-- 리뷰 좋아요
+create table if not exists review_likes (
+  review_id  uuid not null references reviews(id) on delete cascade,
+  profile_id uuid not null references profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (review_id, profile_id)
+);
+
+-- 리뷰 답글
+create table if not exists review_replies (
+  id         uuid primary key default gen_random_uuid(),
+  review_id  uuid not null references reviews(id) on delete cascade,
+  profile_id uuid not null references profiles(id) on delete cascade,
+  content    text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists review_replies_review_id_idx on review_replies (review_id);
+
+-- 갤러리 이미지 좋아요
+create table if not exists gallery_item_likes (
+  item_category text not null,
+  item_index    int not null,
+  profile_id    uuid not null references profiles(id) on delete cascade,
+  created_at    timestamptz not null default now(),
+  primary key (item_category, item_index, profile_id)
+);
+
+-- 갤러리 댓글
+create table if not exists gallery_comments (
+  id            uuid primary key default gen_random_uuid(),
+  profile_id    uuid not null references profiles(id) on delete cascade,
+  item_category text not null,
+  item_index    int not null,
+  content       text not null,
+  like_count    int not null default 0,
+  created_at    timestamptz not null default now()
+);
+create index if not exists gallery_comments_category_idx on gallery_comments (item_category, item_index);
+
+-- 갤러리 댓글 좋아요
+create table if not exists gallery_comment_likes (
+  comment_id uuid not null references gallery_comments(id) on delete cascade,
+  profile_id uuid not null references profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (comment_id, profile_id)
+);
