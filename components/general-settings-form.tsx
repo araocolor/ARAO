@@ -154,6 +154,21 @@ export function GeneralSettingsForm({
     return `+82 10-${digits.slice(3, 4)}***-${digits.slice(7, 8)}***`;
   }
 
+  function formatDate(dateString: string): string {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return "날짜 오류";
+      }
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      return `${year}-${month}-${day}`;
+    } catch {
+      return "날짜 오류";
+    }
+  }
+
   const hasUsernameInput = usernameInput.trim().length > 0;
   const hasPhoneInput = phoneInput.trim().length > 0;
   const hasPasswordInput = passwordInput.trim().length > 0;
@@ -237,7 +252,7 @@ export function GeneralSettingsForm({
                 <div className="account-user-role">{role === 'admin' ? '관리자' : '사용자'}</div>
               </div>
               <div className="account-created-date">
-                가입일: {new Date(createdAt).toLocaleDateString('ko-KR')}
+                가입일: {formatDate(createdAt)}
               </div>
             </div>
           </div>
