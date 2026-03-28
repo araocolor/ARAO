@@ -19,12 +19,7 @@ export function HeaderProfileLink() {
   const [drawerMounted, setDrawerMounted] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
-  const [iconImage, setIconImage] = useState<string | null>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("header-avatar") ?? null;
-    }
-    return null;
-  });
+  const [iconImage, setIconImage] = useState<string | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 배지 카운트: items 중 is_read = false인 개수
@@ -56,10 +51,19 @@ export function HeaderProfileLink() {
     }
   }
 
-  // 초기 로드: 마운트 시 알림 항목 미리 조회
+  // 마운트 시 localStorage 캐시에서 즉시 복원
+  useEffect(() => {
+    const cached = localStorage.getItem("header-avatar");
+    if (cached) setIconImage(cached);
+  }, []);
+
+  // 초기 로드: 마운트 시 알림 항목 미리 조회 / 로그아웃 시 캐시 제거
   useEffect(() => {
     if (isSignedIn) {
       void fetchNotificationItems();
+    } else if (isSignedIn === false) {
+      setIconImage(null);
+      localStorage.removeItem("header-avatar");
     }
   }, [isSignedIn]);
 
