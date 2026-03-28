@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. See **frontend.md**, **backend.md**, and **share.md** for detailed specifications.
 
+> **레이아웃 수정 요청 시** → **LAYOUT_MAP.md** 를 먼저 참조. 구역명(헤더, 히어로, 계정 > 하단탭 등)으로 파일과 클래스를 즉시 찾을 수 있음.
+
 ## Quick Start
 
 ```bash
