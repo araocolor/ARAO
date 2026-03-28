@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { type NotificationItem } from "@/lib/notifications";
 
 type NotificationDrawerProps = {
@@ -108,13 +107,6 @@ export function NotificationDrawer({
           >
             홈으로
           </button>
-        </div>
-
-        {/* 사용자페이지 링크 */}
-        <div className="notif-profile-link">
-          <Link href="/account/general" onClick={onClose}>
-            사용자페이지 &gt;
-          </Link>
         </div>
 
         {/* 알림 목록 */}

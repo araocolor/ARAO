@@ -3066,29 +3066,6 @@ a {
   flex-shrink: 0;
 }
 
-/* 사용자페이지 링크 */
-.notif-profile-link {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--line);
-  flex-shrink: 0;
-}
-
-.notif-profile-link a {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-  text-decoration: none;
-  padding: 0;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.notif-profile-link a:active {
-  opacity: 0.7;
-}
-
 /* 알림 목록 스크롤 영역 */
 .notif-list {
   flex: 1;
