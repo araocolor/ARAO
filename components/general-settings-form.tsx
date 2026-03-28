@@ -51,7 +51,7 @@ export function GeneralSettingsForm({
 
     setUsername(data.username ?? usernameInput.trim().toLowerCase());
     setUsernameInput("");
-    setUsernameMessage("아이디가 등록되었습니다.");
+    setUsernameMessage("비밀번호를 설정하세요");
     setSavingKey(null);
   }
 
