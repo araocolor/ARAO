@@ -27,7 +27,6 @@ export function HeaderProfileLink() {
   // 알림 목록 조회
   async function fetchNotificationItems() {
     try {
-      setIsLoadingNotifications(true);
       const response = await fetch("/api/account/notifications");
       if (response.ok) {
         const data = (await response.json()) as {
@@ -43,6 +42,13 @@ export function HeaderProfileLink() {
     }
   }
 
+  // 초기 로드: 마운트 시 알림 항목 미리 조회
+  useEffect(() => {
+    if (isSignedIn) {
+      void fetchNotificationItems();
+    }
+  }, [isSignedIn]);
+
   // 드로어 오픈
   function openDrawer() {
     if (closeTimerRef.current) {
@@ -52,7 +58,6 @@ export function HeaderProfileLink() {
 
     setDrawerMounted(true);
     setDrawerOpen(true);
-    fetchNotificationItems();
   }
 
   // 드로어 닫기
