@@ -923,6 +923,10 @@ a {
   outline: none;
 }
 
+.gallery-sheet-input::placeholder {
+  color: rgba(17, 17, 17, 0.3);
+}
+
 .gallery-sheet-input:focus {
   border-color: #aaa;
 }

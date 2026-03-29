@@ -131,7 +131,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded }
           <div className="gallery-comment-avatar gallery-comment-avatar-sm" />
           <input
             className="gallery-sheet-input"
-            placeholder="댓글 달기..."
+            placeholder="회원님에 댓글을 남겨보세요."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
