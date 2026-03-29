@@ -1841,9 +1841,16 @@ a {
     text-align: left;
   }
 
-  .header-menu-label {
-    font-size: 12px;
+  .header-menu-title {
+    font-size: 14px;
     font-weight: 400;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .header-menu-label {
+    font-size: 16px;
+    font-weight: 700;
     color: var(--muted);
     white-space: nowrap;
     background: none;
@@ -1899,7 +1906,7 @@ a {
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 20' fill='none' stroke='%23111' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 3h4a1 1 0 011 1v12a1 1 0 01-1 1h-4'/%3E%3Cpath d='M7 14l-4-4 4-4'/%3E%3Cpath d='M3 10h10'/%3E%3C/svg%3E");
   }
 
-  .header-menu-list a {
+  .header-menu-list a:not(.header-menu-label) {
     font-size: 20px;
     font-weight: 700;
     white-space: nowrap;
@@ -3241,6 +3248,39 @@ a {
   background: #d1d5db;
   font-size: 24px;
   flex-shrink: 0;
+}
+
+.account-avatar-default {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.account-avatar-default-head {
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  background: #FCD34D;
+  border-radius: 999px;
+  transform: translateX(-50%);
+}
+
+.account-avatar-default-body {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  width: 26px;
+  height: 16px;
+  background: #FCD34D;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  transform: translateX(-50%);
 }
 
 .account-avatar-edit-button {

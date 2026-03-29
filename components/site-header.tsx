@@ -143,7 +143,7 @@ export function SiteHeader({
             onClick={(event) => event.stopPropagation()}
           >
             <div className="header-menu-list">
-              {menuHeader && <span className="header-menu-label">{menuHeader}</span>}
+              {menuHeader && <span className="header-menu-title">{menuHeader}</span>}
               {links.map((link) => (
                 <div key={link.href}>
                   {link.divider && <hr className="header-menu-divider" />}
@@ -153,7 +153,6 @@ export function SiteHeader({
                   </Link>
                 </div>
               ))}
-              {mobileLogout && <hr className="header-menu-divider" />}
               {mobileLogout}
             </div>
             {mobileLeading ?? leading ? (

@@ -253,11 +253,10 @@ export function GeneralSettingsForm({
               {iconImage ? (
                 <img src={iconImage} alt={username} className="account-username-avatar" />
               ) : (
-                <img
-                  src={`https://api.dicebear.com/9.x/avataaars/svg?seed=${username}`}
-                  alt={username}
-                  className="account-username-avatar"
-                />
+                <span className="account-avatar-default">
+                  <span className="account-avatar-default-head" />
+                  <span className="account-avatar-default-body" />
+                </span>
               )}
               <button
                 ref={avatarButtonRef}

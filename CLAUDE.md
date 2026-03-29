@@ -119,41 +119,10 @@ app/globals.css   # Global styles (500+ lines)
 
 - **Approach:** CSS-first with custom styles in `app/globals.css` (500+ lines)
 - **Mobile-first:** Baseline design targets mobile phones
-- **Responsive:** Scales to tablet (1024px max-width)
+- **Widths:** Mobile `480px`, Tablet `820px` (`--tablet-width`), media query at `1024px`
 - **No desktop layout:** Desktop uses same responsive design as tablet
-- **Breakpoint:** `1024px` separates mobile/tablet from desktop considerations
 - **Consultation badges:** `.consulting-status-*` classes with color codes (red=pending, blue=resolved, gray=closed)
-
-## Key Components
-
-**User Profile:**
-- `general-settings-form.tsx` — Avatar upload, username, password, phone, role/join date display
-- `app/api/account/avatar/route.ts` — Avatar upload API
-- `app/account/general/page.tsx` — Settings page
-
-**Notifications & Alerts:**
-- `notification-drawer.tsx` — Unified notification drawer (6 types)
-- `header-profile-link.tsx` — Notification badge & drawer trigger
-- `lib/notifications.ts` — Notification aggregation logic
-
-**Reviews System:**
-- `app/account/reviews/page.tsx` — Review list
-- `app/account/reviews/write/page.tsx` — Create review
-- `app/account/reviews/[id]/page.tsx` — Review detail with replies
-- `lib/reviews.ts` — Review CRUD & like/reply logic
-
-**Gallery Interactions:**
-- `gallery-like-button.tsx` — Like button for images
-- `gallery-comment-modal.tsx` — Comment & like UI
-- `lib/gallery-interactions.ts` — Comments & likes API
-
-**Orders:**
-- `app/account/orders/page.tsx` (list), `app/account/orders/[id]/page.tsx` (detail)
-- `lib/orders.ts` — Order utilities
-
-**Hooks:** `use-notification-count`, `use-admin-pending-count` (60s polling)
-
-**Utilities:** `lib/consulting.ts`, `lib/orders.ts`, `lib/notifications.ts`, `lib/reviews.ts`, `lib/gallery-interactions.ts`
+- **Layout reference:** See **LAYOUT_MAP.md** for zone name → CSS class → file mapping
 
 ## Documentation
 
@@ -163,8 +132,8 @@ app/globals.css   # Global styles (500+ lines)
 | **frontend.md** | Components, styling, client patterns |
 | **backend.md** | APIs, database, server patterns |
 | **share.md** | Routing, auth, workflows, deployment, preferences |
-| **DATABASE_SCHEMA.md** | Complete database structure (all tables) ← NEW |
-| **WORK_SUMMARY_20260327.md** | Order system implementation summary ← NEW |
+| **DATABASE_SCHEMA.md** | Complete database structure (all tables) |
+| **WORK_SUMMARY_20260327.md** | Order system implementation summary |
 | **README.md** | Full project details |
 | **START_CHECKLIST.md** | Completed/pending tasks |
 
@@ -175,13 +144,22 @@ app/globals.css   # Global styles (500+ lines)
 3. **Development:** Run `npm run dev` (starts on localhost:3000 or 3001)
 4. **Verify:** Test locally before committing
 
+## Commit Convention
+
+- **Commit message pattern:** When user says "XXX로 올려", use "XXX" as the commit message verbatim
+- **Permission required:** Always request user approval before committing or pushing
+- **Format:** `git commit -m "message" -m "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"`
+
 ## Pre-Push Checklist
 
 Before committing/pushing changes:
 1. **Build test:** `npm run build` (catches TypeScript/build errors)
 2. **Lint check:** `npm run lint`
 3. **Manual test:** Verify changes in dev server
-4. **Permission:** User preference — **always request approval before committing**
+
+## Language
+
+User communicates in **Korean**. Respond in Korean when addressed in Korean. Grammar note: "~게" = user will do it, "~려" = command to assistant.
 
 ## Common Gotchas
 
