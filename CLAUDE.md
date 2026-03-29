@@ -68,8 +68,43 @@ See **backend.md** for API route patterns.
 - Order system (list, detail, status tracking)
 - Unified notification system (6 types: settings, orders, consulting, reviews, gallery)
 - Reviews board with replies and likes
-- Gallery with comments, likes, and EXIF metadata
+- Gallery with Instagram-style card UI (likes, comments, emoji bar, drag-dismiss sheet)
 - Real-time notification badges (60s polling)
+
+## Gallery Card UI (Instagram Style)
+
+갤러리 페이지(`/gallery`)는 각 이미지를 `GalleryCard` 컴포넌트로 래핑합니다.
+
+- **`components/gallery-card.tsx`** — 이미지 + 인터랙션 바 (하트/댓글/공유) + 좋아요 문구 + 설명
+  - 하트: `likeCount >= 1` 이면 `#FF2D2D` (로고 빨간색) 채움
+  - 좋아요 문구: `<strong>` 으로 아이디/N명 부분만 bold
+- **`components/gallery-comment-sheet.tsx`** — 바텀 시트 댓글창
+  - 높이 `50vh`, 드래그 다운 닫기, 외부 클릭 슬라이드 다운
+  - 이모지 바 (40개), 이메일 마스킹 (`ch***@gmail.com`), 아바타 표시
+  - input `font-size: 16px` 필수 (iOS 줌 방지)
+- **API:** `/api/gallery/[category]/[index]/likes`, `/api/gallery/[category]/[index]/comments`, `/api/gallery/comments/[id]/likes`
+- **DB 테이블:** `gallery_item_likes`, `gallery_comments`, `gallery_comment_likes` (RLS 비활성화)
+
+## Headers
+
+- **`components/landing-page-header.tsx`** — 공개 페이지용 (햄버거 + 캐릭터)
+- **`components/simple-header.tsx`** (헤더2) — `/account/*` 전용, 로고만 가운데
+- 계정 레이아웃(`app/account/layout.tsx`)은 `SimpleHeader` 사용
+
+## Notification Drawer
+
+`components/notification-drawer.tsx` — 헤더 캐릭터 클릭 시 표시
+
+- 헤더: 홈 아이콘(닫기) + 아이디/이메일(가운데) + 설정 아이콘(오른쪽)
+- 아이디 없으면 이메일 표시
+- 새 알림(is_read=false): 노란색 배경 강조
+- consulting 알림: `notifications` 테이블이 아닌 `inquiries` 쿼리로만 처리 (중복 방지)
+- 위치: `top: 56px` (헤더 바로 아래)
+
+## Account Footer Nav
+
+5개 고정: **홈(/)** → **사용자(/account/general)** → **상담내역** → **주문내역** → **내프로파일**
+`components/account-nav-links.tsx`의 `userSections` + 하드코딩된 홈 링크
 
 ## Project Structure
 
@@ -99,11 +134,11 @@ app/globals.css   # Global styles (500+ lines)
 - `product_options` — Product variants (soft/bw/std)
 
 **Notification System Tables:**
-- `notifications` — Aggregated alerts (orders, reviews, gallery, etc)
+- `notifications` — Aggregated alerts (orders, reviews, gallery, etc) — consulting 타입 제외 (inquiries 쿼리로 처리)
 - `reviews` — User reviews with categories
 - `review_likes` — Review likes tracking
 - `review_replies` — Replies to reviews
-- `gallery_comments` — Comments on gallery items
+- `gallery_comments` — Comments on gallery items (author_icon_image, author_email 포함)
 - `gallery_comment_likes` — Likes on gallery comments
 - `gallery_item_likes` — Likes on gallery images
 
@@ -173,3 +208,6 @@ User communicates in **Korean**. Respond in Korean when addressed in Korean. Gra
 | Avatar upload fails | Ensure `icon_image` bytea column exists on profiles table |
 | Notification count mismatch | Items must be loaded on mount, not on drawer open (HeaderProfileLink.tsx) |
 | Invalid date in join date | formatDate function handles null/invalid dates (returns "날짜 오류") |
+| iOS input zoom | `font-size` must be ≥ 16px on `<input>` to prevent iOS Safari auto-zoom |
+| Hydration error after nav change | Delete `.next/` cache — stale server/client mismatch in client components |
+| Consulting notification duplicate | `notifications` 테이블 조회 시 `.neq("type", "consulting")` 필수 — inquiries 쿼리에서 별도 처리 |
