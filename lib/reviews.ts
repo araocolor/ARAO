@@ -37,20 +37,33 @@ export async function getReviews(
   const offset = (page - 1) * limit;
   const { data, error, count } = await supabase
     .from("reviews")
-    .select("*, profile:profile_id(username, full_name)", { count: "exact" })
+    .select("*", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
   if (error) {
-    console.error("getReviews error:", error);
+    console.error("getReviews error:", JSON.stringify(error), error?.message, error?.code);
     return { reviews: [], total: 0 };
+  }
+
+  const profileIds = [...new Set((data ?? []).map((r) => r.profile_id))];
+  const profileMap: Record<string, { username: string | null; full_name: string | null }> = {};
+
+  if (profileIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, username, full_name")
+      .in("id", profileIds);
+
+    (profiles ?? []).forEach((p) => {
+      profileMap[p.id] = { username: p.username, full_name: p.full_name };
+    });
   }
 
   const reviews = (data ?? []).map((r) => ({
     ...r,
-    author_username: r.profile?.username || null,
-    author_fullname: r.profile?.full_name || null,
-    profile: undefined,
+    author_username: profileMap[r.profile_id]?.username || null,
+    author_fullname: profileMap[r.profile_id]?.full_name || null,
   })) as ReviewWithAuthor[];
 
   return { reviews, total: count ?? 0 };
