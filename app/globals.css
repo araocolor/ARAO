@@ -882,13 +882,13 @@ a {
 }
 
 .gallery-comment-author {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: #111;
 }
 
 .gallery-comment-content {
-  font-size: 13px;
+  font-size: 15px;
   color: rgba(17, 17, 17, 0.75);
   line-height: 1.5;
 }
