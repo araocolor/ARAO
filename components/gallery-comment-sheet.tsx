@@ -79,7 +79,14 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded }
             const likeState = commentLikes[c.id] ?? { liked: false, count: c.like_count };
             return (
               <div key={c.id} className="gallery-comment-item">
-                <div className="gallery-comment-avatar" />
+                {c.author_icon_image ? (
+                  <img src={c.author_icon_image} className="gallery-comment-avatar gallery-comment-avatar-img" alt="" />
+                ) : (
+                  <div className="gallery-comment-avatar gallery-comment-avatar-default">
+                    <span className="gallery-comment-avatar-head" />
+                    <span className="gallery-comment-avatar-body" />
+                  </div>
+                )}
                 <div className="gallery-comment-body">
                   <span className="gallery-comment-author">{c.author_username ?? "익명"}</span>
                   <span className="gallery-comment-content">{c.content}</span>

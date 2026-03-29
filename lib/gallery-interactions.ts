@@ -11,6 +11,7 @@ export type GalleryComment = {
   created_at: string;
   author_username: string | null;
   author_fullname: string | null;
+  author_icon_image: string | null;
 };
 
 /**
@@ -136,7 +137,7 @@ export async function getGalleryComments(
 
   const { data, error } = await supabase
     .from("gallery_comments")
-    .select("*, profile:profile_id(username, full_name)")
+    .select("*, profile:profile_id(username, full_name, icon_image)")
     .eq("item_category", category)
     .eq("item_index", index)
     .order("created_at", { ascending: true });
@@ -150,6 +151,7 @@ export async function getGalleryComments(
     ...c,
     author_username: c.profile?.username || null,
     author_fullname: c.profile?.full_name || null,
+    author_icon_image: c.profile?.icon_image || null,
     profile: undefined,
   })) as GalleryComment[];
 }
@@ -185,7 +187,7 @@ export async function createGalleryComment(
   // 프로필 정보 가져오기 (author_username/fullname 채우기)
   const { data: profile } = await supabase
     .from("profiles")
-    .select("username, full_name")
+    .select("username, full_name, icon_image")
     .eq("id", profileId)
     .single();
 
@@ -193,6 +195,7 @@ export async function createGalleryComment(
     ...data,
     author_username: profile?.username || null,
     author_fullname: profile?.full_name || null,
+    author_icon_image: profile?.icon_image || null,
   } as GalleryComment;
 }
 
