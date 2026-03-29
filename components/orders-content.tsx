@@ -1,9 +1,27 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import type { Order } from "@/lib/orders";
+import { getCached, setCached } from "@/hooks/use-prefetch-cache";
 
 export function OrdersContent({ orders }: { orders: Order[] }) {
+  useEffect(() => {
+    if (orders.length === 0) return;
+
+    void Promise.allSettled(
+      orders.map(async (order) => {
+        const key = `order_${order.id}`;
+        if (getCached(key)) return;
+
+        const res = await fetch(`/api/account/orders/${order.id}`);
+        if (!res.ok) return;
+
+        const data = await res.json();
+        setCached(key, data);
+      })
+    );
+  }, [orders]);
   return (
     <div className="admin-panel-card stack account-section-card" data-testid="account-orders-v2">
       <h2>주문내역</h2>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { OrderDetail } from "@/lib/orders";
+import { getCached, setCached } from "@/hooks/use-prefetch-cache";
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -22,9 +23,17 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
     const fetchOrder = async () => {
       try {
+        const cached = getCached<OrderDetail>(`order_${id}`);
+        if (cached) {
+          setOrder(cached);
+          setLoading(false);
+          return;
+        }
+
         const res = await fetch(`/api/account/orders/${id}`);
         if (!res.ok) throw new Error("Failed to fetch order");
         const data = await res.json();
+        setCached(`order_${id}`, data);
         setOrder(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
@@ -65,7 +74,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const { user_id, status, total_amount, currency, payment, created_at, user_email, user_username } = order;
 
   return (
-    <div className="admin-panel-card stack account-section-card">
+    <div className="admin-panel-card stack account-section-card page-slide-down">
       {/* 헤더 */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h2>주문 상세</h2>

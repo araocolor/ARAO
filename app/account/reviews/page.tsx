@@ -14,7 +14,7 @@ export default async function AccountReviewsPage({
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div className="admin-panel-card stack">
+    <div className="admin-panel-card stack page-slide-down">
       <p className="muted">Reviews</p>
       <h2>사용자 후기</h2>
 

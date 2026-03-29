@@ -53,7 +53,7 @@ export default async function AccountConsultingPage() {
   }
 
   return (
-    <div className="admin-panel-card stack account-section-card account-section-card-consulting">
+    <div className="admin-panel-card stack account-section-card account-section-card-consulting page-slide-down">
       <div className="account-section-head">
         <h2>상담내역</h2>
         <p className="muted">상담 요청과 답변 이력을 관리하는 자리입니다. 추후 문의 등록과 상태 변경 기능을 연결할 수 있습니다.</p>

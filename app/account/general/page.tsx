@@ -52,7 +52,7 @@ export default function AccountGeneralPage() {
 
   if (loading) {
     return (
-      <div className="admin-panel-card stack account-section-card">
+      <div className="admin-panel-card stack account-section-card page-slide-down">
         <p className="muted">로딩 중...</p>
       </div>
     );
