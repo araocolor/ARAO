@@ -3,6 +3,14 @@
 import { useState, useEffect } from "react";
 import type { GalleryComment } from "@/lib/gallery-interactions";
 
+function maskEmail(email: string): string {
+  const atIndex = email.indexOf("@");
+  if (atIndex < 0) return email;
+  const local = email.slice(0, atIndex);
+  const domain = email.slice(atIndex);
+  return local.slice(0, 2) + "***" + domain;
+}
+
 type Props = {
   category: string;
   index: number;
@@ -88,7 +96,13 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded }
                   </div>
                 )}
                 <div className="gallery-comment-body">
-                  <span className="gallery-comment-author">{c.author_username ?? "익명"}</span>
+                  <span className="gallery-comment-author">
+                    {c.author_username
+                      ? c.author_username
+                      : c.author_email
+                        ? maskEmail(c.author_email)
+                        : "익명"}
+                  </span>
                   <span className="gallery-comment-content">{c.content}</span>
                 </div>
                 <button
