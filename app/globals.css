@@ -3330,6 +3330,7 @@ a {
   color: var(--text);
   -webkit-tap-highlight-color: transparent;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .notif-settings-btn:active {
