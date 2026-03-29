@@ -3278,12 +3278,12 @@ a {
 /* 드로어 패널 - 기본값 (모바일: 480px 이하) */
 .notif-drawer {
   position: fixed;
-  top: 0;
+  top: 56px;
   right: 10px;
   width: 320px;
   max-width: calc(100vw - 20px);
   height: auto;
-  max-height: calc(100dvh - 60px);
+  max-height: calc(100dvh - 72px);
   background: var(--surface);
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(17, 17, 17, 0.15);
@@ -3294,9 +3294,6 @@ a {
   opacity: 0;
   transition: transform 180ms ease, opacity 180ms ease;
   overflow: hidden;
-  margin: 30px 0;
-  top: 60px;
-  bottom: auto;
 }
 
 .notif-drawer.is-open {
