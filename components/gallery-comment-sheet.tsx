@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { GalleryComment } from "@/lib/gallery-interactions";
 
 function maskEmail(email: string): string {
@@ -24,6 +24,10 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded }
   const [input, setInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [commentLikes, setCommentLikes] = useState<Record<string, { liked: boolean; count: number }>>({});
+  const [closing, setClosing] = useState(false);
+  const [dragY, setDragY] = useState(0);
+  const isDragging = useRef(false);
+  const dragStartY = useRef(0);
 
   useEffect(() => {
     fetch(`/api/gallery/${category}/${index}/comments`)
@@ -40,6 +44,13 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded }
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [category, index]);
+
+  function dismiss() {
+    if (closing) return;
+    setDragY(0);
+    setClosing(true);
+    setTimeout(() => onClose(), 300);
+  }
 
   const handleCommentLike = async (commentId: string) => {
     const res = await fetch(`/api/gallery/comments/${commentId}/likes`, { method: "POST" });
@@ -70,14 +81,61 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded }
     }
   };
 
+  // 드래그 핸들러 (handle + header 영역)
+  function onDragStart(e: React.TouchEvent) {
+    isDragging.current = true;
+    dragStartY.current = e.touches[0].clientY;
+  }
+
+  function onDragMove(e: React.TouchEvent) {
+    if (!isDragging.current) return;
+    const diff = e.touches[0].clientY - dragStartY.current;
+    if (diff > 0) setDragY(diff);
+  }
+
+  function onDragEnd() {
+    isDragging.current = false;
+    if (dragY > 80) {
+      dismiss();
+    } else {
+      setDragY(0);
+    }
+  }
+
+  const panelStyle: React.CSSProperties = {
+    transform: closing
+      ? "translateY(100%)"
+      : dragY > 0
+        ? `translateY(${dragY}px)`
+        : undefined,
+    transition: isDragging.current
+      ? "none"
+      : closing
+        ? "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)"
+        : undefined,
+  };
+
   return (
-    <div className="gallery-sheet-overlay" onClick={onClose}>
-      <div className="gallery-sheet-panel" onClick={(e) => e.stopPropagation()}>
-        <div className="gallery-sheet-handle" />
-        <div className="gallery-sheet-header">
-          <span>댓글</span>
-          <button className="gallery-sheet-close" onClick={onClose}>✕</button>
+    <div
+      className={`gallery-sheet-overlay${closing ? " is-closing" : ""}`}
+      onClick={dismiss}
+    >
+      <div
+        className="gallery-sheet-panel"
+        style={panelStyle}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 드래그 핸들 + 타이틀 — 드래그 영역 */}
+        <div
+          className="gallery-sheet-drag-area"
+          onTouchStart={onDragStart}
+          onTouchMove={onDragMove}
+          onTouchEnd={onDragEnd}
+        >
+          <div className="gallery-sheet-handle" />
+          <p className="gallery-sheet-title">댓글</p>
         </div>
+
         <div className="gallery-sheet-comments">
           {loading && <p className="gallery-sheet-empty">불러오는 중...</p>}
           {!loading && comments.length === 0 && (
@@ -127,6 +185,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded }
             );
           })}
         </div>
+
         <div className="gallery-sheet-emoji-row">
           {["❤️","😍","🥰","😊","😂","🔥","✨","👍","🎉","💯","🙏","😭","💕","😎","🤩","👏","💪","🌟","😆","🥹","💖","😘","🫶","🤍","😁","🫠","😅","🤗","😇","🥲","😴","🤭","😋","🤔","😬","🥳","😤","😢","🤯","🫡"].map((emoji) => (
             <button
@@ -139,6 +198,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded }
             </button>
           ))}
         </div>
+
         <div className="gallery-sheet-input-row">
           <div className="gallery-comment-avatar gallery-comment-avatar-sm" />
           <input
