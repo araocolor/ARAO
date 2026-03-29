@@ -147,7 +147,6 @@ export function NotificationDrawer({
                 </div>
                 <div className="notif-item-body">
                   <p className="notif-item-title">{item.title}</p>
-                  <p className="notif-item-category">{TYPE_LABEL[item.type] || item.type}</p>
                   <p className="notif-item-time">
                     {formatRelativeTime(item.created_at)}
                   </p>
