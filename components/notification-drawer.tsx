@@ -8,6 +8,7 @@ type NotificationDrawerProps = {
   isMounted: boolean;
   items: NotificationItem[];
   username: string | null;
+  email: string | null;
   onClose: () => void;
 };
 
@@ -65,6 +66,7 @@ export function NotificationDrawer({
   isMounted,
   items,
   username,
+  email,
   onClose,
 }: NotificationDrawerProps) {
   if (!isMounted) return null;
@@ -113,13 +115,7 @@ export function NotificationDrawer({
               <polyline points="9 22 9 12 15 12 15 22" />
             </svg>
           </button>
-          {username ? (
-            <span className="notif-header-username">{username}</span>
-          ) : (
-            <Link href="/account/general" className="notif-header-register" onClick={onClose}>
-              아이디 등록
-            </Link>
-          )}
+          <span className="notif-header-username">{username || email || ""}</span>
           <Link
             href="/account/general"
             className="notif-settings-btn"

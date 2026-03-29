@@ -21,6 +21,7 @@ export function HeaderProfileLink() {
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [iconImage, setIconImage] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 배지 카운트: items 중 is_read = false인 개수
@@ -55,9 +56,11 @@ export function HeaderProfileLink() {
           items: NotificationItem[];
           iconImage?: string | null;
           username?: string | null;
+          email?: string | null;
         };
         setItems(data.items);
         if (data.username) setUsername(data.username);
+        if (data.email) setEmail(data.email);
       }
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
@@ -160,6 +163,7 @@ export function HeaderProfileLink() {
           isMounted={drawerMounted}
           items={items}
           username={username}
+          email={email}
           onClose={closeDrawer}
         />
       )}
