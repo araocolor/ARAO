@@ -6,6 +6,15 @@ import { SignOutButton } from "@clerk/nextjs";
 
 export const userSections = [
   {
+    id: "mycolor",
+    menu: "내프로파일",
+    icon: "mycolor",
+    eyebrow: "My Profile",
+    title: "내프로파일",
+    description: "나의 컬러 프로파일 페이지입니다.",
+    items: [],
+  },
+  {
     id: "general",
     menu: "일반설정",
     icon: "settings",
