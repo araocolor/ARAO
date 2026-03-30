@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { type NotificationItem } from "@/lib/notifications";
 
@@ -69,18 +70,15 @@ export function NotificationDrawer({
   email,
   onClose,
 }: NotificationDrawerProps) {
+  const [optimisticReadIds, setOptimisticReadIds] = useState<Set<string>>(new Set());
+
   if (!isMounted) return null;
 
-  const handleItemClick = async (item: NotificationItem) => {
-    // settings/consulting 제외, 나머지는 읽음 처리
+  const handleItemClick = (item: NotificationItem) => {
+    // settings/consulting 제외, 나머지는 즉시 읽음 처리
     if (item.type !== "settings" && item.type !== "consulting" && !item.is_read) {
-      try {
-        await fetch(`/api/account/notifications/${item.id}`, {
-          method: "PATCH",
-        });
-      } catch (err) {
-        console.error("Failed to mark notification as read:", err);
-      }
+      setOptimisticReadIds((prev) => new Set(prev).add(item.id));
+      fetch(`/api/account/notifications/${item.id}`, { method: "PATCH" }).catch(() => {});
     }
     onClose();
   };
@@ -135,13 +133,13 @@ export function NotificationDrawer({
           <div className="notif-empty">알림이 없습니다.</div>
         ) : (
           <div className="notif-list">
-            {items.map((item) => (
+            {items.map((item) => {
+              const isRead = item.is_read || optimisticReadIds.has(item.id);
+              return (
               <Link
                 key={item.id}
                 href={item.link}
-                className={`notif-item ${
-                  !item.is_read ? "is-unread" : ""
-                }`}
+                className={`notif-item ${!isRead ? "is-unread" : ""}`}
                 onClick={() => handleItemClick(item)}
               >
                 <div className={`notif-item-icon notif-icon-${item.type}`}>
@@ -154,7 +152,8 @@ export function NotificationDrawer({
                   </p>
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
         )}
 

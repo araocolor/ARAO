@@ -63,19 +63,51 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded }
   const handleSubmit = async () => {
     if (!input.trim() || submitting) return;
     setSubmitting(true);
+
+    const tempId = "temp-" + Date.now();
+    const tempComment: GalleryComment = {
+      id: tempId,
+      profile_id: "",
+      item_category: category,
+      item_index: index,
+      content: input.trim(),
+      like_count: 0,
+      created_at: new Date().toISOString(),
+      author_username: null,
+      author_fullname: null,
+      author_icon_image: null,
+      author_email: null,
+    };
+
+    // 즉시 UI 반영
+    setComments((prev) => [...prev, tempComment]);
+    setCommentLikes((prev) => ({ ...prev, [tempId]: { liked: false, count: 0 } }));
+    setInput("");
+    onCommentAdded();
+
     try {
       const res = await fetch(`/api/gallery/${category}/${index}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: input.trim() }),
+        body: JSON.stringify({ content: tempComment.content }),
       });
       if (res.ok) {
         const comment: GalleryComment = await res.json();
-        setComments((prev) => [...prev, comment]);
-        setCommentLikes((prev) => ({ ...prev, [comment.id]: { liked: false, count: 0 } }));
-        setInput("");
-        onCommentAdded();
+        setComments((prev) => prev.map((c) => (c.id === tempId ? comment : c)));
+        setCommentLikes((prev) => {
+          const next = { ...prev };
+          delete next[tempId];
+          next[comment.id] = { liked: false, count: 0 };
+          return next;
+        });
+      } else {
+        // 실패 시 롤백
+        setComments((prev) => prev.filter((c) => c.id !== tempId));
+        setCommentLikes((prev) => { const next = { ...prev }; delete next[tempId]; return next; });
       }
+    } catch {
+      setComments((prev) => prev.filter((c) => c.id !== tempId));
+      setCommentLikes((prev) => { const next = { ...prev }; delete next[tempId]; return next; });
     } finally {
       setSubmitting(false);
     }
