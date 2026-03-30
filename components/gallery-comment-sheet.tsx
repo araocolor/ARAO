@@ -80,16 +80,16 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
   // 하이라이트 댓글로 스크롤 + flash (시트 슬라이드 + 데이터 로드 완료 후)
   useEffect(() => {
     if (!highlightCommentId || loading) return;
-    // 시트 슬라이드(380ms) + 스크롤(300ms) 완료 후 flash 적용
     const scrollTimer = setTimeout(() => {
       const el = highlightRef.current;
       if (!el) return;
       el.scrollIntoView({ behavior: "smooth", block: "center" });
-      // 스크롤 완료 후 flash 재적용 (이미 붙어있는 클래스 리셋 후 재부여)
-      el.classList.remove("flash-highlight");
-      void el.offsetWidth; // reflow 강제
-      el.classList.add("flash-highlight");
-    }, 500);
+      setTimeout(() => {
+        el.classList.remove("flash-highlight");
+        void el.offsetWidth;
+        el.classList.add("flash-highlight");
+      }, 400);
+    }, 100);
     return () => clearTimeout(scrollTimer);
   }, [highlightCommentId, loading]);
 
