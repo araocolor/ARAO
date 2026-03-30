@@ -28,6 +28,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded }
   const [submitting, setSubmitting] = useState(false);
   const [commentLikes, setCommentLikes] = useState<Record<string, { liked: boolean; count: number }>>({});
   const [closing, setClosing] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [dragY, setDragY] = useState(0);
   const isDragging = useRef(false);
   const dragStartY = useRef(0);
@@ -143,7 +144,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded }
     }
   };
 
-  // 드래그 핸들러 (handle + header 영역)
+  // 드래그 핸들러
   function onDragStart(e: React.TouchEvent) {
     isDragging.current = true;
     dragStartY.current = e.touches[0].clientY;
@@ -152,19 +153,35 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded }
   function onDragMove(e: React.TouchEvent) {
     if (!isDragging.current) return;
     const diff = e.touches[0].clientY - dragStartY.current;
-    if (diff > 0) setDragY(diff);
+    if (expanded) {
+      // 확장 상태: 아래로만
+      if (diff > 0) setDragY(diff);
+    } else {
+      // 기본 상태: 위아래 모두
+      setDragY(diff);
+    }
   }
 
   function onDragEnd() {
     isDragging.current = false;
-    if (dragY > 80) {
-      dismiss();
-    } else {
+    if (expanded) {
+      if (dragY > 100) setExpanded(false); // 50vh로 복귀
       setDragY(0);
+    } else {
+      if (dragY < -60) {
+        setExpanded(true); // 전체화면 확장
+        setDragY(0);
+      } else if (dragY > 80) {
+        dismiss(); // 닫기
+      } else {
+        setDragY(0);
+      }
     }
   }
 
   const panelStyle: React.CSSProperties = {
+    height: expanded ? "100dvh" : "50vh",
+    borderRadius: expanded ? "0" : "20px 20px 0 0",
     transform: closing
       ? "translateY(100%)"
       : dragY > 0
@@ -174,7 +191,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded }
       ? "none"
       : closing
         ? "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)"
-        : undefined,
+        : "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), height 0.3s cubic-bezier(0.32, 0.72, 0, 1), border-radius 0.3s",
   };
 
   return (
