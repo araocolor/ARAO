@@ -77,13 +77,20 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
       .finally(() => { if (!cached) setLoading(false); });
   }, [category, index]);
 
-  // 하이라이트 댓글로 스크롤 (시트 슬라이드 애니메이션 끝난 후)
+  // 하이라이트 댓글로 스크롤 + flash (시트 슬라이드 + 데이터 로드 완료 후)
   useEffect(() => {
     if (!highlightCommentId || loading) return;
-    const timer = setTimeout(() => {
-      highlightRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 380);
-    return () => clearTimeout(timer);
+    // 시트 슬라이드(380ms) + 스크롤(300ms) 완료 후 flash 적용
+    const scrollTimer = setTimeout(() => {
+      const el = highlightRef.current;
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      // 스크롤 완료 후 flash 재적용 (이미 붙어있는 클래스 리셋 후 재부여)
+      el.classList.remove("flash-highlight");
+      void el.offsetWidth; // reflow 강제
+      el.classList.add("flash-highlight");
+    }, 500);
+    return () => clearTimeout(scrollTimer);
   }, [highlightCommentId, loading]);
 
   function dismiss() {
@@ -269,7 +276,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
               <div
                 key={c.id}
                 ref={isHighlight ? highlightRef : undefined}
-                className={`gallery-comment-item${isHighlight ? " flash-highlight" : ""}`}
+                className="gallery-comment-item"
               >
                 {c.author_icon_image ? (
                   <img src={c.author_icon_image} className="gallery-comment-avatar gallery-comment-avatar-img" alt="" />
