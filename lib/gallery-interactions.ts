@@ -296,7 +296,7 @@ export async function toggleGalleryCommentLike(
           commentAuthorProfileId,
           "gallery_like",
           `${likerName}님이 좋아요를 남겼습니다`,
-          `/gallery?category=${commentData.item_category}&index=${commentData.item_index}`,
+          `/gallery?category=${commentData.item_category}&index=${commentData.item_index}&commentId=${commentId}`,
           commentId
         );
       }

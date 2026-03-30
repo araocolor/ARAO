@@ -18,9 +18,10 @@ type Props = {
   index: number;
   onClose: () => void;
   onCommentAdded: () => void;
+  highlightCommentId?: string;
 };
 
-export function GalleryCommentSheet({ category, index, onClose, onCommentAdded }: Props) {
+export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, highlightCommentId }: Props) {
   const { user } = useUser();
   const [comments, setComments] = useState<GalleryComment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -233,7 +234,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded }
           {comments.map((c) => {
             const likeState = commentLikes[c.id] ?? { liked: false, count: c.like_count };
             return (
-              <div key={c.id} className="gallery-comment-item">
+              <div key={c.id} className={`gallery-comment-item${c.id === highlightCommentId ? " flash-highlight" : ""}`}>
                 {c.author_icon_image ? (
                   <img src={c.author_icon_image} className="gallery-comment-avatar gallery-comment-avatar-img" alt="" />
                 ) : (
