@@ -69,10 +69,24 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded }
   }
 
   const handleCommentLike = async (commentId: string) => {
-    const res = await fetch(`/api/gallery/comments/${commentId}/likes`, { method: "POST" });
-    if (res.ok) {
-      const data = await res.json();
-      setCommentLikes((prev) => ({ ...prev, [commentId]: { liked: data.liked, count: data.count } }));
+    const prev = commentLikes[commentId] ?? { liked: false, count: 0 };
+    const nextLiked = !prev.liked;
+    const nextCount = nextLiked ? prev.count + 1 : Math.max(prev.count - 1, 0);
+
+    // 즉시 UI 반영
+    setCommentLikes((s) => ({ ...s, [commentId]: { liked: nextLiked, count: nextCount } }));
+
+    try {
+      const res = await fetch(`/api/gallery/comments/${commentId}/likes`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setCommentLikes((s) => ({ ...s, [commentId]: { liked: data.liked, count: data.count } }));
+      } else {
+        // 실패 시 롤백
+        setCommentLikes((s) => ({ ...s, [commentId]: prev }));
+      }
+    } catch {
+      setCommentLikes((s) => ({ ...s, [commentId]: prev }));
     }
   };
 
