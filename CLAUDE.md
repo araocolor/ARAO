@@ -82,8 +82,10 @@ See **backend.md** for API route patterns.
   - 높이 `50vh`, 드래그 다운 닫기, 외부 클릭 슬라이드 다운
   - 이모지 바 (40개), 이메일 마스킹 (`ch***@gmail.com`), 아바타 표시
   - input `font-size: 16px` 필수 (iOS 줌 방지)
+- **`lib/gallery-interactions.ts`** — 좋아요/댓글 DB 로직 (admin 클라이언트, `GalleryComment` 타입 정의)
 - **API:** `/api/gallery/[category]/[index]/likes`, `/api/gallery/[category]/[index]/comments`, `/api/gallery/comments/[id]/likes`
 - **DB 테이블:** `gallery_item_likes`, `gallery_comments`, `gallery_comment_likes` (RLS 비활성화)
+- **아이디 없는 사용자 댓글:** `profile_id`로 저장됨 — 아이디 없어도 DB에 정상 저장됨
 
 ## Headers
 
@@ -98,7 +100,7 @@ See **backend.md** for API route patterns.
 - 헤더: 홈 아이콘(닫기) + 아이디/이메일(가운데) + 설정 아이콘(오른쪽)
 - 아이디 없으면 이메일 표시
 - 새 알림(is_read=false): 노란색 배경 강조
-- consulting 알림: `notifications` 테이블이 아닌 `inquiries` 쿼리로만 처리 (중복 방지)
+- consulting 알림: `notifications` 테이블 조회 시 `.neq("type","consulting")` 필수 → `lib/notifications.ts`에서 `inquiries` 쿼리로 별도 처리
 - 위치: `top: 56px` (헤더 바로 아래)
 
 ## Account Footer Nav
@@ -152,12 +154,27 @@ app/globals.css   # Global styles (500+ lines)
 
 ## Styling & Layout
 
-- **Approach:** CSS-first with custom styles in `app/globals.css` (500+ lines)
+- **Approach:** CSS-first with custom styles split into domain files (총 ~3800줄)
 - **Mobile-first:** Baseline design targets mobile phones
 - **Widths:** Mobile `480px`, Tablet `820px` (`--tablet-width`), media query at `1024px`
 - **No desktop layout:** Desktop uses same responsive design as tablet
 - **Consultation badges:** `.consulting-status-*` classes with color codes (red=pending, blue=resolved, gray=closed)
 - **Layout reference:** See **LAYOUT_MAP.md** for zone name → CSS class → file mapping
+
+### CSS 파일 구조
+
+| 파일 | 내용 | 줄수 |
+|------|------|------|
+| `app/globals.css` | 변수, 리셋, 전역 유틸 (`.page`, `.section`, `.stack`, `.muted`) | ~73 |
+| `app/styles/header.css` | 헤더, 심플헤더, 네비, 프로필아이콘, 배지, 햄버거팝업 | ~430 |
+| `app/styles/landing.css` | 랜딩페이지, 히어로, 비교, 리뷰, 비디오, 푸터, 프라이싱 | ~525 |
+| `app/styles/gallery.css` | 갤러리 섹션, 이미지, 인터랙션바, 댓글시트 | ~429 |
+| `app/styles/admin.css` | 어드민 레이아웃/사이드바/패널/폼/메뉴 | ~582 |
+| `app/styles/account.css` | 계정 페이지, 설정폼, 하단탭, 아이콘, 아바타 | ~1054 |
+| `app/styles/consulting.css` | 상담내역 (사용자 + 관리자) | ~920 |
+| `app/styles/notification.css` | 알림 드로어 | ~260 |
+
+모두 `app/layout.tsx`에서 순서대로 임포트됨.
 
 ## Documentation
 

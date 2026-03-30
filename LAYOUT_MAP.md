@@ -22,15 +22,15 @@
 
 | 구역명 | CSS 클래스 | 파일 |
 |--------|-----------|------|
-| 헤더 | `.header` `.header-full` `.header-inner` | `app/globals.css:90` |
-| 헤더 > 로고 | `.brand` | `app/globals.css:131` / `components/site-header.tsx` |
-| 헤더 > 메뉴링크 | `.nav` `.nav a` | `app/globals.css:178` / `components/landing-page-header.tsx` |
-| 헤더 > 프로필아이콘 | `.header-profile-link` `.header-profile-avatar` | `app/globals.css:239` / `components/header-profile-link.tsx` |
-| 헤더 > 알림배지 | `.header-profile-badge` | `app/globals.css:304` |
-| 헤더 > 햄버거버튼 | `.header-menu-toggle` | `app/globals.css:191` / `components/site-header.tsx` |
-| 헤더 > 팝업메뉴 | `.header-menu-sheet` `.header-menu-list` `.header-menu-link` | `app/globals.css:1813` |
-| 헤더 > 팝업메뉴 > 구분선 | `.header-menu-divider` | `app/globals.css:1856` |
-| 헤더 > 팝업메뉴 > 타이틀 | `.header-menu-label` | `app/globals.css:1844` |
+| 헤더 | `.header` `.header-full` `.header-inner` | `app/styles/header.css` |
+| 헤더 > 로고 | `.brand` | `app/styles/header.css` / `components/site-header.tsx` |
+| 헤더 > 메뉴링크 | `.nav` `.nav a` | `app/styles/header.css` / `components/landing-page-header.tsx` |
+| 헤더 > 프로필아이콘 | `.header-profile-link` `.header-profile-avatar` | `app/styles/header.css` / `components/header-profile-link.tsx` |
+| 헤더 > 알림배지 | `.header-profile-badge` | `app/styles/header.css` |
+| 헤더 > 햄버거버튼 | `.header-menu-toggle` | `app/styles/header.css` / `components/site-header.tsx` |
+| 헤더 > 팝업메뉴 | `.header-menu-sheet` `.header-menu-list` `.header-menu-link` | `app/styles/header.css` (미디어쿼리 내) |
+| 헤더 > 팝업메뉴 > 구분선 | `.header-menu-divider` | `app/styles/header.css` |
+| 헤더 > 팝업메뉴 > 타이틀 | `.header-menu-label` | `app/styles/header.css` |
 | 헤더 > 로그인버튼 | `components/header-logout-button.tsx` | `components/header-logout-button.tsx` |
 
 **참조 파일:**
@@ -43,16 +43,16 @@
 
 | 구역명 | CSS 클래스 | 파일 |
 |--------|-----------|------|
-| 랜딩 > 전체컨테이너 | `.landing-page` `.landing-shell` | `app/globals.css:55` |
-| 랜딩 > 히어로 | `.landing-hero` | `app/globals.css:365` / `app/page.tsx` |
-| 랜딩 > 히어로 > 제목 | `.landing-hero-title` | `app/globals.css:373` |
-| 랜딩 > 히어로 > 본문 | `.landing-hero-body` | `app/globals.css:381` |
-| 랜딩 > 히어로 > 버튼 | `.landing-button` `.landing-button-primary` | `app/globals.css:388` |
-| 랜딩 > 섹션라벨 | `.landing-section-label` | `app/globals.css:358` |
-| 랜딩 > 비교섹션 | `.landing-comparison` `.landing-comparison-item` | `app/globals.css:431` |
-| 랜딩 > 리뷰섹션 | `.landing-reviews` `.landing-card` `.landing-card-review` | `app/globals.css:501` |
-| 랜딩 > 비디오 | `.landing-video-wrap` `.landing-video-thumb` `.landing-video-play` | `app/globals.css:689` |
-| 랜딩 > 기능그리드 | `.landing-feature-grid` `.landing-feature-card` | `app/globals.css:828` |
+| 랜딩 > 전체컨테이너 | `.landing-page` `.landing-shell` | `app/styles/landing.css` |
+| 랜딩 > 히어로 | `.landing-hero` | `app/styles/landing.css` / `app/page.tsx` |
+| 랜딩 > 히어로 > 제목 | `.landing-hero-title` | `app/styles/landing.css` |
+| 랜딩 > 히어로 > 본문 | `.landing-hero-body` | `app/styles/landing.css` |
+| 랜딩 > 히어로 > 버튼 | `.landing-button` `.landing-button-primary` | `app/styles/landing.css` |
+| 랜딩 > 섹션라벨 | `.landing-section-label` | `app/styles/landing.css` |
+| 랜딩 > 비교섹션 | `.landing-comparison` `.landing-comparison-item` | `app/styles/landing.css` |
+| 랜딩 > 리뷰섹션 | `.landing-reviews` `.landing-card` `.landing-card-review` | `app/styles/landing.css` |
+| 랜딩 > 비디오 | `.landing-video-wrap` `.landing-video-thumb` `.landing-video-play` | `app/styles/landing.css` |
+| 랜딩 > 기능그리드 | `.landing-feature-grid` `.landing-feature-card` | `app/styles/landing.css` |
 
 **참조 파일:**
 - `app/page.tsx` — 홈 페이지 콘텐츠 전체
@@ -63,10 +63,12 @@
 
 | 구역명 | CSS 클래스 | 파일 |
 |--------|-----------|------|
-| 갤러리 > 히어로이미지 | `.gallery-hero-image-wrap` `.gallery-hero-image` | `app/globals.css:546` |
-| 갤러리 > 섹션 | `.gallery-section` `.gallery-section-title` | `app/globals.css:579` |
-| 갤러리 > 이미지블록 | `.gallery-image-block` `.gallery-caption` | `app/globals.css:605` |
-| 갤러리 > 그리드 | `.landing-gallery-grid` | `app/globals.css:828` |
+| 갤러리 > 히어로이미지 | `.gallery-hero-image-wrap` `.gallery-hero-image` | `app/styles/gallery.css` |
+| 갤러리 > 섹션 | `.gallery-section` `.gallery-section-title` | `app/styles/gallery.css` |
+| 갤러리 > 이미지블록 | `.gallery-image-block` `.gallery-caption` | `app/styles/gallery.css` |
+| 갤러리 > 그리드 | `.landing-gallery-grid` | `app/styles/landing.css` (미디어쿼리) |
+| 갤러리 > 인터랙션바 | `.gallery-action-bar` `.gallery-action-btn` `.gallery-like-label` | `app/styles/gallery.css` |
+| 갤러리 > 댓글시트 | `.gallery-sheet-*` `.gallery-comment-*` | `app/styles/gallery.css` |
 
 **참조 파일:**
 - `app/gallery/page.tsx`
@@ -78,10 +80,10 @@
 
 | 구역명 | CSS 클래스 | 파일 |
 |--------|-----------|------|
-| 가격 > 그리드 | `.pricing-grid` | `app/globals.css:843` |
-| 가격 > 카드 | `.pricing-card` `.pricing-card-featured` | `app/globals.css:849` |
-| 가격 > 금액표시 | `.pricing-price` `.pricing-price-row` | `app/globals.css:861` |
-| 가격 > 기능목록 | `.pricing-feature-list` `.pricing-feature-item` | `app/globals.css:883` |
+| 가격 > 그리드 | `.pricing-grid` | `app/styles/landing.css` |
+| 가격 > 카드 | `.pricing-card` `.pricing-card-featured` | `app/styles/landing.css` |
+| 가격 > 금액표시 | `.pricing-price` `.pricing-price-row` | `app/styles/landing.css` |
+| 가격 > 기능목록 | `.pricing-feature-list` `.pricing-feature-item` | `app/styles/landing.css` |
 
 **참조 파일:**
 - `app/pricing/page.tsx`
@@ -92,11 +94,11 @@
 
 | 구역명 | CSS 클래스 | 파일 |
 |--------|-----------|------|
-| 푸터 | `.landing-footer` | `app/globals.css:745` |
-| 푸터 > 로고 | `.landing-footer-brand` | `app/globals.css:757` |
-| 푸터 > 소셜링크 | `.landing-footer-socials` `.landing-footer-social` | `app/globals.css:763` |
-| 푸터 > 링크목록 | `.landing-footer-links` `.landing-footer-link` | `app/globals.css:804` |
-| 푸터 > 회사정보 | `.landing-footer-company` `.landing-footer-text` | `app/globals.css:811` |
+| 푸터 | `.landing-footer` | `app/styles/landing.css` |
+| 푸터 > 로고 | `.landing-footer-brand` | `app/styles/landing.css` |
+| 푸터 > 소셜링크 | `.landing-footer-socials` `.landing-footer-social` | `app/styles/landing.css` |
+| 푸터 > 링크목록 | `.landing-footer-links` `.landing-footer-link` | `app/styles/landing.css` |
+| 푸터 > 회사정보 | `.landing-footer-company` `.landing-footer-text` | `app/styles/landing.css` |
 
 **참조 파일:**
 - `components/landing-page-footer.tsx`
@@ -107,15 +109,15 @@
 
 | 구역명 | CSS 클래스 | 파일 |
 |--------|-----------|------|
-| 계정 > 전체레이아웃 | `.account-page` `.account-content` | `app/globals.css:1524` / `app/account/layout.tsx` |
-| 계정 > 하단탭 | `.account-footer-nav` `.account-footer-menu` `.account-footer-item` | `app/globals.css:1538` |
-| 계정 > 하단탭 > 아이콘 | `.account-menu-icon` `.account-menu-icon-*` | `app/globals.css:1395` |
-| 계정 > 하단탭 > 라벨 | `.account-footer-label` | `app/globals.css:1585` |
-| 계정 > 설정행 | `.account-settings` `.account-settings-row` | `app/globals.css:1182` |
+| 계정 > 전체레이아웃 | `.account-page` `.account-content` | `app/styles/account.css` / `app/account/layout.tsx` |
+| 계정 > 하단탭 | `.account-footer-nav` `.account-footer-menu` `.account-footer-item` | `app/styles/account.css` |
+| 계정 > 하단탭 > 아이콘 | `.account-menu-icon` `.account-menu-icon-*` | `app/styles/account.css` |
+| 계정 > 하단탭 > 라벨 | `.account-footer-label` | `app/styles/account.css` |
+| 계정 > 설정행 | `.account-settings` `.account-settings-row` | `app/styles/account.css` |
 | 계정 > 아바타 | `.account-avatar-column` `.account-username-avatar` | `components/general-settings-form.tsx` |
 | 계정 > 아이디섹션 | `.account-username-section` `.account-username-info` | `components/general-settings-form.tsx` |
-| 계정 > 비밀번호섹션 | `.account-password-line` `.account-password-input-wrap` | `app/globals.css:1223` |
-| 계정 > 인라인폼 | `.account-inline-form` `.account-inline-row` | `app/globals.css:1210` |
+| 계정 > 비밀번호섹션 | `.account-password-line` `.account-password-input-wrap` | `app/styles/account.css` |
+| 계정 > 인라인폼 | `.account-inline-form` `.account-inline-row` | `app/styles/account.css` |
 
 **참조 파일:**
 - `app/account/layout.tsx` — 계정 레이아웃
@@ -129,9 +131,9 @@
 
 | 구역명 | CSS 클래스 | 파일 |
 |--------|-----------|------|
-| 알림드로어 | `.notif-drawer` `.notif-overlay` | `app/globals.css` / `components/notification-drawer.tsx` |
-| 알림드로어 > 헤더 | `.notif-header` | `components/notification-drawer.tsx` |
-| 알림드로어 > 아이템 | `.notif-item` `.notif-item-unread` | `components/notification-drawer.tsx` |
+| 알림드로어 | `.notif-drawer` `.notif-backdrop` | `app/styles/notification.css` / `components/notification-drawer.tsx` |
+| 알림드로어 > 헤더 | `.notif-header` `.notif-header-username` | `app/styles/notification.css` |
+| 알림드로어 > 아이템 | `.notif-item` `.notif-item.is-unread` | `app/styles/notification.css` |
 
 **참조 파일:**
 - `components/notification-drawer.tsx`
@@ -142,10 +144,12 @@
 
 | 구역명 | CSS 클래스 | 파일 |
 |--------|-----------|------|
-| 관리자 > 레이아웃 | `.admin-layout` `.admin-layout-root` | `app/globals.css:1119` |
-| 관리자 > 사이드바 | `.admin-sidebar` `.admin-sidebar-root` | `app/globals.css:1136` |
-| 관리자 > 패널 | `.admin-panel` `.admin-panel-card` | `app/globals.css:1491` |
-| 관리자 > 메뉴 | `.admin-menu-list` `.admin-menu-item` | `app/globals.css:1363` |
+| 관리자 > 레이아웃 | `.admin-layout` `.admin-layout-root` | `app/styles/admin.css` |
+| 관리자 > 사이드바 | `.admin-sidebar` `.admin-sidebar-root` | `app/styles/admin.css` |
+| 관리자 > 패널 | `.admin-panel` `.admin-panel-card` | `app/styles/admin.css` |
+| 관리자 > 메뉴 | `.admin-menu-list` `.admin-menu-item` | `app/styles/admin.css` |
+| 상담내역 (사용자) | `.consulting-*` | `app/styles/consulting.css` |
+| 상담내역 (관리자) | `.admin-consulting-*` | `app/styles/consulting.css` |
 
 **참조 파일:**
 - `components/admin-dashboard.tsx`
