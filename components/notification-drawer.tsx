@@ -175,7 +175,7 @@ export function NotificationDrawer({
               return (
               <Link
                 key={item.id}
-                href={item.link}
+                href={item.type === "gallery_like" ? `${item.link}&t=${Date.now()}` : item.link}
                 className={`notif-item ${!isRead ? "is-unread" : ""}`}
                 onClick={() => handleItemClick(item)}
               >

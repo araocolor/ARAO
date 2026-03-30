@@ -63,7 +63,7 @@
 /* 태블릿/데스크톱: 컨테이너 기준 오른쪽 50% */
 @media (min-width: 481px) {
   .notif-drawer {
-    width: calc(var(--tablet-width, 820px) * 0.5);
+    width: 500px;
     left: auto;
     right: max(0px, calc((100vw - var(--tablet-width, 820px)) / 2));
     margin: 0;
