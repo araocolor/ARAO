@@ -30,6 +30,7 @@ export function GalleryCard({
 }: GalleryCardProps) {
   const [likeCount, setLikeCount] = useState(0);
   const [liked, setLiked] = useState(false);
+  const [highlight, setHighlight] = useState(false);
   const [firstLiker, setFirstLiker] = useState<string | null>(null);
   const [commentCount, setCommentCount] = useState(0);
   const [commentSheetOpen, setCommentSheetOpen] = useState(false);
@@ -39,7 +40,10 @@ export function GalleryCard({
   useEffect(() => {
     if (autoOpenComments) {
       cardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlight(true);
       setCommentSheetOpen(true);
+      const timer = setTimeout(() => setHighlight(false), 2000);
+      return () => clearTimeout(timer);
     }
   }, [autoOpenComments]);
 
@@ -130,7 +134,7 @@ export function GalleryCard({
   const bodyLines = body ? body.split("\n") : [];
 
   return (
-    <section className="gallery-section" ref={cardRef}>
+    <section className={`gallery-section${highlight ? " flash-highlight" : ""}`} ref={cardRef}>
       <h2 className="gallery-section-title">{title}</h2>
       <div className="gallery-image-block">
         <GalleryHeroItem

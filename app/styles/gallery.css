@@ -1,3 +1,14 @@
+@keyframes gallery-flash-highlight {
+  0%   { background-color: rgba(252, 211, 77, 0.45); }
+  60%  { background-color: rgba(252, 211, 77, 0.45); }
+  100% { background-color: transparent; }
+}
+
+.gallery-section.flash-highlight {
+  animation: gallery-flash-highlight 2s ease-out forwards;
+  border-radius: 16px;
+}
+
 .gallery-hero-image-wrap {
   position: relative;
   width: 100%;
