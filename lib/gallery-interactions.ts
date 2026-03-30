@@ -295,7 +295,7 @@ export async function toggleGalleryCommentLike(
         await createNotification(
           commentAuthorProfileId,
           "gallery_like",
-          `${likerName}님이 좋아요 하트를 남겼습니다`,
+          `${likerName}님이 좋아요를 남겼습니다`,
           `/gallery`,
           commentId
         );
