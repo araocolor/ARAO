@@ -239,7 +239,7 @@
 }
 
 .notif-report-link {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
   opacity: 0.5;
   pointer-events: none;
