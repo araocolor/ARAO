@@ -61,7 +61,7 @@ export default async function AccountUserPage({
   const supabase = createSupabaseAdminClient();
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, username, email, full_name, icon_image, phone, role, created_at")
+    .select("id, username, email, icon_image, created_at")
     .eq("id", profileId)
     .maybeSingle();
 
@@ -102,10 +102,36 @@ export default async function AccountUserPage({
 
       <div style={{ display: "grid", gap: 6 }}>
         <p style={{ margin: 0 }}><strong>이메일:</strong> {profile.email}</p>
-        <p style={{ margin: 0 }}><strong>이름:</strong> {profile.full_name ?? "없음"}</p>
-        <p style={{ margin: 0 }}><strong>연락처:</strong> {profile.phone ?? "없음"}</p>
-        <p style={{ margin: 0 }}><strong>권한:</strong> {profile.role}</p>
       </div>
+
+      <section
+        style={{
+          marginTop: 12,
+          border: "1px solid #e5e7eb",
+          borderRadius: 14,
+          padding: "14px 12px",
+          background: "#fff",
+          display: "grid",
+          gap: 10,
+        }}
+      >
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>사용자 컬러 프로파일</h3>
+        <p style={{ margin: 0, fontSize: 14, color: "#4b5563", lineHeight: 1.45 }}>이 사용자가 남긴 컬러 감성과 분위기를 확인해보세요.</p>
+        <p style={{ margin: 0, fontSize: 14, color: "#4b5563", lineHeight: 1.45 }}>좋아요 시트에서 다시 돌아오면 같은 카드 위치를 유지합니다.</p>
+        {profile.icon_image ? (
+          <img
+            src={profile.icon_image}
+            alt="사용자 컬러 프로파일 이미지"
+            style={{ width: "100%", maxWidth: 260, aspectRatio: "1 / 1", objectFit: "cover", borderRadius: 12 }}
+          />
+        ) : (
+          <img
+            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='520' height='520' viewBox='0 0 520 520'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop stop-color='%23f3f4f6'/%3E%3Cstop offset='1' stop-color='%23d1d5db'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='520' height='520' rx='28' fill='url(%23g)'/%3E%3Ccircle cx='260' cy='205' r='88' fill='%239ca3af'/%3E%3Crect x='106' y='324' width='308' height='120' rx='60' fill='%23bfc5cc'/%3E%3C/svg%3E"
+            alt="사용자 컬러 프로파일 기본 이미지"
+            style={{ width: "100%", maxWidth: 260, aspectRatio: "1 / 1", objectFit: "cover", borderRadius: 12 }}
+          />
+        )}
+      </section>
 
       <div style={{ marginTop: 12 }}>
         <Link href={backHref} prefetch={true}>

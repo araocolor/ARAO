@@ -210,7 +210,8 @@ app/globals.css   # Global styles (500+ lines)
 
 Before committing/pushing changes:
 1. **Build test:** `npm run build` (catches TypeScript/build errors)
-2. **Lint check:** `npm run lint`
+2. **Lint check:** `npm run lint` (주의: 현재 Next.js 16 환경에서 `next lint`가 `.../lint` 디렉토리 오류로 실패할 수 있음)
+  - 임시 운용: 빌드 통과(`npm run build`)를 최소 게이트로 사용하고, lint는 ESLint 설정 마이그레이션 후 복구
 3. **Manual test:** Verify changes in dev server
 
 ## Language
@@ -230,6 +231,8 @@ User communicates in **Korean**. Respond in Korean when addressed in Korean. Gra
 | Notification count mismatch | Items must be loaded on mount, not on drawer open (HeaderProfileLink.tsx) |
 | Invalid date in join date | formatDate function handles null/invalid dates (returns "날짜 오류") |
 | iOS input zoom | `font-size` must be ≥ 16px on `<input>` to prevent iOS Safari auto-zoom |
+| `npm run lint` fails with `.../lint` directory error | Next.js 16에서 `next lint` 인식 이슈. 현재 저장소는 `eslint.config.*` 미구성이라 ESLint CLI도 즉시 실행 불가 → 우선 `npm run build`로 검증하고, 추후 lint 체계를 ESLint Flat Config로 마이그레이션 |
+| Dev 서버 중복 실행으로 화면/오류가 섞여 보임 | `npm run dev`를 중복 실행하면 3000/3001로 분리되어 구버전/신버전이 혼재될 수 있음. 실행 전 `lsof -nP -iTCP:3000 -sTCP:LISTEN` 확인 후, 중복 프로세스 종료하고 서버 1개만 유지 |
 | Hydration error after nav change | Delete `.next/` cache — stale server/client mismatch in client components |
 | Consulting notification duplicate | `notifications` 테이블 조회 시 `.neq("type", "consulting")` 필수 — inquiries 쿼리에서 별도 처리 |
 | Gallery like 하트 사라짐 | IntersectionObserver GET 응답이 클릭 후 도착해 상태 덮어씀 → `userInteractedRef`로 차단 (`gallery-card.tsx`) |
