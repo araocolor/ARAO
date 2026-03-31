@@ -63,7 +63,12 @@ export default async function GalleryPage({
               afterImage={afterSrc}
               caption={caption || undefined}
               aspectRatio={item.aspectRatio}
-              autoOpenComments={category === openCategory && String(categoryIdx) === openIndex}
+              autoOpenComments={
+                likesSheet !== "1" &&
+                Boolean(openCommentId) &&
+                category === openCategory &&
+                String(categoryIdx) === openIndex
+              }
               autoOpenLikes={likesSheet === "1" && category === openCategory && String(categoryIdx) === openIndex}
               highlightCommentId={category === openCategory && String(categoryIdx) === openIndex ? openCommentId : undefined}
               openTimestamp={category === openCategory && String(categoryIdx) === openIndex ? openTimestamp : undefined}

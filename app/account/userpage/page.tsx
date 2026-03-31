@@ -8,10 +8,15 @@ export const dynamic = "force-dynamic";
 export default async function AccountUserPage({
   searchParams,
 }: {
-  searchParams: Promise<{ profileId?: string; username?: string }>;
+  searchParams: Promise<{ profileId?: string; username?: string; category?: string; index?: string; likesSheet?: string; t?: string }>;
 }) {
-  const { profileId } = await searchParams;
+  const { profileId, category, index, likesSheet } = await searchParams;
   const { userId } = await auth();
+
+  const backHref =
+    category && index
+      ? `/gallery?category=${encodeURIComponent(category)}&index=${encodeURIComponent(index)}&likesSheet=${likesSheet === "1" ? "1" : "1"}&t=${Date.now()}`
+      : "/gallery";
 
   if (!userId) {
     return (
@@ -100,6 +105,14 @@ export default async function AccountUserPage({
         <p style={{ margin: 0 }}><strong>이름:</strong> {profile.full_name ?? "없음"}</p>
         <p style={{ margin: 0 }}><strong>연락처:</strong> {profile.phone ?? "없음"}</p>
         <p style={{ margin: 0 }}><strong>권한:</strong> {profile.role}</p>
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <Link href={backHref} prefetch={true}>
+          <button type="button" className="gallery-sheet-submit" style={{ width: "auto", padding: "10px 14px" }}>
+            {"< 돌아가기"}
+          </button>
+        </Link>
       </div>
     </div>
   );

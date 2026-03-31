@@ -86,6 +86,7 @@ export function GalleryCard({
   useEffect(() => {
     if (autoOpenLikes) {
       cardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setCommentSheetOpen(false);
       void openLikeUsersSheet();
     }
   }, [autoOpenLikes, openTimestamp]);
@@ -275,6 +276,9 @@ export function GalleryCard({
 
       const params = new URLSearchParams({ profileId });
       if (username) params.set("username", username);
+      params.set("category", category);
+      params.set("index", String(index));
+      params.set("likesSheet", "1");
       router.push(`/account/userpage?${params.toString()}`);
     } catch {
       setUsernamePromptOpen(true);
