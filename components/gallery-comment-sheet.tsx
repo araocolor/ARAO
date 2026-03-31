@@ -191,6 +191,12 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
     setSubmitting(true);
 
     const tempId = "temp-" + Date.now();
+    const myEmail = user?.primaryEmailAddress?.emailAddress ?? null;
+    const knownUsernameFromComments =
+      myEmail
+        ? commentsRef.current.find((c) => c.author_email === myEmail && c.author_username)?.author_username ?? null
+        : null;
+    const optimisticUsername = user?.username ?? knownUsernameFromComments ?? null;
     const tempComment: GalleryComment = {
       id: tempId,
       profile_id: "",
@@ -199,10 +205,11 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
       content: input.trim(),
       like_count: 0,
       created_at: new Date().toISOString(),
-      author_username: (user?.username ?? null),
+      author_username: optimisticUsername,
       author_fullname: (user?.fullName ?? null),
       author_icon_image: null,
-      author_email: (user?.primaryEmailAddress?.emailAddress ?? null),
+      // 임시 댓글에서는 이메일 fallback을 숨겨 아이디로만 표시되게 유지
+      author_email: null,
     };
 
     // 즉시 UI 반영
