@@ -67,6 +67,51 @@ export async function getGalleryItemLikeStatus(
 }
 
 /**
+ * 갤러리 이미지 좋아요 사용자 목록 조회
+ */
+export async function getGalleryItemLikers(
+  category: string,
+  index: number
+): Promise<Array<{ profile_id: string; username: string | null; email: string | null }>> {
+  const supabase = createSupabaseAdminClient();
+
+  const { data: likes, error: likesError } = await supabase
+    .from("gallery_item_likes")
+    .select("profile_id, created_at")
+    .eq("item_category", category)
+    .eq("item_index", index)
+    .order("created_at", { ascending: true });
+
+  if (likesError) {
+    console.error("getGalleryItemLikers likes error:", likesError);
+    return [];
+  }
+
+  const profileIds = Array.from(new Set((likes ?? []).map((l) => l.profile_id).filter(Boolean)));
+  if (profileIds.length === 0) return [];
+
+  const { data: profiles, error: profilesError } = await supabase
+    .from("profiles")
+    .select("id, username, email")
+    .in("id", profileIds);
+
+  if (profilesError) {
+    console.error("getGalleryItemLikers profiles error:", profilesError);
+    return [];
+  }
+
+  const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+  return (likes ?? []).map((like) => {
+    const profile = profileMap.get(like.profile_id);
+    return {
+      profile_id: like.profile_id,
+      username: profile?.username ?? null,
+      email: profile?.email ?? null,
+    };
+  });
+}
+
+/**
  * 갤러리 이미지 좋아요 토글
  */
 export async function toggleGalleryItemLike(

@@ -40,6 +40,18 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
   const highlightRef = useRef<HTMLDivElement>(null);
   const commentsRef = useRef<GalleryComment[]>([]);
 
+  // 시트가 열려 있는 동안 배경 페이지 스크롤 잠금
+  useEffect(() => {
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, []);
+
   // commentsRef를 항상 최신 상태로 유지 (Realtime 핸들러에서 사용)
   useEffect(() => { commentsRef.current = comments; }, [comments]);
 
@@ -255,7 +267,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
   function onDragEnd() {
     isDragging.current = false;
     if (expanded) {
-      if (dragY > 100) setExpanded(false); // 50vh로 복귀
+      if (dragY > 100) setExpanded(false); // 70vh로 복귀
       setDragY(0);
     } else {
       if (dragY < -60) {
@@ -270,7 +282,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
   }
 
   const panelStyle: React.CSSProperties = {
-    height: expanded ? "100dvh" : "50vh",
+    height: expanded ? "100dvh" : "70vh",
     borderRadius: expanded ? "0" : "20px 20px 0 0",
     transform: closing
       ? "translateY(100%)"

@@ -35,7 +35,7 @@ export function GalleryCard({
   highlightCommentId,
   openTimestamp,
 }: GalleryCardProps) {
-  const { isSignedIn } = useUser();
+  const { user, isSignedIn } = useUser();
   const router = useRouter();
   const [likeCount, setLikeCount] = useState(0);
   const [liked, setLiked] = useState(false);
@@ -45,8 +45,21 @@ export function GalleryCard({
   const [commentSheetOpen, setCommentSheetOpen] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
   const [likeAnimating, setLikeAnimating] = useState(false);
+  const [likeUsersOpen, setLikeUsersOpen] = useState(false);
+  const [likeUsersLoading, setLikeUsersLoading] = useState(false);
+  const [likeUsers, setLikeUsers] = useState<Array<{ username: string | null; email: string | null }>>([]);
   const cardRef = useRef<HTMLElement>(null);
   const userInteractedRef = useRef(false);
+  const likePopupRef = useRef<HTMLDivElement>(null);
+  const cardCacheKey = `gallery_card_${category}_${index}_${user?.id ?? "guest"}`;
+
+  function maskEmail(email: string): string {
+    const atIndex = email.indexOf("@");
+    if (atIndex < 0) return email;
+    const local = email.slice(0, atIndex);
+    const domain = email.slice(atIndex);
+    return local.slice(0, 2) + "***" + domain;
+  }
 
   useEffect(() => {
     if (autoOpenComments) {
@@ -56,8 +69,21 @@ export function GalleryCard({
   }, [autoOpenComments, openTimestamp]);
 
   useEffect(() => {
-    const cacheKey = `gallery_card_${category}_${index}`;
+    if (!likeUsersOpen) return;
+    function handleOutsideClick(e: MouseEvent | TouchEvent) {
+      if (!likePopupRef.current?.contains(e.target as Node)) {
+        setLikeUsersOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+    };
+  }, [likeUsersOpen]);
 
+  useEffect(() => {
     function applyData(data: { count?: number; liked?: boolean; firstLiker?: string | null; commentCount?: number }) {
       setLikeCount(data.count ?? 0);
       setLiked(data.liked ?? false);
@@ -66,10 +92,9 @@ export function GalleryCard({
     }
 
     // 캐시 히트 시 즉시 표시 (비로그인이면 liked 무시)
-    const cached = getCached<{ count: number; liked: boolean; firstLiker: string | null; commentCount: number }>(cacheKey);
+    const cached = getCached<{ count: number; liked: boolean; firstLiker: string | null; commentCount: number }>(cardCacheKey);
     if (cached) {
       applyData(isSignedIn ? cached : { ...cached, liked: false });
-      return;
     }
 
     // Intersection Observer: 카드가 화면 300px 앞에 오면 fetch
@@ -84,7 +109,10 @@ export function GalleryCard({
           fetch(`/api/gallery/${category}/${index}/likes`)
             .then((r) => r.json())
             .then((data) => {
-              if (!userInteractedRef.current) applyData(data);
+              if (!userInteractedRef.current) {
+                applyData(data);
+                setCached(cardCacheKey, data);
+              }
             })
             .catch(() => {});
           // 댓글 미리 캐시 (댓글창 열면 즉시 표시)
@@ -102,7 +130,7 @@ export function GalleryCard({
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [category, index, isSignedIn]);
+  }, [category, index, isSignedIn, cardCacheKey]);
 
   // Supabase Realtime: 다른 사용자의 좋아요 변경 실시간 반영
   useEffect(() => {
@@ -156,10 +184,9 @@ export function GalleryCard({
         setLiked(data.liked);
         setLikeCount(data.count);
         // 캐시 업데이트 → 페이지 재방문 시 liked 상태 유지
-        const cacheKey = `gallery_card_${category}_${index}`;
-        const cached = getCached<{ count: number; liked: boolean; firstLiker: string | null; commentCount: number }>(cacheKey);
+        const cached = getCached<{ count: number; liked: boolean; firstLiker: string | null; commentCount: number }>(cardCacheKey);
         if (cached) {
-          setCached(cacheKey, { ...cached, liked: data.liked, count: data.count });
+          setCached(cardCacheKey, { ...cached, liked: data.liked, count: data.count });
         }
       } else {
         setLiked(wasLiked);
@@ -179,11 +206,34 @@ export function GalleryCard({
     }
   };
 
+  const openLikeUsersPopup = async () => {
+    setLikeUsersOpen((prev) => !prev);
+    if (likeUsers.length > 0) return;
+    setLikeUsersLoading(true);
+    try {
+      const res = await fetch(`/api/gallery/${category}/${index}/likes/users`);
+      if (res.ok) {
+        const data = await res.json();
+        setLikeUsers(Array.isArray(data.users) ? data.users : []);
+      }
+    } catch {
+      setLikeUsers([]);
+    } finally {
+      setLikeUsersLoading(false);
+    }
+  };
+
   const likeLabelNode =
     likeCount === 0 ? null : likeCount === 1 ? (
       <><strong>{firstLiker ?? "누군가"}</strong>님이 좋아합니다</>
     ) : (
-      <><strong>{firstLiker ?? "누군가"}</strong>님 외 <strong>{likeCount - 1}명</strong>이 좋아합니다</>
+      <>
+        <strong>{firstLiker ?? "누군가"}</strong>님 외{" "}
+        <button type="button" className="gallery-like-count-btn" onClick={() => void openLikeUsersPopup()}>
+          <strong>{likeCount - 1}명</strong>
+        </button>
+        이 좋아합니다
+      </>
     );
 
   const bodyLines = body ? body.split("\n") : [];
@@ -254,7 +304,26 @@ export function GalleryCard({
           </button>
         </div>
 
-        {likeLabelNode && <p className="gallery-like-label">{likeLabelNode}</p>}
+        {likeLabelNode && (
+          <div className="gallery-like-label-wrap" ref={likePopupRef}>
+            <p className="gallery-like-label">{likeLabelNode}</p>
+            {likeUsersOpen && (
+              <div className="gallery-like-users-popup">
+                {likeUsersLoading ? (
+                  <p className="gallery-like-users-empty">불러오는 중...</p>
+                ) : likeUsers.length === 0 ? (
+                  <p className="gallery-like-users-empty">표시할 사용자가 없습니다</p>
+                ) : (
+                  likeUsers.map((u, i) => (
+                    <p key={`${u.username ?? u.email ?? "user"}-${i}`} className="gallery-like-user-item">
+                      {u.username ?? (u.email ? maskEmail(u.email) : "익명")}
+                    </p>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {bodyLines.length > 0 && (
           <p className="gallery-card-body">
@@ -277,10 +346,9 @@ export function GalleryCard({
           onClose={() => setCommentSheetOpen(false)}
           onCommentAdded={() => {
             setCommentCount((c) => c + 1);
-            const cacheKey = `gallery_card_${category}_${index}`;
-            const cached = getCached<{ count: number; liked: boolean; firstLiker: string | null; commentCount: number }>(cacheKey);
+            const cached = getCached<{ count: number; liked: boolean; firstLiker: string | null; commentCount: number }>(cardCacheKey);
             if (cached) {
-              setCached(cacheKey, { ...cached, commentCount: cached.commentCount + 1 });
+              setCached(cardCacheKey, { ...cached, commentCount: cached.commentCount + 1 });
             }
           }}
           highlightCommentId={highlightCommentId}

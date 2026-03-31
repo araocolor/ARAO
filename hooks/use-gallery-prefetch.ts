@@ -15,7 +15,7 @@ export function useGalleryPrefetch() {
     // 첫 두 카드가 이미 캐시됐으면 스킵
     const firstCategory = GALLERY_CATEGORIES[0];
     const secondCategory = GALLERY_CATEGORIES[1];
-    if (getCached(`gallery_card_${firstCategory}_0`) && getCached(`gallery_card_${secondCategory}_1`)) {
+    if (getCached(`gallery_card_${firstCategory}_0_guest`) && getCached(`gallery_card_${secondCategory}_1_guest`)) {
       return;
     }
 
@@ -37,7 +37,7 @@ async function prefetchGalleryCards() {
 }
 
 async function prefetchCard(category: string, index: number) {
-  const key = `gallery_card_${category}_${index}`;
+  const key = `gallery_card_${category}_${index}_guest`;
   if (getCached(key)) return;
 
   try {
