@@ -397,7 +397,16 @@ export function GalleryCard({
         <GalleryCommentSheet
           category={category}
           index={index}
-          onClose={() => setCommentSheetOpen(false)}
+          onClose={() => {
+            setCommentSheetOpen(false);
+            // 시트 닫을 때 URL에서 commentId 제거 — 재오픈 시 highlight 방지
+            const url = new URL(window.location.href);
+            if (url.searchParams.has("commentId")) {
+              url.searchParams.delete("commentId");
+              url.searchParams.delete("t");
+              router.replace(url.pathname + (url.search || ""), { scroll: false });
+            }
+          }}
           onCommentAdded={() => {
             setCommentCount((c) => c + 1);
             const cached = getCached<{ count: number; liked: boolean; firstLiker: string | null; commentCount: number }>(cardCacheKey);
