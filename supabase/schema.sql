@@ -138,6 +138,7 @@ create table if not exists gallery_item_likes (
 create table if not exists gallery_comments (
   id            uuid primary key default gen_random_uuid(),
   profile_id    uuid not null references profiles(id) on delete cascade,
+  parent_id     uuid references gallery_comments(id) on delete cascade,
   item_category text not null,
   item_index    int not null,
   content       text not null,
@@ -145,6 +146,9 @@ create table if not exists gallery_comments (
   created_at    timestamptz not null default now()
 );
 create index if not exists gallery_comments_category_idx on gallery_comments (item_category, item_index);
+create index if not exists gallery_comments_parent_idx on gallery_comments (parent_id);
+
+alter table gallery_comments add column if not exists parent_id uuid references gallery_comments(id) on delete cascade;
 
 -- 갤러리 댓글 좋아요
 create table if not exists gallery_comment_likes (

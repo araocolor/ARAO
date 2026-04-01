@@ -414,6 +414,16 @@ export function GalleryCard({
               setCached(cardCacheKey, { ...cached, commentCount: cached.commentCount + 1 });
             }
           }}
+          onCommentDeleted={(deletedCount) => {
+            setCommentCount((c) => Math.max(c - deletedCount, 0));
+            const cached = getCached<{ count: number; liked: boolean; firstLiker: string | null; commentCount: number }>(cardCacheKey);
+            if (cached) {
+              setCached(cardCacheKey, {
+                ...cached,
+                commentCount: Math.max((cached.commentCount ?? 0) - deletedCount, 0),
+              });
+            }
+          }}
           highlightCommentId={highlightCommentId}
         />
       )}

@@ -70,13 +70,19 @@ export async function POST(
 
     const { category, index } = await params;
     const body = await request.json();
-    const { content } = body;
+    const { content, parentId } = body as { content?: string; parentId?: string | null };
 
     if (!content) {
       return NextResponse.json({ error: "Content is required" }, { status: 400 });
     }
 
-    const comment = await createGalleryComment(category, parseInt(index), profile.id, content);
+    const comment = await createGalleryComment(
+      category,
+      parseInt(index),
+      profile.id,
+      content,
+      parentId ?? null
+    );
 
     if (!comment) {
       return NextResponse.json({ error: "Failed to create comment" }, { status: 500 });

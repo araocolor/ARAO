@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type CSSProperties, type TouchEvent } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import type { GalleryComment } from "@/lib/gallery-interactions";
@@ -20,10 +20,11 @@ type Props = {
   index: number;
   onClose: () => void;
   onCommentAdded: () => void;
+  onCommentDeleted?: (deletedCount: number) => void;
   highlightCommentId?: string;
 };
 
-export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, highlightCommentId }: Props) {
+export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, onCommentDeleted, highlightCommentId }: Props) {
   const { user, isSignedIn } = useUser();
   const router = useRouter();
   const [comments, setComments] = useState<GalleryComment[]>([]);
@@ -32,13 +33,16 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
   const [submitting, setSubmitting] = useState(false);
   const [commentLikes, setCommentLikes] = useState<Record<string, { liked: boolean; count: number }>>({});
   const [animatingIds, setAnimatingIds] = useState<Set<string>>(new Set());
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [closing, setClosing] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [replyTo, setReplyTo] = useState<GalleryComment | null>(null);
   const [dragY, setDragY] = useState(0);
   const isDragging = useRef(false);
   const dragStartY = useRef(0);
   const highlightRef = useRef<HTMLDivElement>(null);
   const commentsRef = useRef<GalleryComment[]>([]);
+  const myEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase() ?? null;
 
   // 시트가 열려 있는 동안 배경 페이지 스크롤 잠금
   useEffect(() => {
@@ -78,20 +82,17 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
       .then((r) => r.json())
       .then((data) => {
         setCached(commentKey, data);
-        if (!cached) {
-          // 캐시 없었으면 전체 반영
-          applyComments(data);
-        } else {
-          // 캐시 있었으면 liked 상태만 조용히 업데이트
-          const likes: Record<string, { liked: boolean; count: number }> = {};
-          (data.comments ?? []).forEach((c: GalleryComment & { user_liked?: boolean }) => {
-            likes[c.id] = { liked: c.user_liked ?? false, count: c.like_count };
-          });
-          setCommentLikes(likes);
-        }
+        // 캐시 유무와 관계없이 최신 댓글 목록/좋아요 상태 동기화
+        const list: (GalleryComment & { user_liked?: boolean })[] = data.comments ?? [];
+        setComments(list);
+        const likes: Record<string, { liked: boolean; count: number }> = {};
+        list.forEach((c) => {
+          likes[c.id] = { liked: c.user_liked ?? false, count: c.like_count };
+        });
+        setCommentLikes(likes);
       })
       .catch(() => {})
-      .finally(() => { if (!cached) setLoading(false); });
+      .finally(() => setLoading(false));
   }, [category, index]);
 
   // 하이라이트 댓글로 스크롤 + flash (시트 슬라이드 + 데이터 로드 완료 후)
@@ -118,16 +119,13 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "gallery_comments",
           filter: `item_category=eq.${category}&item_index=eq.${index}`,
         },
-        (payload) => {
-          const newId = payload.new.id as string;
-          // 내가 방금 추가한 댓글이면 무시 (이미 옵티미스틱 UI로 반영됨)
-          if (commentsRef.current.some((c) => c.id === newId)) return;
-          // 다른 사람 댓글 → API 재조회로 author 정보 포함해서 추가
+        () => {
+          // 삭제/답글까지 정확하게 맞추기 위해 전체 재조회
           fetch(`/api/gallery/${category}/${index}/comments`)
             .then((r) => r.json())
             .then((data) => {
@@ -191,15 +189,16 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
     setSubmitting(true);
 
     const tempId = "temp-" + Date.now();
-    const myEmail = user?.primaryEmailAddress?.emailAddress ?? null;
     const knownUsernameFromComments =
       myEmail
-        ? commentsRef.current.find((c) => c.author_email === myEmail && c.author_username)?.author_username ?? null
+        ? commentsRef.current.find((c) => c.author_email?.toLowerCase() === myEmail && c.author_username)?.author_username ?? null
         : null;
     const optimisticUsername = user?.username ?? knownUsernameFromComments ?? null;
+    const parentId = replyTo?.id ?? null;
     const tempComment: GalleryComment = {
       id: tempId,
       profile_id: "",
+      parent_id: parentId,
       item_category: category,
       item_index: index,
       content: input.trim(),
@@ -216,13 +215,14 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
     setComments((prev) => [...prev, tempComment]);
     setCommentLikes((prev) => ({ ...prev, [tempId]: { liked: false, count: 0 } }));
     setInput("");
+    setReplyTo(null);
     onCommentAdded();
 
     try {
       const res = await fetch(`/api/gallery/${category}/${index}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: tempComment.content }),
+        body: JSON.stringify({ content: tempComment.content, parentId }),
       });
       if (res.ok) {
         const comment: GalleryComment = await res.json();
@@ -253,13 +253,145 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
     }
   };
 
+  const canDeleteComment = (comment: GalleryComment) => {
+    const byEmail = !!(myEmail && comment.author_email?.toLowerCase() === myEmail);
+    const byUsername = !!(user?.username && comment.author_username === user.username);
+    return byEmail || byUsername;
+  };
+
+  const handleDelete = async (comment: GalleryComment) => {
+    if (!canDeleteComment(comment)) return;
+    const isRoot = !comment.parent_id;
+    const replyCount = isRoot ? commentsRef.current.filter((c) => c.parent_id === comment.id).length : 0;
+    const message = isRoot && replyCount > 0
+      ? `댓글과 대댓글 ${replyCount}개를 삭제할까요?`
+      : "댓글을 삭제할까요?";
+    if (!window.confirm(message)) return;
+
+    setDeletingIds((prev) => new Set(prev).add(comment.id));
+    const prevComments = commentsRef.current;
+    const prevLikes = commentLikes;
+    const removeIds = new Set<string>([comment.id]);
+    if (isRoot) {
+      prevComments.forEach((c) => { if (c.parent_id === comment.id) removeIds.add(c.id); });
+    }
+    const nextComments = prevComments.filter((c) => !removeIds.has(c.id));
+    setComments(nextComments);
+    setCommentLikes((prev) => {
+      const next = { ...prev };
+      removeIds.forEach((id) => delete next[id]);
+      return next;
+    });
+    if (replyTo?.id && removeIds.has(replyTo.id)) {
+      setReplyTo(null);
+    }
+
+    try {
+      const res = await fetch(`/api/gallery/comments/${comment.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        setComments(prevComments);
+        setCommentLikes(prevLikes);
+        return;
+      }
+      const data = await res.json();
+      const deletedCount = typeof data.deletedCount === "number" ? data.deletedCount : removeIds.size;
+      onCommentDeleted?.(deletedCount);
+
+      const commentKey = `gallery_comments_${category}_${index}`;
+      const cached = getCached<{ comments: (GalleryComment & { user_liked?: boolean })[] }>(commentKey);
+      if (cached?.comments) {
+        setCached(commentKey, {
+          ...cached,
+          comments: cached.comments.filter((c) => !removeIds.has(c.id)),
+        });
+      }
+    } catch {
+      setComments(prevComments);
+      setCommentLikes(prevLikes);
+    } finally {
+      setDeletingIds((prev) => { const next = new Set(prev); next.delete(comment.id); return next; });
+    }
+  };
+
+  const rootComments = comments.filter((c) => !c.parent_id);
+  const getReplies = (parentId: string) => comments.filter((c) => c.parent_id === parentId);
+
+  const renderCommentItem = (c: GalleryComment, isReply = false, replyRoot?: GalleryComment) => {
+    const likeState = commentLikes[c.id] ?? { liked: false, count: c.like_count };
+    const isHighlight = c.id === highlightCommentId;
+    const targetRoot = replyRoot ?? c;
+    return (
+      <div
+        key={c.id}
+        ref={isHighlight ? highlightRef : undefined}
+        className={`gallery-comment-item${isReply ? " is-reply" : ""}`}
+      >
+        {c.author_icon_image ? (
+          <img src={c.author_icon_image} className="gallery-comment-avatar gallery-comment-avatar-img" alt="" />
+        ) : (
+          <div className="gallery-comment-avatar gallery-comment-avatar-default">
+            <span className="gallery-comment-avatar-head" />
+            <span className="gallery-comment-avatar-body" />
+          </div>
+        )}
+        <div className="gallery-comment-body">
+          <span className="gallery-comment-author">
+            {c.author_username
+              ? c.author_username
+              : c.author_email
+                ? maskEmail(c.author_email)
+                : "익명"}
+          </span>
+          <span className="gallery-comment-content">{c.content}</span>
+          <div className="gallery-comment-actions">
+            <button
+              type="button"
+              className="gallery-comment-action-btn"
+              onClick={() => setReplyTo(targetRoot)}
+            >
+              답글 달기
+            </button>
+            {canDeleteComment(c) && (
+              <button
+                type="button"
+                className="gallery-comment-action-btn delete"
+                onClick={() => void handleDelete(c)}
+                disabled={deletingIds.has(c.id)}
+              >
+                {deletingIds.has(c.id) ? "삭제중..." : "삭제"}
+              </button>
+            )}
+          </div>
+        </div>
+        <button
+          className={`gallery-comment-like-btn${likeState.liked ? " liked" : ""}${animatingIds.has(c.id) ? " heart-animate" : ""}`}
+          onClick={() => handleCommentLike(c.id)}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill={likeState.liked ? "#ef4444" : "none"}
+            stroke={likeState.liked ? "#ef4444" : "currentColor"}
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+          </svg>
+          {likeState.count > 0 && <span>{likeState.count}</span>}
+        </button>
+      </div>
+    );
+  };
+
   // 드래그 핸들러
-  function onDragStart(e: React.TouchEvent) {
+  function onDragStart(e: TouchEvent) {
     isDragging.current = true;
     dragStartY.current = e.touches[0].clientY;
   }
 
-  function onDragMove(e: React.TouchEvent) {
+  function onDragMove(e: TouchEvent) {
     if (!isDragging.current) return;
     const diff = e.touches[0].clientY - dragStartY.current;
     if (expanded) {
@@ -288,7 +420,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
     }
   }
 
-  const panelStyle: React.CSSProperties = {
+  const panelStyle: CSSProperties = {
     height: expanded ? "100dvh" : "70vh",
     borderRadius: expanded ? "0" : "20px 20px 0 0",
     transform: closing
@@ -329,54 +461,14 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
           {!loading && comments.length === 0 && (
             <p className="gallery-sheet-empty">첫 번째 댓글을 남겨보세요</p>
           )}
-          {comments.map((c) => {
-            const likeState = commentLikes[c.id] ?? { liked: false, count: c.like_count };
-            const isHighlight = c.id === highlightCommentId;
-            return (
-              <div
-                key={c.id}
-                ref={isHighlight ? highlightRef : undefined}
-                className="gallery-comment-item"
-              >
-                {c.author_icon_image ? (
-                  <img src={c.author_icon_image} className="gallery-comment-avatar gallery-comment-avatar-img" alt="" />
-                ) : (
-                  <div className="gallery-comment-avatar gallery-comment-avatar-default">
-                    <span className="gallery-comment-avatar-head" />
-                    <span className="gallery-comment-avatar-body" />
-                  </div>
-                )}
-                <div className="gallery-comment-body">
-                  <span className="gallery-comment-author">
-                    {c.author_username
-                      ? c.author_username
-                      : c.author_email
-                        ? maskEmail(c.author_email)
-                        : "익명"}
-                  </span>
-                  <span className="gallery-comment-content">{c.content}</span>
-                </div>
-                <button
-                  className={`gallery-comment-like-btn${likeState.liked ? " liked" : ""}${animatingIds.has(c.id) ? " heart-animate" : ""}`}
-                  onClick={() => handleCommentLike(c.id)}
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill={likeState.liked ? "#ef4444" : "none"}
-                    stroke={likeState.liked ? "#ef4444" : "currentColor"}
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                  </svg>
-                  {likeState.count > 0 && <span>{likeState.count}</span>}
-                </button>
+          {rootComments.map((comment) => (
+            <div key={comment.id} className="gallery-comment-thread">
+              {renderCommentItem(comment)}
+              <div className="gallery-comment-replies">
+                {getReplies(comment.id).map((reply) => renderCommentItem(reply, true, comment))}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
 
         <div className="gallery-sheet-emoji-row">
@@ -392,11 +484,20 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
           ))}
         </div>
 
+        {replyTo && (
+          <div className="gallery-replying-banner">
+            <span>
+              @{replyTo.author_username ?? (replyTo.author_email ? maskEmail(replyTo.author_email) : "익명")}님에게 답글 남기는 중...
+            </span>
+            <button type="button" onClick={() => setReplyTo(null)}>취소</button>
+          </div>
+        )}
+
         <div className="gallery-sheet-input-row">
           <div className="gallery-comment-avatar gallery-comment-avatar-sm" />
           <input
             className="gallery-sheet-input"
-            placeholder="회원님에 댓글을 남겨보세요."
+            placeholder={replyTo ? "답글 달기..." : "회원님에 댓글을 남겨보세요."}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}

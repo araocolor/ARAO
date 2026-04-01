@@ -501,6 +501,26 @@
   margin: 0 -6px;
 }
 
+.gallery-comment-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gallery-comment-replies {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 20px;
+  border-left: 1px solid #f1f5f9;
+  padding-left: 8px;
+}
+
+.gallery-comment-item.is-reply {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
 .gallery-comment-item.flash-highlight {
   animation: gallery-flash-highlight 2s ease-out forwards;
 }
@@ -570,6 +590,32 @@
   line-height: 1.5;
 }
 
+.gallery-comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.gallery-comment-action-btn {
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.2;
+  padding: 0;
+  cursor: pointer;
+}
+
+.gallery-comment-action-btn.delete {
+  color: #dc2626;
+}
+
+.gallery-comment-action-btn:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
 .gallery-comment-like-btn {
   display: flex;
   flex-direction: column;
@@ -618,6 +664,28 @@
 
 .gallery-sheet-emoji-btn:active {
   background: rgba(17, 17, 17, 0.06);
+}
+
+.gallery-replying-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px solid #f3f4f6;
+  background: #f8fafc;
+  font-size: 13px;
+  color: #374151;
+}
+
+.gallery-replying-banner button {
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
 }
 
 .gallery-sheet-input-row {

@@ -4,6 +4,7 @@ import { createNotification } from "@/lib/notifications";
 export type GalleryComment = {
   id: string;
   profile_id: string;
+  parent_id: string | null;
   item_category: string;
   item_index: number;
   content: string;
@@ -212,7 +213,8 @@ export async function createGalleryComment(
   category: string,
   index: number,
   profileId: string,
-  content: string
+  content: string,
+  parentId?: string | null
 ): Promise<GalleryComment | null> {
   const supabase = createSupabaseAdminClient();
 
@@ -220,6 +222,7 @@ export async function createGalleryComment(
     .from("gallery_comments")
     .insert({
       profile_id: profileId,
+      parent_id: parentId ?? null,
       item_category: category,
       item_index: index,
       content,
@@ -247,6 +250,78 @@ export async function createGalleryComment(
     author_icon_image: profile?.icon_image || null,
     author_email: profile?.email || null,
   } as GalleryComment;
+}
+
+/**
+ * 갤러리 댓글 삭제 (본인 댓글만 가능)
+ * - 부모 댓글 삭제 시 직속 대댓글도 함께 삭제
+ */
+export async function deleteGalleryComment(
+  commentId: string,
+  profileId: string
+): Promise<{ deletedCount: number } | null> {
+  const supabase = createSupabaseAdminClient();
+
+  const { data: target, error: targetError } = await supabase
+    .from("gallery_comments")
+    .select("id, profile_id, parent_id")
+    .eq("id", commentId)
+    .maybeSingle();
+
+  if (targetError) {
+    console.error("deleteGalleryComment target fetch error:", targetError);
+    return null;
+  }
+  if (!target) return { deletedCount: 0 };
+  if (target.profile_id !== profileId) return null;
+
+  if (target.parent_id) {
+    const { error } = await supabase
+      .from("gallery_comments")
+      .delete()
+      .eq("id", commentId);
+    if (error) {
+      console.error("deleteGalleryComment reply delete error:", error);
+      return null;
+    }
+    return { deletedCount: 1 };
+  }
+
+  // 부모 댓글이면 직속 대댓글까지 함께 삭제
+  const { data: children, error: childrenError } = await supabase
+    .from("gallery_comments")
+    .select("id")
+    .eq("parent_id", commentId);
+
+  if (childrenError) {
+    console.error("deleteGalleryComment children fetch error:", childrenError);
+    return null;
+  }
+
+  const childIds = (children ?? []).map((c) => c.id);
+  const { error: deleteRootError } = await supabase
+    .from("gallery_comments")
+    .delete()
+    .eq("id", commentId);
+
+  if (deleteRootError) {
+    console.error("deleteGalleryComment root delete error:", deleteRootError);
+    return null;
+  }
+
+  if (childIds.length > 0) {
+    const { error: deleteChildrenError } = await supabase
+      .from("gallery_comments")
+      .delete()
+      .in("id", childIds);
+
+    if (deleteChildrenError) {
+      console.error("deleteGalleryComment children delete error:", deleteChildrenError);
+      return null;
+    }
+  }
+
+  return { deletedCount: 1 + childIds.length };
 }
 
 /**
