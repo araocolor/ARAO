@@ -1,6 +1,7 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getUserReviewById, incrementUserReviewViewCount } from "@/lib/user-reviews";
+import { syncProfile } from "@/lib/profiles";
 import { UserContentHeader } from "@/components/user-content-header";
 import { UserContentInteractions } from "@/components/user-content-interactions";
 
@@ -39,7 +40,12 @@ export default async function MainUserContentPage({
   }
 
   await incrementUserReviewViewCount(id);
-  const isAuthor = userId === item.profileId;
+
+  // profiles.id(UUID)와 비교하기 위해 현재 사용자의 profile을 조회
+  const clerkUser = await currentUser();
+  const email = clerkUser?.primaryEmailAddress?.emailAddress ?? clerkUser?.emailAddresses[0]?.emailAddress;
+  const profile = await syncProfile({ email });
+  const isAuthor = !!profile && profile.id === item.profileId;
 
   // 단일 이미지 또는 JSON 배열 파싱
   let contentImages: string[] = [];
