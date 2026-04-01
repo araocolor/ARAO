@@ -33,6 +33,13 @@ function formatTitle(title: string): React.ReactNode {
   return <><strong>{maskedName}</strong>{rest}</>;
 }
 
+function getSenderName(title: string): string | null {
+  const idx = title.indexOf("님이");
+  if (idx <= 0) return null;
+  const name = title.slice(0, idx).trim();
+  return name || null;
+}
+
 // 상대 시간 포맷 함수
 function formatRelativeTime(isoString: string): string {
   const now = Date.now();
@@ -70,6 +77,8 @@ const TYPE_LABEL: Record<string, string> = {
   consulting: "1:1 상담",
   review_reply: "사용자 후기",
   gallery_like: "갤러리",
+  gallery_reply: "갤러리",
+  gallery_comment_deleted: "갤러리",
 };
 
 // 알림 타입별 아이콘 이모지
@@ -80,6 +89,8 @@ const TYPE_ICON: Record<string, string> = {
   consulting: "💬",
   review_reply: "📝",
   gallery_like: "❤️",
+  gallery_reply: "💬",
+  gallery_comment_deleted: "🗑️",
 };
 
 export function NotificationDrawer({
@@ -122,6 +133,9 @@ export function NotificationDrawer({
 
   if (!isMounted) return null;
   const headerDisplayName = username || (email ? maskEmail(email) : "");
+  const sortedItems = [...items].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
 
   const handleItemClick = (item: NotificationItem) => {
     // settings/consulting 제외, 나머지는 즉시 읽음 처리
@@ -183,42 +197,52 @@ export function NotificationDrawer({
           <div className="notif-empty">알림이 없습니다.</div>
         ) : (
           <div className="notif-list">
-            {(expanded ? items : items.slice(0, 5)).map((item) => {
+            {(expanded ? sortedItems : sortedItems.slice(0, 5)).map((item) => {
               const isRead = item.is_read || optimisticReadIds.has(item.id);
+              const senderName = getSenderName(item.title);
+              const senderInitial = senderName ? senderName.slice(0, 1).toUpperCase() : "?";
+              const shouldAppendTimestamp =
+                item.link.includes("commentId") &&
+                (item.type === "gallery_like" ||
+                  item.type === "gallery_reply" ||
+                  item.type === "gallery_comment_deleted");
               return (
               <Link
                 key={item.id}
-                href={item.type === "gallery_like" && item.link.includes("commentId") ? `${item.link}&t=${Date.now()}` : item.link}
+                href={shouldAppendTimestamp ? `${item.link}&t=${Date.now()}` : item.link}
                 className={`notif-item ${!isRead ? "is-unread" : ""}`}
                 onClick={() => handleItemClick(item)}
               >
-                <div className={`notif-item-icon notif-icon-${item.type}`}>
-                  {TYPE_ICON[item.type] || "🔔"}
-                </div>
+                {item.sender_icon ? (
+                  <img src={item.sender_icon} className="notif-sender-avatar" alt="" />
+                ) : (
+                  <span className="notif-sender-avatar notif-sender-avatar-default">
+                    <span className="notif-sender-initial">{senderInitial}</span>
+                  </span>
+                )}
                 <div className="notif-item-body">
                   <p className="notif-item-title">{formatTitle(item.title)}</p>
                   <p className="notif-item-time">
                     {formatRelativeTime(item.created_at)}
                   </p>
                 </div>
-                {item.sender_icon ? (
-                  <img src={item.sender_icon} className="notif-sender-avatar" alt="" />
+                {item.related_image ? (
+                  <img src={item.related_image} className="notif-related-thumb" alt="" loading="lazy" />
                 ) : (
-                  <span className="notif-sender-avatar notif-sender-avatar-default">
-                    <span className="notif-sender-head" />
-                    <span className="notif-sender-body" />
+                  <span className="notif-related-thumb notif-related-thumb-empty" aria-hidden="true">
+                    {TYPE_ICON[item.type] || "🔔"}
                   </span>
                 )}
               </Link>
               );
             })}
-            {!expanded && items.length > 5 && (
+            {!expanded && sortedItems.length > 5 && (
               <button
                 className="notif-more-btn"
                 onClick={() => setExpanded(true)}
                 type="button"
               >
-                더보기 ({items.length - 5}개)
+                더보기 ({sortedItems.length - 5}개)
               </button>
             )}
           </div>

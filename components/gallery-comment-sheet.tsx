@@ -15,6 +15,37 @@ function maskEmail(email: string): string {
   return local.slice(0, 2) + "***" + domain;
 }
 
+function formatCommentRelativeTime(isoString: string, nowMs: number): string {
+  const then = new Date(isoString).getTime();
+  if (Number.isNaN(then)) return "";
+  const diffMs = Math.max(nowMs - then, 0);
+
+  const seconds = Math.floor(diffMs / 1000);
+  if (seconds < 60) return `${seconds}초전`;
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}분전`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}시간전`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}일전`;
+
+  if (days < 30) {
+    const weeks = Math.floor(days / 7);
+    return `${weeks}주일전`;
+  }
+
+  if (days < 365) {
+    const months = Math.floor(days / 30);
+    return `${months}개월전`;
+  }
+
+  const years = Math.floor(days / 365);
+  return `${years}년전`;
+}
+
 type Props = {
   category: string;
   index: number;
@@ -46,6 +77,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
   const [expanded, setExpanded] = useState(false);
   const [replyTo, setReplyTo] = useState<ReplyContext | null>(null);
   const [dragY, setDragY] = useState(0);
+  const [nowTick, setNowTick] = useState(() => Date.now());
   const isDragging = useRef(false);
   const dragStartY = useRef(0);
   const highlightRef = useRef<HTMLDivElement>(null);
@@ -66,6 +98,12 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
 
   // commentsRef를 항상 최신 상태로 유지 (Realtime 핸들러에서 사용)
   useEffect(() => { commentsRef.current = comments; }, [comments]);
+
+  // 상대시간 표시 갱신
+  useEffect(() => {
+    const timer = setInterval(() => setNowTick(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!deleteConfirmId) return;
@@ -357,6 +395,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
     const isHighlight = c.id === highlightCommentId;
     const isDeleted = isDeletedComment(c);
     const isDeleteConfirmOpen = deleteConfirmId === c.id && !isDeleted;
+    const relativeTime = formatCommentRelativeTime(c.created_at, nowTick);
     return (
       <div
         key={c.id}
@@ -372,12 +411,15 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
           </div>
         )}
         <div className="gallery-comment-body">
-          <span className="gallery-comment-author">
-            {c.author_username
-              ? c.author_username
-              : c.author_email
-                ? maskEmail(c.author_email)
-                : "익명"}
+          <span className="gallery-comment-author-row">
+            <span className="gallery-comment-author">
+              {c.author_username
+                ? c.author_username
+                : c.author_email
+                  ? maskEmail(c.author_email)
+                  : "익명"}
+            </span>
+            {relativeTime && <span className="gallery-comment-time">{relativeTime}</span>}
           </span>
           <span className={`gallery-comment-content${isDeleted ? " is-deleted" : ""}`}>
             {isDeleted ? ROOT_SOFT_DELETE_BLIND_TEXT : c.content}

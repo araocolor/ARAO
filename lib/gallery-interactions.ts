@@ -255,6 +255,28 @@ export async function createGalleryComment(
     .eq("id", profileId)
     .single();
 
+  // 대댓글 작성 시: 부모 댓글 작성자에게 알림 (본인 제외)
+  if (parentId) {
+    const { data: parentComment } = await supabase
+      .from("gallery_comments")
+      .select("id, profile_id, item_category, item_index")
+      .eq("id", parentId)
+      .maybeSingle();
+
+    if (parentComment && parentComment.profile_id !== profileId) {
+      const commenterName =
+        profile?.username || (profile?.email ? maskEmail(profile.email) : null) || "누군가";
+      await createNotification(
+        parentComment.profile_id,
+        "gallery_reply",
+        `${commenterName}님이 댓글을 남겼습니다`,
+        `/gallery?category=${parentComment.item_category}&index=${parentComment.item_index}&commentId=${data.id}`,
+        data.id,
+        profile?.icon_image ?? null
+      );
+    }
+  }
+
   return {
     ...data,
     author_username: profile?.username || null,
@@ -276,7 +298,7 @@ export async function deleteGalleryComment(
 
   const { data: target, error: targetError } = await supabase
     .from("gallery_comments")
-    .select("id, profile_id, parent_id, content")
+    .select("id, profile_id, parent_id, content, item_category, item_index")
     .eq("id", commentId)
     .maybeSingle();
 
@@ -326,6 +348,48 @@ export async function deleteGalleryComment(
     if (softDeleteError) {
       console.error("deleteGalleryComment soft delete error:", softDeleteError);
       return null;
+    }
+
+    // 원댓글에 대댓글을 남긴 사용자에게 원댓글 삭제 알림 (본인 제외)
+    const { data: childComments, error: childCommentsError } = await supabase
+      .from("gallery_comments")
+      .select("profile_id")
+      .eq("parent_id", commentId);
+
+    if (childCommentsError) {
+      console.error("deleteGalleryComment child comments fetch error:", childCommentsError);
+    } else {
+      const recipientProfileIds = Array.from(
+        new Set(
+          (childComments ?? [])
+            .map((c) => c.profile_id)
+            .filter((id): id is string => Boolean(id) && id !== profileId)
+        )
+      );
+
+      if (recipientProfileIds.length > 0) {
+        const { data: deleter } = await supabase
+          .from("profiles")
+          .select("username, email, icon_image")
+          .eq("id", profileId)
+          .maybeSingle();
+
+        const deleterName =
+          deleter?.username || (deleter?.email ? maskEmail(deleter.email) : null) || "누군가";
+
+        await Promise.all(
+          recipientProfileIds.map((recipientProfileId) =>
+            createNotification(
+              recipientProfileId,
+              "gallery_comment_deleted",
+              `${deleterName}님이 댓글을 삭제하였습니다`,
+              `/gallery?category=${target.item_category}&index=${target.item_index}&commentId=${commentId}`,
+              `${commentId}:deleted`,
+              deleter?.icon_image ?? null
+            )
+          )
+        );
+      }
     }
 
     return { deletedCount: 0, softDeleted: true };

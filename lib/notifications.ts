@@ -1,15 +1,44 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getLandingContent } from "@/lib/landing-content";
+import { GALLERY_CATEGORIES } from "@/lib/gallery-categories";
 
 export type NotificationItem = {
   id: string;
-  type: "settings" | "order_shipped" | "order_cancelled" | "consulting" | "review_reply" | "gallery_like";
+  type:
+    | "settings"
+    | "order_shipped"
+    | "order_cancelled"
+    | "consulting"
+    | "review_reply"
+    | "gallery_like"
+    | "gallery_reply"
+    | "gallery_comment_deleted";
   title: string;
   link: string;
   source_id?: string;
   is_read: boolean;
   created_at: string;
   sender_icon?: string | null;
+  related_image?: string | null;
 };
+
+function parseGalleryCategoryFromLink(link: string): string | null {
+  try {
+    const url = new URL(link, "https://arao.local");
+    const category = url.searchParams.get("category");
+    if (category) return category;
+
+    const indexRaw = url.searchParams.get("index");
+    const index = indexRaw ? parseInt(indexRaw, 10) : NaN;
+    if (!Number.isNaN(index) && index >= 0 && index < GALLERY_CATEGORIES.length) {
+      return GALLERY_CATEGORIES[index];
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
 
 /**
  * 모든 알림 소스에서 집계 (settings, consulting, notifications 테이블)
@@ -116,6 +145,44 @@ export async function getNotificationsForProfile(
       }))
     );
     unreadCount += inquiries.filter((inq) => inq.has_unread_reply).length;
+  }
+
+  // 4. 갤러리 관련 알림 우측 썸네일 연결 (landingContent의 thumb 사용)
+  const hasGalleryNotifications = items.some(
+    (item) =>
+      item.type === "gallery_like" ||
+      item.type === "gallery_reply" ||
+      item.type === "gallery_comment_deleted"
+  );
+
+  if (hasGalleryNotifications) {
+    try {
+      const landingContent = await getLandingContent();
+      const galleryThumbMap: Record<string, string> = {};
+      for (const category of GALLERY_CATEGORIES) {
+        const thumb =
+          landingContent.gallery[category]?.afterImage ||
+          landingContent.gallery[category]?.beforeImage ||
+          "";
+        if (thumb) galleryThumbMap[category] = thumb;
+      }
+
+      for (const item of items) {
+        if (
+          item.type !== "gallery_like" &&
+          item.type !== "gallery_reply" &&
+          item.type !== "gallery_comment_deleted"
+        ) {
+          item.related_image = null;
+          continue;
+        }
+
+        const category = parseGalleryCategoryFromLink(item.link);
+        item.related_image = category ? (galleryThumbMap[category] ?? null) : null;
+      }
+    } catch (error) {
+      console.error("getNotificationsForProfile gallery thumb resolve error:", error);
+    }
   }
 
   // items를 created_at 기준으로 정렬 (settings는 이미 맨 위)

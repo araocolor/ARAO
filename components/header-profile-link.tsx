@@ -66,9 +66,13 @@ export function HeaderProfileLink() {
         if (data.email) setEmail(data.email);
         setNotificationEnabled(data.notificationEnabled ?? true);
 
-        // 새 알림(gallery_like)의 댓글 미리 캐시
+        // 새 갤러리 알림의 댓글 미리 캐시
         const unreadGallery = (data.items as NotificationItem[]).filter(
-          (item) => item.type === "gallery_like" && !item.is_read
+          (item) =>
+            !item.is_read &&
+            (item.type === "gallery_like" ||
+              item.type === "gallery_reply" ||
+              item.type === "gallery_comment_deleted")
         );
         for (const item of unreadGallery) {
           try {
