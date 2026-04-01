@@ -55,6 +55,7 @@ export function HeaderProfileLink() {
 
   // 알림 목록 조회 (백그라운드)
   async function fetchNotificationItems() {
+    setIsLoadingNotifications(true);
     try {
       const response = await fetch("/api/account/notifications");
       if (response.ok) {
@@ -216,6 +217,7 @@ export function HeaderProfileLink() {
           isOpen={drawerOpen}
           isMounted={drawerMounted}
           items={items}
+          isLoading={isLoadingNotifications}
           username={username}
           email={email}
           onClose={closeDrawer}

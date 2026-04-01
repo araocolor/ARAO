@@ -8,6 +8,7 @@ type NotificationDrawerProps = {
   isOpen: boolean;
   isMounted: boolean;
   items: NotificationItem[];
+  isLoading?: boolean;
   username: string | null;
   email: string | null;
   onClose: () => void;
@@ -97,6 +98,7 @@ export function NotificationDrawer({
   isOpen,
   isMounted,
   items,
+  isLoading = false,
   username,
   email,
   onClose,
@@ -193,7 +195,9 @@ export function NotificationDrawer({
         </div>
 
         {/* 알림 목록 */}
-        {items.length === 0 ? (
+        {isLoading && items.length === 0 ? (
+          <div className="notif-empty">불러오는 중...</div>
+        ) : items.length === 0 ? (
           <div className="notif-empty">알림이 없습니다.</div>
         ) : (
           <div className="notif-list">
