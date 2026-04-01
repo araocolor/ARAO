@@ -23,6 +23,20 @@ type GalleryCardProps = {
   openTimestamp?: string;
 };
 
+type LikeUser = {
+  profile_id: string;
+  username: string | null;
+  email: string | null;
+  icon_image: string | null;
+  created_at: string | null;
+};
+
+function extractLikeUsers(data: { users?: LikeUser[] }): LikeUser[] {
+  const users = Array.isArray(data.users) ? data.users : [];
+  // 첫 번째 사용자는 본문 "누구님이 좋아합니다"에서 이미 표시되어 제외
+  return users.slice(1);
+}
+
 export function GalleryCard({
   category,
   index,
@@ -52,7 +66,7 @@ export function GalleryCard({
   const [likeUsersSheetExpanded, setLikeUsersSheetExpanded] = useState(false);
   const [likeUsersSheetDragY, setLikeUsersSheetDragY] = useState(0);
   const [likeUsersLoading, setLikeUsersLoading] = useState(false);
-  const [likeUsers, setLikeUsers] = useState<Array<{ profile_id: string; username: string | null; email: string | null; icon_image: string | null; created_at: string | null }>>([]);
+  const [likeUsers, setLikeUsers] = useState<LikeUser[]>([]);
   const [likeUsersSearch, setLikeUsersSearch] = useState("");
   const [profileCheckLoading, setProfileCheckLoading] = useState(false);
   const [usernamePromptOpen, setUsernamePromptOpen] = useState(false);
@@ -61,6 +75,7 @@ export function GalleryCard({
   const likeUsersSheetDraggingRef = useRef(false);
   const likeUsersSheetDragStartYRef = useRef(0);
   const cardCacheKey = `gallery_card_${category}_${index}_${user?.id ?? "guest"}`;
+  const likeUsersCacheKey = `gallery_like_users_${category}_${index}`;
   const generalCacheKey = `general_${(user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress ?? "guest").toLowerCase()}`;
 
   function maskEmail(email: string): string {
@@ -139,6 +154,16 @@ export function GalleryCard({
                 applyData(data);
                 setCached(cardCacheKey, data);
               }
+              // 좋아요 시트 사용자 목록 미리 캐시 (클릭 즉시 표시용)
+              if ((data.count ?? 0) > 1 && !getCached<{ users: LikeUser[] }>(likeUsersCacheKey)) {
+                fetch(`/api/gallery/${category}/${index}/likes/users`)
+                  .then((r) => (r.ok ? r.json() : Promise.reject(new Error("likes users fetch failed"))))
+                  .then((usersData) => {
+                    const users = extractLikeUsers(usersData);
+                    setCached(likeUsersCacheKey, { users });
+                  })
+                  .catch(() => {});
+              }
             })
             .catch(() => {});
           // 댓글 미리 캐시 (댓글창 열면 즉시 표시)
@@ -156,7 +181,7 @@ export function GalleryCard({
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [category, index, isSignedIn, cardCacheKey]);
+  }, [category, index, isSignedIn, cardCacheKey, likeUsersCacheKey]);
 
   // Supabase Realtime: 다른 사용자의 좋아요 변경 실시간 반영
   useEffect(() => {
@@ -249,19 +274,33 @@ export function GalleryCard({
     setLikeUsersSheetExpanded(false);
     setLikeUsersSheetDragY(0);
     setLikeUsersSheetOpen(true);
-    if (likeUsers.length > 0) return;
-    setLikeUsersLoading(true);
+
+    const cachedLikeUsers = getCached<{ users: LikeUser[] }>(likeUsersCacheKey);
+    if (cachedLikeUsers) {
+      setLikeUsers(cachedLikeUsers.users);
+    }
+
+    const hasInstantData = Boolean(cachedLikeUsers) || likeUsers.length > 0;
+    if (!hasInstantData) {
+      setLikeUsersLoading(true);
+    }
+
     try {
       const res = await fetch(`/api/gallery/${category}/${index}/likes/users`);
       if (res.ok) {
         const data = await res.json();
-        const users = Array.isArray(data.users) ? data.users : [];
-        setLikeUsers(users.slice(1));
+        const users = extractLikeUsers(data);
+        setLikeUsers(users);
+        setCached(likeUsersCacheKey, { users });
       }
     } catch {
-      setLikeUsers([]);
+      if (!hasInstantData) {
+        setLikeUsers([]);
+      }
     } finally {
-      setLikeUsersLoading(false);
+      if (!hasInstantData) {
+        setLikeUsersLoading(false);
+      }
     }
   };
 
@@ -363,7 +402,7 @@ export function GalleryCard({
   });
 
   const likeUsersPanelStyle: CSSProperties = {
-    height: likeUsersSheetExpanded ? "100dvh" : "70vh",
+    height: likeUsersSheetExpanded ? "100dvh" : "40vh",
     borderRadius: likeUsersSheetExpanded ? "0" : "20px 20px 0 0",
     transform: likeUsersSheetClosing
       ? "translateY(100%)"
