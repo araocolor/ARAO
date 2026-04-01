@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LandingPageFooter } from "@/components/landing-page-footer";
 import { LandingPageHeader } from "@/components/landing-page-header";
 import { getLandingContent } from "@/lib/landing-content";
@@ -35,24 +36,31 @@ export default async function AraoPage() {
         </section>
 
         <section className="landing-stack-sm">
-          <span className="landing-section-label">{landingContent.reviews.sectionTitle}</span>
+          <Link href="/user_review" className="landing-review-section-link">
+            <span className="landing-section-label">{landingContent.reviews.sectionTitle}</span>
+          </Link>
           <div className="landing-reviews">
             {landingContent.reviews.items.map((item) => (
-              <article
+              <Link
+                href="/user_review"
                 key={`${item.name}-${item.detail}`}
-                className={
-                  item.variant === "glass"
-                    ? "landing-card landing-card-glass landing-stack-xs"
-                    : "landing-card landing-card-review landing-stack-xs"
-                }
+                className="landing-review-card-link"
               >
-                <p className="landing-review-quote">{item.quote}</p>
-                <div className="landing-review-rating">{item.rating}</div>
-                <div className="landing-stack-xs">
-                  <p className="landing-review-name">{item.name}</p>
-                  <p className="landing-review-detail">{item.detail}</p>
-                </div>
-              </article>
+                <article
+                  className={
+                    item.variant === "glass"
+                      ? "landing-card landing-card-glass landing-stack-xs"
+                      : "landing-card landing-card-review landing-stack-xs"
+                  }
+                >
+                  <p className="landing-review-quote">{item.quote}</p>
+                  <div className="landing-review-rating">{item.rating}</div>
+                  <div className="landing-stack-xs">
+                    <p className="landing-review-name">{item.name}</p>
+                    <p className="landing-review-detail">{item.detail}</p>
+                  </div>
+                </article>
+              </Link>
             ))}
           </div>
         </section>
