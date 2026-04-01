@@ -144,6 +144,17 @@ export function HeaderProfileLink() {
       const detail = (e as CustomEvent<{ enabled: boolean }>).detail;
       if (typeof detail?.enabled === "boolean") {
         setNotificationEnabled(detail.enabled);
+        if (detail.enabled) {
+          // 켜면 현재 badgeCount를 localStorage에 반영
+          setBadgeCount((prev) => {
+            localStorage.setItem("header-badge-count", String(prev));
+            return prev;
+          });
+        } else {
+          // 끄면 배지 0으로 즉시 반영
+          setBadgeCount(0);
+          localStorage.setItem("header-badge-count", "0");
+        }
       }
     }
     window.addEventListener("notification-setting-updated", handleNotificationSettingUpdated);
