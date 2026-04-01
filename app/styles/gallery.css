@@ -578,6 +578,53 @@
   min-width: 0;
 }
 
+.gallery-comment-delete-popover {
+  background: #111827;
+  color: #fff;
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+.gallery-comment-delete-popover-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.gallery-comment-delete-popover-actions {
+  margin-top: 6px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.gallery-comment-delete-popover-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.gallery-comment-delete-popover-btn.cancel {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.gallery-comment-delete-popover-btn.confirm {
+  background: #ef4444;
+  color: #fff;
+}
+
+.gallery-comment-delete-popover-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
 .gallery-comment-author {
   font-size: 15px;
   font-weight: 700;

@@ -34,6 +34,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
   const [commentLikes, setCommentLikes] = useState<Record<string, { liked: boolean; count: number }>>({});
   const [animatingIds, setAnimatingIds] = useState<Set<string>>(new Set());
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [replyTo, setReplyTo] = useState<GalleryComment | null>(null);
@@ -58,6 +59,13 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
 
   // commentsRef를 항상 최신 상태로 유지 (Realtime 핸들러에서 사용)
   useEffect(() => { commentsRef.current = comments; }, [comments]);
+
+  useEffect(() => {
+    if (!deleteConfirmId) return;
+    if (!comments.some((c) => c.id === deleteConfirmId)) {
+      setDeleteConfirmId(null);
+    }
+  }, [comments, deleteConfirmId]);
 
   useEffect(() => {
     const commentKey = `gallery_comments_${category}_${index}`;
@@ -259,15 +267,22 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
     return byEmail || byUsername;
   };
 
+  const getDeleteMessage = (comment: GalleryComment) => {
+    const isRoot = !comment.parent_id;
+    if (!isRoot) return "댓글을 삭제할까요?";
+    const replyCount = commentsRef.current.filter((c) => c.parent_id === comment.id).length;
+    return replyCount > 0 ? `댓글과 대댓글 ${replyCount}개를 삭제할까요?` : "댓글을 삭제할까요?";
+  };
+
+  const requestDelete = (comment: GalleryComment) => {
+    if (!canDeleteComment(comment)) return;
+    setDeleteConfirmId(comment.id);
+  };
+
   const handleDelete = async (comment: GalleryComment) => {
     if (!canDeleteComment(comment)) return;
+    setDeleteConfirmId(null);
     const isRoot = !comment.parent_id;
-    const replyCount = isRoot ? commentsRef.current.filter((c) => c.parent_id === comment.id).length : 0;
-    const message = isRoot && replyCount > 0
-      ? `댓글과 대댓글 ${replyCount}개를 삭제할까요?`
-      : "댓글을 삭제할까요?";
-    if (!window.confirm(message)) return;
-
     setDeletingIds((prev) => new Set(prev).add(comment.id));
     const prevComments = commentsRef.current;
     const prevLikes = commentLikes;
@@ -320,6 +335,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
     const likeState = commentLikes[c.id] ?? { liked: false, count: c.like_count };
     const isHighlight = c.id === highlightCommentId;
     const targetRoot = replyRoot ?? c;
+    const isDeleteConfirmOpen = deleteConfirmId === c.id;
     return (
       <div
         key={c.id}
@@ -335,6 +351,28 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
           </div>
         )}
         <div className="gallery-comment-body">
+          {isDeleteConfirmOpen && (
+            <div className="gallery-comment-delete-popover" onClick={(e) => e.stopPropagation()}>
+              <p className="gallery-comment-delete-popover-text">{getDeleteMessage(c)}</p>
+              <div className="gallery-comment-delete-popover-actions">
+                <button
+                  type="button"
+                  className="gallery-comment-delete-popover-btn cancel"
+                  onClick={() => setDeleteConfirmId(null)}
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  className="gallery-comment-delete-popover-btn confirm"
+                  onClick={() => void handleDelete(c)}
+                  disabled={deletingIds.has(c.id)}
+                >
+                  {deletingIds.has(c.id) ? "삭제중..." : "삭제"}
+                </button>
+              </div>
+            </div>
+          )}
           <span className="gallery-comment-author">
             {c.author_username
               ? c.author_username
@@ -347,7 +385,10 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
             <button
               type="button"
               className="gallery-comment-action-btn"
-              onClick={() => setReplyTo(targetRoot)}
+              onClick={() => {
+                setReplyTo(targetRoot);
+                setDeleteConfirmId(null);
+              }}
             >
               답글 달기
             </button>
@@ -355,7 +396,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
               <button
                 type="button"
                 className="gallery-comment-action-btn delete"
-                onClick={() => void handleDelete(c)}
+                onClick={() => requestDelete(c)}
                 disabled={deletingIds.has(c.id)}
               >
                 {deletingIds.has(c.id) ? "삭제중..." : "삭제"}
