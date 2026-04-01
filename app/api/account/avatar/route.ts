@@ -14,7 +14,10 @@ export async function GET() {
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || null;
   const profile = await syncProfile({ email, fullName });
 
-  return NextResponse.json({ iconImage: profile?.icon_image ?? null });
+  return NextResponse.json(
+    { iconImage: profile?.icon_image ?? null },
+    { headers: { "Cache-Control": "private, max-age=60" } }
+  );
 }
 
 export async function POST(request: Request) {

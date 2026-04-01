@@ -26,8 +26,13 @@ export function HeaderProfileLink() {
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 배지 카운트: items 중 is_read = false인 개수
-  const badgeCount = items.filter((item) => !item.is_read).length;
+  // 배지 카운트: localStorage 초기값으로 즉시 표시 (Clerk 인증 대기 없음)
+  const [badgeCount, setBadgeCount] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      return Number(localStorage.getItem("header-badge-count") ?? 0);
+    }
+    return 0;
+  });
 
   // 아바타만 먼저 조회 (빠른 업데이트)
   async function fetchAvatar() {
@@ -62,6 +67,9 @@ export function HeaderProfileLink() {
           notificationEnabled?: boolean;
         };
         setItems(data.items);
+        const unread = data.items.filter((item) => !item.is_read).length;
+        setBadgeCount(unread);
+        localStorage.setItem("header-badge-count", String(unread));
         if (data.username) setUsername(data.username);
         if (data.email) setEmail(data.email);
         setNotificationEnabled(data.notificationEnabled ?? true);
@@ -112,7 +120,9 @@ export function HeaderProfileLink() {
       void fetchNotificationItems();
     } else if (isSignedIn === false) {
       setIconImage(null);
+      setBadgeCount(0);
       localStorage.removeItem("header-avatar");
+      localStorage.removeItem("header-badge-count");
     }
   }, [isSignedIn]);
 
@@ -209,7 +219,13 @@ export function HeaderProfileLink() {
           username={username}
           email={email}
           onClose={closeDrawer}
-          onMarkRead={(id) => setItems((prev) => prev.map((item) => item.id === id ? { ...item, is_read: true } : item))}
+          onMarkRead={(id) => setItems((prev) => {
+            const next = prev.map((item) => item.id === id ? { ...item, is_read: true } : item);
+            const unread = next.filter((item) => !item.is_read).length;
+            setBadgeCount(unread);
+            localStorage.setItem("header-badge-count", String(unread));
+            return next;
+          })}
         />
       )}
     </>
