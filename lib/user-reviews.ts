@@ -144,6 +144,7 @@ export async function createUserReview(params: {
   category: string;
   title: string;
   content: string;
+  thumbnailImage?: string;
 }): Promise<{ id: string } | null> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -153,6 +154,7 @@ export async function createUserReview(params: {
       category: params.category,
       title: params.title,
       content: params.content,
+      ...(params.thumbnailImage ? { thumbnail_image: params.thumbnailImage } : {}),
     })
     .select("id")
     .single();

@@ -6,6 +6,39 @@ import { useUser } from "@clerk/nextjs";
 
 type Category = "일반" | "공지";
 
+const MAX_WIDTH = 1024;
+const QUALITY = 0.7;
+const MAX_BYTES = 1 * 1024 * 1024; // 1MB
+
+function compressImage(file: File): Promise<string | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const src = e.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const scale = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { resolve(null); return; }
+        ctx.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL("image/jpeg", QUALITY);
+        // base64 → bytes 추정
+        const bytes = Math.round((dataUrl.length - "data:image/jpeg;base64,".length) * 0.75);
+        if (bytes > MAX_BYTES) { resolve(null); return; }
+        resolve(dataUrl);
+      };
+      img.onerror = () => resolve(null);
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function WriteReviewPage() {
   const router = useRouter();
   const { isSignedIn } = useUser();
@@ -14,11 +47,29 @@ export default function WriteReviewPage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handleCancel() {
     router.back();
+  }
+
+  async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!imageInputRef.current) return;
+    imageInputRef.current.value = "";
+    if (!file) return;
+
+    setImageError(null);
+    const result = await compressImage(file);
+    if (!result) {
+      setImageError("파일 1MB 이하로 업로드 가능합니다.");
+      setImagePreview(null);
+      return;
+    }
+    setImagePreview(result);
   }
 
   async function handleSave() {
@@ -32,7 +83,12 @@ export default function WriteReviewPage() {
       const res = await fetch("/api/main/user-review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category, title: title.trim(), content: content.trim() }),
+        body: JSON.stringify({
+          category,
+          title: title.trim(),
+          content: content.trim(),
+          thumbnailImage: imagePreview ?? undefined,
+        }),
       });
       if (res.ok) {
         router.push("/user_review");
@@ -119,6 +175,26 @@ export default function WriteReviewPage() {
           value={content}
           onChange={(e) => setContent(e.target.value)}
         />
+
+        {/* 이미지 프리뷰 */}
+        {imagePreview && (
+          <div className="write-review-image-preview">
+            <img src={imagePreview} alt="첨부 이미지" />
+            <button
+              type="button"
+              className="write-review-image-remove"
+              onClick={() => setImagePreview(null)}
+              aria-label="이미지 제거"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* 이미지 오류 메시지 */}
+        {imageError && (
+          <p className="write-review-image-error">{imageError}</p>
+        )}
       </div>
 
       {/* 하단 툴바 */}
@@ -160,7 +236,13 @@ export default function WriteReviewPage() {
           {saving ? "저장 중..." : "저장하기"}
         </button>
 
-        <input ref={imageInputRef} type="file" accept="image/*" style={{ display: "none" }} />
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={handleImageChange}
+        />
         <input ref={fileInputRef} type="file" style={{ display: "none" }} />
       </footer>
     </main>

@@ -488,3 +488,41 @@
   cursor: default;
 }
 
+.write-review-image-preview {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.write-review-image-preview img {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.write-review-image-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  border: none;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.write-review-image-error {
+  margin: 0;
+  font-size: 13px;
+  color: #ef4444;
+}
+

@@ -48,16 +48,17 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = (await request.json()) as { category?: string; title?: string; content?: string };
+    const body = (await request.json()) as { category?: string; title?: string; content?: string; thumbnailImage?: string };
     const title = (body.title ?? "").trim();
     const content = (body.content ?? "").trim();
     const category = (body.category ?? "일반").trim();
+    const thumbnailImage = body.thumbnailImage ?? undefined;
 
     if (!title) {
       return NextResponse.json({ message: "제목을 입력해주세요." }, { status: 400 });
     }
 
-    const result = await createUserReview({ profileId: profile.id, category, title, content });
+    const result = await createUserReview({ profileId: profile.id, category, title, content, thumbnailImage });
     if (!result) {
       return NextResponse.json({ message: "저장에 실패했습니다." }, { status: 500 });
     }
