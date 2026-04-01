@@ -53,6 +53,8 @@ function WriteReviewContent() {
   const [saving, setSaving] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [attachedFile, setAttachedFile] = useState<{ name: string; type: string; data: string } | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -73,6 +75,12 @@ function WriteReviewContent() {
           } catch {
             setImages([d.thumbnailImage]);
           }
+        }
+        if (d.attachedFile) {
+          try {
+            const parsed = JSON.parse(d.attachedFile);
+            if (parsed && typeof parsed.name === "string") setAttachedFile(parsed);
+          } catch {}
         }
       })
       .catch(() => {});
@@ -127,6 +135,26 @@ function WriteReviewContent() {
     setImageError(null);
   }
 
+  const FILE_MAX_BYTES = 5 * 1024 * 1024; // 5MB
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (!file) return;
+    setFileError(null);
+    if (file.size > FILE_MAX_BYTES) {
+      setFileError("파일은 5MB 이하만 첨부 가능합니다.");
+      return;
+    }
+    const data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => resolve(ev.target?.result as string);
+      reader.onerror = () => reject();
+      reader.readAsDataURL(file);
+    });
+    setAttachedFile({ name: file.name, type: file.type, data });
+  }
+
   async function handleSave() {
     if (!title.trim() || saving) return;
     if (!isSignedIn) { router.push("/sign-in"); return; }
@@ -139,10 +167,11 @@ function WriteReviewContent() {
         : images.length === 1
           ? images[0]
           : JSON.stringify(images);
+      const attachedFileValue = attachedFile ? JSON.stringify(attachedFile) : null;
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category, title: title.trim(), content: content.trim(), thumbnailImage }),
+        body: JSON.stringify({ category, title: title.trim(), content: content.trim(), thumbnailImage, attachedFile: attachedFileValue }),
       });
       if (res.ok) {
         router.push(isEditMode ? `/user_content/${editId}` : "/user_review");
@@ -235,6 +264,29 @@ function WriteReviewContent() {
         {imageError && (
           <p className="write-review-image-error">{imageError}</p>
         )}
+
+        {/* 첨부 파일 배지 */}
+        {attachedFile && (
+          <div className="write-review-file-badge">
+            <span className="write-review-file-zip-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </span>
+            <span className="write-review-file-name">{attachedFile.name}</span>
+            <button
+              type="button"
+              className="write-review-file-remove"
+              onClick={() => { setAttachedFile(null); setFileError(null); }}
+              aria-label="파일 제거"
+            >✕</button>
+          </div>
+        )}
+        {fileError && (
+          <p className="write-review-image-error">{fileError}</p>
+        )}
       </div>
 
       <footer className="write-review-toolbar">
@@ -280,7 +332,12 @@ function WriteReviewContent() {
           style={{ display: "none" }}
           onChange={handleImageChange}
         />
-        <input ref={fileInputRef} type="file" style={{ display: "none" }} />
+        <input
+          ref={fileInputRef}
+          type="file"
+          style={{ display: "none" }}
+          onChange={handleFileChange}
+        />
       </footer>
     </main>
   );

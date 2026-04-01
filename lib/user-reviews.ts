@@ -7,6 +7,7 @@ export type UserReviewListItem = {
   title: string;
   content: string;
   thumbnailImage: string | null;
+  attachedFile: string | null;
   viewCount: number;
   likeCount: number;
   createdAt: string;
@@ -50,6 +51,7 @@ function mapRowToListItem(row: any): UserReviewListItem {
     title: row.title ?? "",
     content: row.content ?? "",
     thumbnailImage: row.thumbnail_image ?? null,
+    attachedFile: row.attached_file ?? null,
     viewCount: row.view_count ?? 0,
     likeCount: row.like_count ?? 0,
     createdAt: row.created_at ?? new Date(0).toISOString(),
@@ -84,7 +86,7 @@ export async function getUserReviewList(params: {
 
   const { data, error } = await supabase
     .from("user_reviews")
-    .select("id, profile_id, title, content, thumbnail_image, view_count, like_count, is_public, created_at, updated_at, profile:profile_id(username, email)");
+    .select("id, profile_id, title, content, thumbnail_image, attached_file, view_count, like_count, is_public, created_at, updated_at, profile:profile_id(username, email)");
 
   if (error) {
     // user_reviews 테이블 미생성 상태를 포함해 안전하게 빈 목록 반환
@@ -122,7 +124,7 @@ export async function getUserReviewById(id: string): Promise<UserReviewDetail | 
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("user_reviews")
-    .select("id, profile_id, title, content, thumbnail_image, view_count, like_count, is_public, created_at, updated_at, profile:profile_id(username, email)")
+    .select("id, profile_id, title, content, thumbnail_image, attached_file, view_count, like_count, is_public, created_at, updated_at, profile:profile_id(username, email)")
     .eq("id", id)
     .maybeSingle();
 
@@ -145,6 +147,7 @@ export async function createUserReview(params: {
   title: string;
   content: string;
   thumbnailImage?: string;
+  attachedFile?: string;
 }): Promise<{ id: string } | null> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -155,6 +158,7 @@ export async function createUserReview(params: {
       title: params.title,
       content: params.content,
       ...(params.thumbnailImage ? { thumbnail_image: params.thumbnailImage } : {}),
+      ...(params.attachedFile ? { attached_file: params.attachedFile } : {}),
     })
     .select("id")
     .single();
