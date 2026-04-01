@@ -24,6 +24,11 @@ type Props = {
   highlightCommentId?: string;
 };
 
+type ReplyContext = {
+  target: GalleryComment;
+  parentId: string;
+};
+
 export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, onCommentDeleted, highlightCommentId }: Props) {
   const { user, isSignedIn } = useUser();
   const router = useRouter();
@@ -37,7 +42,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [replyTo, setReplyTo] = useState<GalleryComment | null>(null);
+  const [replyTo, setReplyTo] = useState<ReplyContext | null>(null);
   const [dragY, setDragY] = useState(0);
   const isDragging = useRef(false);
   const dragStartY = useRef(0);
@@ -202,14 +207,23 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
         ? commentsRef.current.find((c) => c.author_email?.toLowerCase() === myEmail && c.author_username)?.author_username ?? null
         : null;
     const optimisticUsername = user?.username ?? knownUsernameFromComments ?? null;
-    const parentId = replyTo?.id ?? null;
+    const parentId = replyTo?.parentId ?? null;
+    const replyTargetLabel = replyTo
+      ? (replyTo.target.author_username
+        ? replyTo.target.author_username
+        : replyTo.target.author_email
+          ? maskEmail(replyTo.target.author_email)
+          : "익명")
+      : null;
+    const baseContent = input.trim();
+    const contentWithReplyTarget = replyTargetLabel ? `${replyTargetLabel} 👈 ${baseContent}` : baseContent;
     const tempComment: GalleryComment = {
       id: tempId,
       profile_id: "",
       parent_id: parentId,
       item_category: category,
       item_index: index,
-      content: input.trim(),
+      content: contentWithReplyTarget,
       like_count: 0,
       created_at: new Date().toISOString(),
       author_username: optimisticUsername,
@@ -230,7 +244,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
       const res = await fetch(`/api/gallery/${category}/${index}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: tempComment.content, parentId }),
+        body: JSON.stringify({ content: contentWithReplyTarget, parentId }),
       });
       if (res.ok) {
         const comment: GalleryComment = await res.json();
@@ -297,7 +311,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
       removeIds.forEach((id) => delete next[id]);
       return next;
     });
-    if (replyTo?.id && removeIds.has(replyTo.id)) {
+    if (replyTo?.target.id && removeIds.has(replyTo.target.id)) {
       setReplyTo(null);
     }
 
@@ -334,7 +348,6 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
   const renderCommentItem = (c: GalleryComment, isReply = false, replyRoot?: GalleryComment) => {
     const likeState = commentLikes[c.id] ?? { liked: false, count: c.like_count };
     const isHighlight = c.id === highlightCommentId;
-    const targetRoot = replyRoot ?? c;
     const isDeleteConfirmOpen = deleteConfirmId === c.id;
     return (
       <div
@@ -386,7 +399,8 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
               type="button"
               className="gallery-comment-action-btn"
               onClick={() => {
-                setReplyTo(targetRoot);
+                const parentId = replyRoot ? replyRoot.id : c.id;
+                setReplyTo({ target: c, parentId });
                 setDeleteConfirmId(null);
               }}
             >
@@ -528,7 +542,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
         {replyTo && (
           <div className="gallery-replying-banner">
             <span>
-              @{replyTo.author_username ?? (replyTo.author_email ? maskEmail(replyTo.author_email) : "익명")}님에게 답글 남기는 중...
+              {(replyTo.target.author_username ?? (replyTo.target.author_email ? maskEmail(replyTo.target.author_email) : "익명"))}에게 답글 남기는 중...
             </span>
             <button type="button" onClick={() => setReplyTo(null)}>취소</button>
           </div>
