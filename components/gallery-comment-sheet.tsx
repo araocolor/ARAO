@@ -29,6 +29,8 @@ type ReplyContext = {
   parentId: string;
 };
 
+const ROOT_SOFT_DELETE_BLIND_TEXT = "해당 댓글이 삭제되었습니다";
+
 export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, onCommentDeleted, highlightCommentId }: Props) {
   const { user, isSignedIn } = useUser();
   const router = useRouter();
@@ -281,62 +283,62 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
     return byEmail || byUsername;
   };
 
-  const getDeleteMessage = (comment: GalleryComment) => {
-    const isRoot = !comment.parent_id;
-    if (!isRoot) return "댓글을 삭제할까요?";
-    const replyCount = commentsRef.current.filter((c) => c.parent_id === comment.id).length;
-    return replyCount > 0 ? `댓글과 대댓글 ${replyCount}개를 삭제할까요?` : "댓글을 삭제할까요?";
-  };
+  const isDeletedComment = (comment: GalleryComment) =>
+    comment.content === ROOT_SOFT_DELETE_BLIND_TEXT || !!comment.is_deleted;
 
   const requestDelete = (comment: GalleryComment) => {
-    if (!canDeleteComment(comment)) return;
+    if (!canDeleteComment(comment) || isDeletedComment(comment)) return;
     setDeleteConfirmId(comment.id);
   };
 
   const handleDelete = async (comment: GalleryComment) => {
-    if (!canDeleteComment(comment)) return;
+    if (!canDeleteComment(comment) || isDeletedComment(comment)) return;
     setDeleteConfirmId(null);
-    const isRoot = !comment.parent_id;
     setDeletingIds((prev) => new Set(prev).add(comment.id));
-    const prevComments = commentsRef.current;
-    const prevLikes = commentLikes;
-    const removeIds = new Set<string>([comment.id]);
-    if (isRoot) {
-      prevComments.forEach((c) => { if (c.parent_id === comment.id) removeIds.add(c.id); });
-    }
-    const nextComments = prevComments.filter((c) => !removeIds.has(c.id));
-    setComments(nextComments);
-    setCommentLikes((prev) => {
-      const next = { ...prev };
-      removeIds.forEach((id) => delete next[id]);
-      return next;
-    });
-    if (replyTo?.target.id && removeIds.has(replyTo.target.id)) {
-      setReplyTo(null);
-    }
 
     try {
       const res = await fetch(`/api/gallery/comments/${comment.id}`, { method: "DELETE" });
       if (!res.ok) {
-        setComments(prevComments);
-        setCommentLikes(prevLikes);
         return;
       }
-      const data = await res.json();
-      const deletedCount = typeof data.deletedCount === "number" ? data.deletedCount : removeIds.size;
-      onCommentDeleted?.(deletedCount);
-
+      const data = await res.json() as { deletedCount?: number; softDeleted?: boolean };
       const commentKey = `gallery_comments_${category}_${index}`;
+      if (data.softDeleted) {
+        setComments((prev) =>
+          prev.map((c) => (c.id === comment.id ? { ...c, content: ROOT_SOFT_DELETE_BLIND_TEXT } : c))
+        );
+        const cached = getCached<{ comments: (GalleryComment & { user_liked?: boolean })[] }>(commentKey);
+        if (cached?.comments) {
+          setCached(commentKey, {
+            ...cached,
+            comments: cached.comments.map((c) =>
+              c.id === comment.id ? { ...c, content: ROOT_SOFT_DELETE_BLIND_TEXT } : c
+            ),
+          });
+        }
+        return;
+      }
+
+      const deletedCount = typeof data.deletedCount === "number" ? data.deletedCount : 1;
+      setComments((prev) => prev.filter((c) => c.id !== comment.id));
+      setCommentLikes((prev) => {
+        const next = { ...prev };
+        delete next[comment.id];
+        return next;
+      });
+      if (replyTo?.target.id === comment.id) {
+        setReplyTo(null);
+      }
+      onCommentDeleted?.(deletedCount);
       const cached = getCached<{ comments: (GalleryComment & { user_liked?: boolean })[] }>(commentKey);
       if (cached?.comments) {
         setCached(commentKey, {
           ...cached,
-          comments: cached.comments.filter((c) => !removeIds.has(c.id)),
+          comments: cached.comments.filter((c) => c.id !== comment.id),
         });
       }
     } catch {
-      setComments(prevComments);
-      setCommentLikes(prevLikes);
+      // no-op
     } finally {
       setDeletingIds((prev) => { const next = new Set(prev); next.delete(comment.id); return next; });
     }
@@ -348,12 +350,13 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
   const renderCommentItem = (c: GalleryComment, isReply = false, replyRoot?: GalleryComment) => {
     const likeState = commentLikes[c.id] ?? { liked: false, count: c.like_count };
     const isHighlight = c.id === highlightCommentId;
-    const isDeleteConfirmOpen = deleteConfirmId === c.id;
+    const isDeleted = isDeletedComment(c);
+    const isDeleteConfirmOpen = deleteConfirmId === c.id && !isDeleted;
     return (
       <div
         key={c.id}
         ref={isHighlight ? highlightRef : undefined}
-        className={`gallery-comment-item${isReply ? " is-reply" : ""}`}
+        className={`gallery-comment-item${isReply ? " is-reply" : ""}${isDeleted ? " is-deleted" : ""}`}
       >
         {c.author_icon_image ? (
           <img src={c.author_icon_image} className="gallery-comment-avatar gallery-comment-avatar-img" alt="" />
@@ -364,28 +367,6 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
           </div>
         )}
         <div className="gallery-comment-body">
-          {isDeleteConfirmOpen && (
-            <div className="gallery-comment-delete-popover" onClick={(e) => e.stopPropagation()}>
-              <p className="gallery-comment-delete-popover-text">{getDeleteMessage(c)}</p>
-              <div className="gallery-comment-delete-popover-actions">
-                <button
-                  type="button"
-                  className="gallery-comment-delete-popover-btn cancel"
-                  onClick={() => setDeleteConfirmId(null)}
-                >
-                  취소
-                </button>
-                <button
-                  type="button"
-                  className="gallery-comment-delete-popover-btn confirm"
-                  onClick={() => void handleDelete(c)}
-                  disabled={deletingIds.has(c.id)}
-                >
-                  {deletingIds.has(c.id) ? "삭제중..." : "삭제"}
-                </button>
-              </div>
-            </div>
-          )}
           <span className="gallery-comment-author">
             {c.author_username
               ? c.author_username
@@ -393,34 +374,62 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
                 ? maskEmail(c.author_email)
                 : "익명"}
           </span>
-          <span className="gallery-comment-content">{c.content}</span>
-          <div className="gallery-comment-actions">
-            <button
-              type="button"
-              className="gallery-comment-action-btn"
-              onClick={() => {
-                const parentId = replyRoot ? replyRoot.id : c.id;
-                setReplyTo({ target: c, parentId });
-                setDeleteConfirmId(null);
-              }}
-            >
-              답글 달기
-            </button>
-            {canDeleteComment(c) && (
-              <button
-                type="button"
-                className="gallery-comment-action-btn delete"
-                onClick={() => requestDelete(c)}
-                disabled={deletingIds.has(c.id)}
-              >
-                {deletingIds.has(c.id) ? "삭제중..." : "삭제"}
-              </button>
-            )}
-          </div>
+          <span className={`gallery-comment-content${isDeleted ? " is-deleted" : ""}`}>
+            {isDeleted ? ROOT_SOFT_DELETE_BLIND_TEXT : c.content}
+          </span>
+          {!isDeleted && (
+            <div className="gallery-comment-actions">
+              {isDeleteConfirmOpen ? (
+                <>
+                  <button
+                    type="button"
+                    className="gallery-comment-inline-confirm-btn cancel"
+                    onClick={() => setDeleteConfirmId(null)}
+                    disabled={deletingIds.has(c.id)}
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="button"
+                    className="gallery-comment-inline-confirm-btn confirm"
+                    onClick={() => void handleDelete(c)}
+                    disabled={deletingIds.has(c.id)}
+                  >
+                    {deletingIds.has(c.id) ? "삭제중..." : "삭제"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="gallery-comment-action-btn"
+                    onClick={() => {
+                      const parentId = replyRoot ? replyRoot.id : (c.parent_id ?? c.id);
+                      setReplyTo({ target: c, parentId });
+                      setDeleteConfirmId(null);
+                    }}
+                  >
+                    답글 달기
+                  </button>
+                  {canDeleteComment(c) && (
+                    <button
+                      type="button"
+                      className="gallery-comment-action-btn delete"
+                      onClick={() => requestDelete(c)}
+                      disabled={deletingIds.has(c.id)}
+                    >
+                      {deletingIds.has(c.id) ? "삭제중..." : "삭제"}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
         <button
           className={`gallery-comment-like-btn${likeState.liked ? " liked" : ""}${animatingIds.has(c.id) ? " heart-animate" : ""}`}
           onClick={() => handleCommentLike(c.id)}
+          disabled={isDeleted}
         >
           <svg
             width="16"

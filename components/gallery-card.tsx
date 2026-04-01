@@ -63,7 +63,7 @@ export function GalleryCard({
     const local = email.slice(0, atIndex);
     const domain = email.slice(atIndex);
     const visible = local.slice(0, 2);
-    return `${visible}******${domain}`;
+    return `${visible}***${domain}`;
   }
 
   function formatJoinDate(value: string | null): string {
@@ -127,7 +127,7 @@ export function GalleryCard({
           observer.disconnect();
           // 좋아요 fetch
           fetch(`/api/gallery/${category}/${index}/likes`)
-            .then((r) => r.json())
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error("likes fetch failed"))))
             .then((data) => {
               if (!userInteractedRef.current) {
                 applyData(data);
@@ -168,7 +168,7 @@ export function GalleryCard({
         () => {
           if (!userInteractedRef.current) {
             fetch(`/api/gallery/${category}/${index}/likes`)
-              .then((r) => r.json())
+              .then((r) => (r.ok ? r.json() : Promise.reject(new Error("likes fetch failed"))))
               .then((data) => {
                 if (!userInteractedRef.current) {
                   setLikeCount(data.count ?? 0);

@@ -1,10 +1,22 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createNotification } from "@/lib/notifications";
 
+const DELETED_COMMENT_TEXT = "해당 댓글이 삭제되었습니다";
+
+function maskEmail(email: string): string {
+  const atIndex = email.indexOf("@");
+  if (atIndex < 0) return email;
+  const local = email.slice(0, atIndex);
+  const domain = email.slice(atIndex);
+  return `${local.slice(0, 2)}***${domain}`;
+}
+
 export type GalleryComment = {
   id: string;
   profile_id: string;
   parent_id: string | null;
+  is_deleted?: boolean;
+  deleted_at?: string | null;
   item_category: string;
   item_index: number;
   content: string;
@@ -259,12 +271,12 @@ export async function createGalleryComment(
 export async function deleteGalleryComment(
   commentId: string,
   profileId: string
-): Promise<{ deletedCount: number } | null> {
+): Promise<{ deletedCount: number; softDeleted?: boolean } | null> {
   const supabase = createSupabaseAdminClient();
 
   const { data: target, error: targetError } = await supabase
     .from("gallery_comments")
-    .select("id, profile_id, parent_id")
+    .select("id, profile_id, parent_id, content")
     .eq("id", commentId)
     .maybeSingle();
 
@@ -274,6 +286,11 @@ export async function deleteGalleryComment(
   }
   if (!target) return { deletedCount: 0 };
   if (target.profile_id !== profileId) return null;
+
+  // 이미 삭제 안내 문구로 치환된 첫 댓글이면 중복 처리 방지
+  if (!target.parent_id && target.content === DELETED_COMMENT_TEXT) {
+    return { deletedCount: 0, softDeleted: true };
+  }
 
   if (target.parent_id) {
     const { error } = await supabase
@@ -287,10 +304,10 @@ export async function deleteGalleryComment(
     return { deletedCount: 1 };
   }
 
-  // 부모 댓글이면 직속 대댓글까지 함께 삭제
-  const { data: children, error: childrenError } = await supabase
+  // 첫 댓글에 대댓글이 있으면 첫 댓글은 남기고 내용만 삭제 문구로 치환
+  const { count: childCount, error: childrenError } = await supabase
     .from("gallery_comments")
-    .select("id")
+    .select("*", { count: "exact", head: true })
     .eq("parent_id", commentId);
 
   if (childrenError) {
@@ -298,7 +315,23 @@ export async function deleteGalleryComment(
     return null;
   }
 
-  const childIds = (children ?? []).map((c) => c.id);
+  if ((childCount ?? 0) > 0) {
+    const { error: softDeleteError } = await supabase
+      .from("gallery_comments")
+      .update({
+        content: DELETED_COMMENT_TEXT,
+      })
+      .eq("id", commentId);
+
+    if (softDeleteError) {
+      console.error("deleteGalleryComment soft delete error:", softDeleteError);
+      return null;
+    }
+
+    return { deletedCount: 0, softDeleted: true };
+  }
+
+  // 대댓글이 없으면 원댓글 하드 삭제
   const { error: deleteRootError } = await supabase
     .from("gallery_comments")
     .delete()
@@ -309,19 +342,7 @@ export async function deleteGalleryComment(
     return null;
   }
 
-  if (childIds.length > 0) {
-    const { error: deleteChildrenError } = await supabase
-      .from("gallery_comments")
-      .delete()
-      .in("id", childIds);
-
-    if (deleteChildrenError) {
-      console.error("deleteGalleryComment children delete error:", deleteChildrenError);
-      return null;
-    }
-  }
-
-  return { deletedCount: 1 + childIds.length };
+  return { deletedCount: 1 };
 }
 
 /**
@@ -413,7 +434,7 @@ export async function toggleGalleryCommentLike(
         .single();
 
       if (commentData) {
-        const likerName = liker?.username || liker?.email || "누군가";
+        const likerName = liker?.username || (liker?.email ? maskEmail(liker.email) : null) || "누군가";
         await createNotification(
           commentAuthorProfileId,
           "gallery_like",

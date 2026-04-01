@@ -17,7 +17,7 @@ export type NotificationItem = {
  */
 export async function getNotificationsForProfile(
   profileId: string,
-  profile: { username: string | null; password_hash: string | null; phone: string | null }
+  profile: { username: string | null; password_hash: string | null; phone: string | null; notification_enabled?: boolean }
 ): Promise<{ items: NotificationItem[]; unreadCount: number }> {
   const supabase = createSupabaseAdminClient();
   const items: NotificationItem[] = [];

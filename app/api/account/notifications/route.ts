@@ -29,9 +29,17 @@ export async function GET() {
       username: profile.username,
       password_hash: profile.password_hash,
       phone: profile.phone,
+      notification_enabled: profile.notification_enabled,
     });
 
-    return NextResponse.json({ unreadCount, items, iconImage: profile.icon_image ?? null, username: profile.username ?? null, email: profile.email ?? null });
+    return NextResponse.json({
+      unreadCount,
+      items,
+      iconImage: profile.icon_image ?? null,
+      username: profile.username ?? null,
+      email: profile.email ?? null,
+      notificationEnabled: profile.notification_enabled ?? true,
+    });
   } catch (error) {
     console.error("GET /api/account/notifications error:", error);
     return NextResponse.json({ unreadCount: 0, items: [] });

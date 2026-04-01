@@ -10,6 +10,7 @@ type GeneralSettingsFormProps = {
   username: string | null;
   hasPassword: boolean;
   phone: string | null;
+  notificationEnabled: boolean;
   iconImage?: string;
   role: string;
   createdAt: string;
@@ -21,6 +22,7 @@ export function GeneralSettingsForm({
   username: initialUsername,
   hasPassword: initialHasPassword,
   phone: initialPhone,
+  notificationEnabled: initialNotificationEnabled,
   iconImage: initialIconImage,
   role,
   createdAt,
@@ -28,6 +30,7 @@ export function GeneralSettingsForm({
   const [username, setUsername] = useState(initialUsername ?? "");
   const [hasPassword, setHasPassword] = useState(initialHasPassword);
   const [phone, setPhone] = useState(initialPhone ?? "");
+  const [notificationEnabled, setNotificationEnabled] = useState(initialNotificationEnabled);
   const [phoneInput, setPhoneInput] = useState("");
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [usernameInput, setUsernameInput] = useState("");
@@ -36,6 +39,7 @@ export function GeneralSettingsForm({
   const [usernameMessage, setUsernameMessage] = useState<string | null>(null);
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
   const [phoneMessage, setPhoneMessage] = useState<string | null>(null);
+  const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [isEditingAvatar, setIsEditingAvatar] = useState(false);
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
@@ -113,6 +117,31 @@ export function GeneralSettingsForm({
     setPhone(data.phone ?? phoneInput.replace(/\D/g, ""));
     setPhoneInput("");
     setIsEditingPhone(false);
+    setSavingKey(null);
+  }
+
+  async function toggleNotification(enabled: boolean) {
+    setSavingKey("notification");
+    setNotificationMessage(null);
+
+    const response = await fetch("/api/account/general", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "notification", enabled }),
+    });
+    const data = (await response.json()) as { message?: string; notificationEnabled?: boolean };
+
+    if (!response.ok) {
+      setNotificationMessage(data.message ?? "알림 설정 저장 중 오류가 발생했습니다.");
+      setSavingKey(null);
+      return;
+    }
+
+    const nextEnabled = data.notificationEnabled ?? enabled;
+    setNotificationEnabled(nextEnabled);
+    setNotificationMessage(nextEnabled ? "알림 ON" : "알림 OFF");
+    clearCached("general");
+    window.dispatchEvent(new CustomEvent("notification-setting-updated", { detail: { enabled: nextEnabled } }));
     setSavingKey(null);
   }
 
@@ -237,7 +266,34 @@ export function GeneralSettingsForm({
           <h3>이메일</h3>
           <div className="muted">회원가입 시 사용한 이메일 주소입니다.</div>
         </div>
-        <div className="account-setting-static account-username-static">{email}</div>
+        <div className="account-email-row-right">
+          <div className="account-setting-static account-username-static">{email}</div>
+        </div>
+      </div>
+
+      <div className="account-settings-row">
+        <div className="account-notification-row-main">
+          <div className="account-settings-copy">
+            <h3>알림 설정</h3>
+            <div className="muted">서비스 알림 수신 여부를 설정합니다.</div>
+          </div>
+          <button
+            type="button"
+            className={`account-notification-toggle${notificationEnabled ? " is-on" : ""}`}
+            onClick={() => void toggleNotification(!notificationEnabled)}
+            disabled={savingKey === "notification"}
+            aria-pressed={notificationEnabled}
+            aria-label="알림 설정 토글"
+          >
+            <span className="account-notification-toggle-label">
+              {notificationEnabled ? "알림 ON" : "알림 OFF"}
+            </span>
+            <span className="account-notification-toggle-track" aria-hidden="true">
+              <span className="account-notification-toggle-thumb" />
+            </span>
+          </button>
+        </div>
+        {notificationMessage && <div className="account-helper-text">{notificationMessage}</div>}
       </div>
 
       <div className="account-settings-row">

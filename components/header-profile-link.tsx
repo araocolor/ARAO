@@ -12,8 +12,8 @@ import { getCached, setCached } from "@/hooks/use-prefetch-cache";
 export function HeaderProfileLink() {
   const { isSignedIn } = useUser();
   const router = useRouter();
-  const unreadCount = useNotificationCount(isSignedIn ?? false);
-  const pendingCount = useAdminPendingCount(isSignedIn ?? false);
+  useNotificationCount(isSignedIn ?? false);
+  useAdminPendingCount(isSignedIn ?? false);
 
   // 드로어 상태
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -23,6 +23,7 @@ export function HeaderProfileLink() {
   const [iconImage, setIconImage] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
+  const [notificationEnabled, setNotificationEnabled] = useState(true);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 배지 카운트: items 중 is_read = false인 개수
@@ -58,10 +59,12 @@ export function HeaderProfileLink() {
           iconImage?: string | null;
           username?: string | null;
           email?: string | null;
+          notificationEnabled?: boolean;
         };
         setItems(data.items);
         if (data.username) setUsername(data.username);
         if (data.email) setEmail(data.email);
+        setNotificationEnabled(data.notificationEnabled ?? true);
 
         // 새 알림(gallery_like)의 댓글 미리 캐시
         const unreadGallery = (data.items as NotificationItem[]).filter(
@@ -120,6 +123,18 @@ export function HeaderProfileLink() {
     return () => window.removeEventListener("avatar-updated", handleAvatarUpdated);
   }, []);
 
+  // general 페이지 알림 토글 상태 즉시 반영
+  useEffect(() => {
+    function handleNotificationSettingUpdated(e: Event) {
+      const detail = (e as CustomEvent<{ enabled: boolean }>).detail;
+      if (typeof detail?.enabled === "boolean") {
+        setNotificationEnabled(detail.enabled);
+      }
+    }
+    window.addEventListener("notification-setting-updated", handleNotificationSettingUpdated);
+    return () => window.removeEventListener("notification-setting-updated", handleNotificationSettingUpdated);
+  }, []);
+
   // 드로어 오픈
   function openDrawer() {
     if (closeTimerRef.current) {
@@ -129,6 +144,7 @@ export function HeaderProfileLink() {
 
     setDrawerMounted(true);
     setDrawerOpen(true);
+    void fetchNotificationItems();
   }
 
   // 드로어 닫기
@@ -175,7 +191,7 @@ export function HeaderProfileLink() {
             <span className="header-profile-body" />
           </span>
         )}
-        {isSignedIn && badgeCount > 0 && (
+        {isSignedIn && notificationEnabled && badgeCount > 0 && (
           <span className="header-profile-badge">{badgeCount}</span>
         )}
       </button>

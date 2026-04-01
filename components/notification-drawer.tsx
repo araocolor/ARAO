@@ -14,14 +14,23 @@ type NotificationDrawerProps = {
   onMarkRead: (id: string) => void;
 };
 
+function maskEmail(email: string): string {
+  const atIndex = email.indexOf("@");
+  if (atIndex < 0) return email;
+  const local = email.slice(0, atIndex);
+  const domain = email.slice(atIndex);
+  return `${local.slice(0, 2)}***${domain}`;
+}
+
 // 알림 제목에서 "{이름}님이" 앞부분을 bold 처리
 function formatTitle(title: string): React.ReactNode {
   const t = title.endsWith(".") ? title : title + ".";
   const idx = t.indexOf("님이");
   if (idx <= 0) return t;
   const name = t.slice(0, idx);
+  const maskedName = name.includes("@") ? maskEmail(name) : name;
   const rest = t.slice(idx);
-  return <><strong>{name}</strong>{rest}</>;
+  return <><strong>{maskedName}</strong>{rest}</>;
 }
 
 // 상대 시간 포맷 함수
@@ -112,6 +121,7 @@ export function NotificationDrawer({
   }, [isOpen, onClose]);
 
   if (!isMounted) return null;
+  const headerDisplayName = username || (email ? maskEmail(email) : "");
 
   const handleItemClick = (item: NotificationItem) => {
     // settings/consulting 제외, 나머지는 즉시 읽음 처리
@@ -153,7 +163,7 @@ export function NotificationDrawer({
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
-          <span className="notif-header-username">{username || email || ""}</span>
+          <span className="notif-header-username">{headerDisplayName}</span>
           <Link
             href="/account/general"
             className="notif-settings-btn"

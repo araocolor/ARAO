@@ -32,6 +32,7 @@ export async function GET() {
     username: profile.username,
     hasPassword: Boolean(profile.password_hash),
     phone: profile.phone,
+    notificationEnabled: profile.notification_enabled ?? true,
     iconImage: profile.icon_image ?? null,
     role: profile.role,
     createdAt: profile.created_at,
@@ -83,6 +84,7 @@ export async function POST(request: Request) {
     username?: string;
     password?: string;
     phone?: string;
+    enabled?: boolean;
   };
   const supabase = createSupabaseAdminClient();
 
@@ -148,6 +150,20 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ phone: phoneResult.value });
+  }
+
+  if (body.action === "notification") {
+    const enabled = typeof body.enabled === "boolean" ? body.enabled : true;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ notification_enabled: enabled })
+      .eq("id", profile.id);
+
+    if (error) {
+      return NextResponse.json({ message: "알림 설정 저장 중 오류가 발생했습니다." }, { status: 400 });
+    }
+
+    return NextResponse.json({ notificationEnabled: enabled });
   }
 
   return NextResponse.json({ message: "지원하지 않는 요청입니다." }, { status: 400 });

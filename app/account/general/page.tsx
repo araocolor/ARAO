@@ -11,6 +11,7 @@ interface GeneralData {
   username: string | null;
   hasPassword: boolean;
   phone: string | null;
+  notificationEnabled?: boolean;
   iconImage?: string;
   role: string;
   createdAt: string;
@@ -52,7 +53,7 @@ export default function AccountGeneralPage() {
 
   if (loading) {
     return (
-      <div className="admin-panel-card stack account-section-card page-slide-down">
+      <div className="stack page-slide-down">
         <p className="muted">로딩 중...</p>
       </div>
     );
@@ -60,7 +61,7 @@ export default function AccountGeneralPage() {
 
   if (error || !data) {
     return (
-      <div className="admin-panel-card stack">
+      <div className="stack page-slide-down">
         <h1>오류</h1>
         <p className="muted">{error || "프로필 정보를 불러올 수 없습니다."}</p>
       </div>
@@ -68,13 +69,14 @@ export default function AccountGeneralPage() {
   }
 
   return (
-    <div className="admin-panel-card stack account-section-card">
+    <div className="page-slide-down">
       <GeneralSettingsForm
         email={data.email}
         fullName={data.fullName}
         username={data.username}
         hasPassword={data.hasPassword}
         phone={data.phone}
+        notificationEnabled={data.notificationEnabled ?? true}
         iconImage={data.iconImage}
         role={data.role}
         createdAt={data.createdAt}

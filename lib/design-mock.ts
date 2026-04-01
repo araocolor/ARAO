@@ -70,4 +70,7 @@ export const mockGeneralProfile = {
   username: 'kimcheolsu',
   hasPassword: true,
   phone: '01012345678',
+  notificationEnabled: true,
+  role: 'customer',
+  createdAt: '2026-03-01T00:00:00Z',
 };

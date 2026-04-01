@@ -5,6 +5,7 @@ export type Profile = {
   id: string;
   email: string;
   role: string;
+  notification_enabled: boolean;
   full_name: string | null;
   phone: string | null;
   username: string | null;
@@ -18,6 +19,26 @@ type SyncProfileInput = {
   fullName?: string | null;
 };
 
+const PROFILE_SELECT_COLUMNS =
+  "id, email, role, notification_enabled, full_name, phone, username, password_hash, icon_image, created_at";
+const PROFILE_SELECT_COLUMNS_LEGACY =
+  "id, email, role, full_name, phone, username, password_hash, icon_image, created_at";
+
+function normalizeProfile(row: any): Profile {
+  return {
+    id: row.id,
+    email: row.email,
+    role: row.role,
+    notification_enabled: row.notification_enabled ?? true,
+    full_name: row.full_name ?? null,
+    phone: row.phone ?? null,
+    username: row.username ?? null,
+    password_hash: row.password_hash ?? null,
+    icon_image: row.icon_image ?? null,
+    created_at: row.created_at,
+  };
+}
+
 export async function syncProfile({ email, fullName }: SyncProfileInput) {
   if (!email) {
     return null;
@@ -25,12 +46,24 @@ export async function syncProfile({ email, fullName }: SyncProfileInput) {
 
   const supabase = createSupabaseAdminClient();
   const normalizedEmail = email.toLowerCase();
+  let hasNotificationColumn = true;
 
-  const { data: existingProfile, error: fetchError } = await supabase
+  let { data: existingProfile, error: fetchError } = await supabase
     .from("profiles")
-    .select("id, email, role, full_name, phone, username, password_hash, icon_image, created_at")
+    .select(PROFILE_SELECT_COLUMNS)
     .eq("email", normalizedEmail)
-    .maybeSingle<Profile>();
+    .maybeSingle<any>();
+
+  if (fetchError?.code === "42703") {
+    hasNotificationColumn = false;
+    const legacy = await supabase
+      .from("profiles")
+      .select(PROFILE_SELECT_COLUMNS_LEGACY)
+      .eq("email", normalizedEmail)
+      .maybeSingle<any>();
+    existingProfile = legacy.data;
+    fetchError = legacy.error;
+  }
 
   if (fetchError) {
     throw fetchError;
@@ -42,33 +75,54 @@ export async function syncProfile({ email, fullName }: SyncProfileInput) {
         .from("profiles")
         .update({ full_name: fullName })
         .eq("id", existingProfile.id)
-        .select("id, email, role, full_name, phone, username, password_hash, icon_image, created_at")
-        .single<Profile>();
+        .select(hasNotificationColumn ? PROFILE_SELECT_COLUMNS : PROFILE_SELECT_COLUMNS_LEGACY)
+        .single<any>();
 
       if (updateError) {
         throw updateError;
       }
 
-      return updatedProfile;
+      return normalizeProfile(updatedProfile);
     }
 
-    return existingProfile;
+    return normalizeProfile(existingProfile);
   }
 
-  const { data: createdProfile, error: insertError } = await supabase
+  const insertPayload: Record<string, unknown> = {
+    id: randomUUID(),
+    email: normalizedEmail,
+    role: "customer",
+    full_name: fullName ?? null,
+  };
+  if (hasNotificationColumn) {
+    insertPayload.notification_enabled = true;
+  }
+
+  let { data: createdProfile, error: insertError } = await supabase
     .from("profiles")
-    .insert({
-      id: randomUUID(),
-      email: normalizedEmail,
-      role: "customer",
-      full_name: fullName ?? null,
-    })
-    .select("id, email, role, full_name, phone, username, password_hash, icon_image, created_at")
-    .single<Profile>();
+    .insert(insertPayload)
+    .select(hasNotificationColumn ? PROFILE_SELECT_COLUMNS : PROFILE_SELECT_COLUMNS_LEGACY)
+    .single<any>();
+
+  if (insertError?.code === "42703" && hasNotificationColumn) {
+    hasNotificationColumn = false;
+    const fallbackCreated = await supabase
+      .from("profiles")
+      .insert({
+        id: insertPayload.id,
+        email: normalizedEmail,
+        role: "customer",
+        full_name: fullName ?? null,
+      })
+      .select(PROFILE_SELECT_COLUMNS_LEGACY)
+      .single<any>();
+    createdProfile = fallbackCreated.data;
+    insertError = fallbackCreated.error;
+  }
 
   if (insertError) {
     throw insertError;
   }
 
-  return createdProfile;
+  return normalizeProfile(createdProfile);
 }

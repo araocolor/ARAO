@@ -9,21 +9,24 @@ export async function GET(
 ) {
   try {
     const { category, index } = await params;
-    const { searchParams } = new URL(request.url);
 
     let profileId: string | undefined;
 
-    // 로그인한 경우 프로필 ID 조회
-    const { userId } = await auth();
-    if (userId) {
-      const user = await currentUser();
-      if (user?.emailAddresses?.[0]?.emailAddress) {
-        const profile = await syncProfile({
-          email: user.emailAddresses[0].emailAddress,
-          fullName: user.fullName,
-        });
-        profileId = profile?.id;
+    // 로그인한 경우 프로필 ID 조회 (실패해도 guest 조회로 fallback)
+    try {
+      const { userId } = await auth();
+      if (userId) {
+        const user = await currentUser();
+        if (user?.emailAddresses?.[0]?.emailAddress) {
+          const profile = await syncProfile({
+            email: user.emailAddresses[0].emailAddress,
+            fullName: user.fullName,
+          });
+          profileId = profile?.id;
+        }
       }
+    } catch (profileSyncError) {
+      console.error("GET likes profile sync fallback:", profileSyncError);
     }
 
     const status = await getGalleryItemLikeStatus(category, parseInt(index), profileId);

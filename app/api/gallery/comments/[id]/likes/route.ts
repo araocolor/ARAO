@@ -5,6 +5,14 @@ import { syncProfile } from "@/lib/profiles";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 
+function maskEmail(email: string): string {
+  const atIndex = email.indexOf("@");
+  if (atIndex < 0) return email;
+  const local = email.slice(0, atIndex);
+  const domain = email.slice(atIndex);
+  return `${local.slice(0, 2)}***${domain}`;
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -54,7 +62,7 @@ export async function POST(
       await createNotification(
         comment.profile_id,
         "gallery_like",
-        `${profile.username || profile.email || "사용자"}님이 좋아요를 남겼습니다`,
+        `${profile.username || (profile.email ? maskEmail(profile.email) : null) || "사용자"}님이 좋아요를 남겼습니다`,
         `/gallery?category=${comment.item_category}&index=${comment.item_index}&commentId=${id}`,
         id,
         profile.icon_image ?? null
