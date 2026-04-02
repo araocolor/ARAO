@@ -163,6 +163,33 @@
   gap: 6px;
 }
 
+.user-review-item-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.user-review-item-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.user-review-item-heart {
+  color: #FF2D2D;
+  font-size: 11px;
+}
+
+.user-review-item-eye {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
 .user-review-unread-dot {
   display: inline-block;
   width: 6px;

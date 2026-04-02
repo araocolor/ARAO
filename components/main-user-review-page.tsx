@@ -367,11 +367,24 @@ export function MainUserReviewPage() {
                   <p className="user-review-item-title">
                     {!readIds.has(item.id) && <span className="user-review-unread-dot" aria-label="읽지 않음" />}
                     {item.title}
+                    <span className="user-review-item-stats">
+                      {item.likeCount > 0 && (
+                        <span className="user-review-item-stat">
+                          <span className="user-review-item-heart" aria-hidden="true">♥</span>
+                          {item.likeCount}
+                        </span>
+                      )}
+                      {item.viewCount > 0 && (
+                        <span className="user-review-item-stat">
+                          <span className="user-review-item-eye" aria-hidden="true">👁</span>
+                          {item.viewCount}
+                        </span>
+                      )}
+                    </span>
                   </p>
                   <p className="user-review-item-meta">
                     <span>{item.authorId}</span>
                     <span>{formatDate(item.createdAt)}</span>
-                    <span>조회 {item.viewCount}</span>
                   </p>
                 </div>
                 <div className="user-review-item-thumb">
@@ -407,12 +420,25 @@ export function MainUserReviewPage() {
                   <p className="user-review-item-title">
                     {!readIds.has(item.id) && <span className="user-review-unread-dot" aria-label="읽지 않음" />}
                     {item.title}
+                    <span className="user-review-item-stats">
+                      {item.likeCount > 0 && (
+                        <span className="user-review-item-stat">
+                          <span className="user-review-item-heart" aria-hidden="true">♥</span>
+                          {item.likeCount}
+                        </span>
+                      )}
+                      {item.viewCount > 0 && (
+                        <span className="user-review-item-stat">
+                          <span className="user-review-item-eye" aria-hidden="true">👁</span>
+                          {item.viewCount}
+                        </span>
+                      )}
+                    </span>
                   </p>
                   <p className="user-review-feed-text">{excerpt(item.content, 80)}</p>
                   <p className="user-review-item-meta">
                     <span>{item.authorId}</span>
                     <span>{formatDate(item.createdAt)}</span>
-                    <span>조회 {item.viewCount}</span>
                   </p>
                 </div>
               </button>
@@ -440,6 +466,14 @@ export function MainUserReviewPage() {
                 <p className="user-review-album-title">
                   {!readIds.has(item.id) && <span className="user-review-unread-dot" aria-label="읽지 않음" />}
                   {item.title}
+                  <span className="user-review-item-stats">
+                    {item.likeCount > 0 && (
+                      <span className="user-review-item-stat">
+                        <span className="user-review-item-heart" aria-hidden="true">♥</span>
+                        {item.likeCount}
+                      </span>
+                    )}
+                  </span>
                 </p>
               </button>
             );
