@@ -97,9 +97,9 @@ export function UserContentPage({ id }: { id: string }) {
               <p className="user-content-meta muted">
                 {item.authorId} · {formatDate(item.createdAt)} · 조회 {item.viewCount + 1}
               </p>
-              {contentImages.map((src, i) => (
-                <img key={i} src={src} alt="" className="user-content-thumb" />
-              ))}
+              {contentImages.length > 0 && (
+                <img src={contentImages[0]} alt="" className="user-content-thumb" />
+              )}
               {attachedFile && (
                 <a
                   href={attachedFile.data}
