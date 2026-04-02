@@ -431,12 +431,6 @@
   transition: opacity 0.2s;
 }
 
-/* 가로 이미지: 세로로 회전하여 화면 가득 채움 */
-.user-content-viewer-img.landscape {
-  transform: rotate(90deg);
-  max-width: 95vh;
-  max-height: 95vw;
-}
 
 .user-content-viewer-spinner {
   width: 32px;

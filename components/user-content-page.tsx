@@ -74,7 +74,6 @@ export function UserContentPage({ id }: { id: string }) {
   const [item, setItem] = useState<ReviewItem | null>(() => getContentCache(id));
   const [notFound, setNotFound] = useState(false);
   const [viewerSrc, setViewerSrc] = useState<string | null>(null);
-  const [isLandscape, setIsLandscape] = useState(false);
   const [viewerLoaded, setViewerLoaded] = useState(false);
   const originalCacheRef = useRef<Record<string, boolean>>({});
 
@@ -140,7 +139,6 @@ export function UserContentPage({ id }: { id: string }) {
   // 이미지 클릭 → 1024px 뷰어
   const openViewer = useCallback((src: string) => {
     setViewerLoaded(false);
-    setIsLandscape(false);
     setViewerSrc(src);
     document.body.style.overflow = "hidden";
   }, []);
@@ -152,9 +150,7 @@ export function UserContentPage({ id }: { id: string }) {
   }, []);
 
   // 뷰어 이미지 로드 시 가로/세로 판단
-  const handleViewerLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget;
-    setIsLandscape(img.naturalWidth > img.naturalHeight);
+  const handleViewerLoad = useCallback(() => {
     setViewerLoaded(true);
   }, []);
 
@@ -225,7 +221,7 @@ export function UserContentPage({ id }: { id: string }) {
             <img
               src={viewerSrc}
               alt=""
-              className={`user-content-viewer-img${isLandscape ? " landscape" : ""}`}
+              className="user-content-viewer-img"
               style={{ opacity: viewerLoaded ? 1 : 0 }}
               onLoad={handleViewerLoad}
             />
