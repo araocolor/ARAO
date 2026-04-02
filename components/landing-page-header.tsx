@@ -9,10 +9,10 @@ export function LandingPageHeader() {
   const links = [
     { href: "/arao", label: "ARAO 소개" },
     { href: "/gallery", label: "갤러리" },
-    { href: "/pricing", label: "구매정책" },
-    { href: "/manual", label: "설치방법" },
     { href: "/user_review", label: "커뮤니티" },
-    { href: "/account/general", label: "개인/설정", divider: true },
+    { href: "/manual", label: "설치방법" },
+    { href: "/pricing", label: "구매가이드" },
+    { href: "/account/general", label: "사용자설정", divider: true },
   ];
 
   return (

@@ -13,6 +13,7 @@ import {
   Users, UserPlus, Shield, Key, CreditCard, Gift, Percent,
   BarChart, TrendingUp, Activity, RefreshCw, Loader, Power,
 } from "lucide-react";
+import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
 
 const icons: { Icon: LucideIcon; name: string; desc: string }[] = [
@@ -111,18 +112,35 @@ const icons: { Icon: LucideIcon; name: string; desc: string }[] = [
 ];
 
 export default function LucidePage() {
+  const [query, setQuery] = useState("");
+  const filtered = icons.filter(({ name, desc }) =>
+    name.toLowerCase().includes(query.toLowerCase()) ||
+    desc.includes(query)
+  );
+
   return (
     <main style={{ padding: "24px", maxWidth: "960px", margin: "0 auto" }}>
       <h1 style={{ marginBottom: "4px" }}>Lucide 아이콘 목록</h1>
-      <p style={{ color: "#888", fontSize: "14px", marginBottom: "24px" }}>
+      <p style={{ color: "#888", fontSize: "14px", marginBottom: "16px" }}>
         아이콘 이름을 그대로 요청하시면 됩니다.
       </p>
+      <input
+        type="text"
+        placeholder="검색 (예: 홈, Heart)"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        style={{
+          width: "100%", padding: "10px 14px", fontSize: "14px",
+          border: "1px solid #e5e7eb", borderRadius: "8px",
+          marginBottom: "20px", boxSizing: "border-box",
+        }}
+      />
       <div style={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
         gap: "10px",
       }}>
-        {icons.map(({ Icon, name, desc }) => (
+        {filtered.map(({ Icon, name, desc }) => (
           <div key={name} style={{
             display: "flex",
             flexDirection: "column",
