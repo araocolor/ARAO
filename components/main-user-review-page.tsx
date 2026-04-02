@@ -56,17 +56,40 @@ function excerpt(value: string, maxLength: number) {
   return `${compact.slice(0, maxLength)}...`;
 }
 
+const LIST_CACHE_KEY = "user-review-list-cache";
+const SCROLL_KEY = "user-review-scroll";
+const CACHE_TTL = 60000; // 1분
+
+function getListCache(): { items: UserReviewItem[]; total: number } | null {
+  try {
+    const raw = sessionStorage.getItem(LIST_CACHE_KEY);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw) as { data: { items: UserReviewItem[]; total: number }; ts: number };
+    if (Date.now() - ts > CACHE_TTL) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function setListCache(data: { items: UserReviewItem[]; total: number }) {
+  try {
+    sessionStorage.setItem(LIST_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+  } catch {}
+}
+
 export function MainUserReviewPage() {
   const router = useRouter();
   const { isSignedIn } = useUser();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
-  const [items, setItems] = useState<UserReviewItem[]>([]);
+  const [items, setItems] = useState<UserReviewItem[]>(() => getListCache()?.items ?? []);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [sortMode, setSortMode] = useState<SortMode>("latest");
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [total, setTotal] = useState(0);
+  const [total, setTotal] = useState(() => getListCache()?.total ?? 0);
   const [page, setPage] = useState(1);
   const [queryInput, setQueryInput] = useState("");
   const [query, setQuery] = useState("");
@@ -91,6 +114,22 @@ export function MainUserReviewPage() {
     return () => window.removeEventListener("mousedown", onClickOutside);
   }, [dropdownOpen]);
 
+  // 스크롤 위치 복원
+  useEffect(() => {
+    const saved = sessionStorage.getItem(SCROLL_KEY);
+    if (saved && items.length > 0) {
+      requestAnimationFrame(() => {
+        window.scrollTo(0, Number(saved));
+        sessionStorage.removeItem(SCROLL_KEY);
+      });
+    }
+  }, []);
+
+  // 스크롤 위치 저장 (글 클릭 시)
+  const saveScroll = () => {
+    sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
+  };
+
   useEffect(() => {
     const controller = new AbortController();
     async function load() {
@@ -111,8 +150,13 @@ export function MainUserReviewPage() {
           items: UserReviewItem[];
           total: number;
         };
-        setItems(Array.isArray(data.items) ? data.items : []);
+        const newItems = Array.isArray(data.items) ? data.items : [];
+        setItems(newItems);
         setTotal(data.total ?? 0);
+        // page=1, sort=latest, 검색 없을 때만 캐시 저장
+        if (page === 1 && sortMode === "latest" && !query.trim()) {
+          setListCache({ items: newItems, total: data.total ?? 0 });
+        }
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
           console.error("MainUserReviewPage fetch error:", error);
@@ -155,6 +199,7 @@ export function MainUserReviewPage() {
       } catch {}
       return next;
     });
+    saveScroll();
     router.push(`/user_content/${id}`);
   };
 

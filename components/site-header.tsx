@@ -48,10 +48,25 @@ export function SiteHeader({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
 
-  // 드로어 열릴 때 body 스크롤 잠금
+  // 드로어 열릴 때 body 스크롤 잠금 + 커뮤니티 prefetch
   useEffect(() => {
     if (drawerOpen) {
       document.body.style.overflow = "hidden";
+      // 커뮤니티 리스트 prefetch
+      const cacheKey = "user-review-list-cache";
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          const { ts } = JSON.parse(cached) as { ts: number };
+          if (Date.now() - ts < 60000) return; // 1분 이내 캐시 유효
+        }
+      } catch {}
+      fetch("/api/main/user-review?page=1&limit=10&sort=latest")
+        .then((r) => r.json())
+        .then((data) => {
+          sessionStorage.setItem(cacheKey, JSON.stringify({ data, ts: Date.now() }));
+        })
+        .catch(() => {});
     } else {
       document.body.style.overflow = "";
     }

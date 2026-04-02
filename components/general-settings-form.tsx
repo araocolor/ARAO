@@ -128,6 +128,10 @@ export function GeneralSettingsForm({
     setSavingKey("notification");
     setNotificationMessage(null);
 
+    // 즉시 UI 반영
+    setNotificationEnabled(enabled);
+    window.dispatchEvent(new CustomEvent("notification-setting-updated", { detail: { enabled } }));
+
     const response = await fetch("/api/account/general", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -136,6 +140,9 @@ export function GeneralSettingsForm({
     const data = (await response.json()) as { message?: string; notificationEnabled?: boolean };
 
     if (!response.ok) {
+      // 실패 시 되돌리기
+      setNotificationEnabled(!enabled);
+      window.dispatchEvent(new CustomEvent("notification-setting-updated", { detail: { enabled: !enabled } }));
       setNotificationMessage(data.message ?? "알림 설정 저장 중 오류가 발생했습니다.");
       setSavingKey(null);
       return;
@@ -145,7 +152,6 @@ export function GeneralSettingsForm({
     setNotificationEnabled(nextEnabled);
     setNotificationMessage(nextEnabled ? "알림 ON" : "알림 OFF");
     clearCached(getGeneralCacheKey(email));
-    window.dispatchEvent(new CustomEvent("notification-setting-updated", { detail: { enabled: nextEnabled } }));
     setSavingKey(null);
   }
 
