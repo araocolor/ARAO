@@ -108,6 +108,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
   width: min(100%, 480px);
   margin: 0 auto;
   padding: 14px 16px;
@@ -117,6 +118,23 @@
   display: inline-flex;
   align-items: center;
 }
+
+.simple-header-back {
+  position: absolute;
+  left: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+
 
 
 .header-inner,
