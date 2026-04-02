@@ -139,8 +139,25 @@ export function HeaderProfileLink() {
     } catch {}
     fetch("/api/main/user-review?page=1&limit=20&sort=latest")
       .then((r) => r.json())
-      .then((data) => {
-        sessionStorage.setItem(cacheKey, JSON.stringify({ data, ts: Date.now() }));
+      .then((data: { items: Array<{ thumbnailImage?: string | null; [key: string]: unknown }>; [key: string]: unknown }) => {
+        const slim = {
+          ...data,
+          items: Array.isArray(data.items)
+            ? data.items.map((item) => {
+                let firstImage: string | null = null;
+                if (item.thumbnailImage) {
+                  try {
+                    const parsed = JSON.parse(item.thumbnailImage);
+                    firstImage = Array.isArray(parsed) ? (parsed[0] ?? null) : item.thumbnailImage;
+                  } catch {
+                    firstImage = item.thumbnailImage;
+                  }
+                }
+                return { ...item, thumbnailImage: firstImage };
+              })
+            : [],
+        };
+        sessionStorage.setItem(cacheKey, JSON.stringify({ data: slim, ts: Date.now() }));
       })
       .catch(() => {});
   }
