@@ -105,9 +105,6 @@ export function HeaderProfileLink() {
       console.error("Failed to fetch notifications:", error);
     } finally {
       setIsLoadingNotifications(false);
-      // 알림 카운트 표시 완료 후 갤러리 → 커뮤니티 순차 prefetch
-      prefetchGalleryFirst();
-      prefetchUserReviewList();
     }
   }
 
@@ -155,11 +152,13 @@ export function HeaderProfileLink() {
     if (cached) setIconImage(cached);
   }, []);
 
-  // 초기 로드: 아바타 먼저 → 알림은 백그라운드 / 로그아웃 시 캐시 제거
+  // 초기 로드: 아바타 먼저 → 알림 + 갤러리캐싱 동시 → 커뮤니티 순차 / 로그아웃 시 캐시 제거
   useEffect(() => {
     if (isSignedIn) {
       void fetchAvatar();
       void fetchNotificationItems();
+      prefetchGalleryFirst();
+      prefetchUserReviewList();
     } else if (isSignedIn === false) {
       setIconImage(null);
       setBadgeCount(0);
