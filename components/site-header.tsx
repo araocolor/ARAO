@@ -61,7 +61,7 @@ export function SiteHeader({
           if (Date.now() - ts < 300000) return; // 5분 이내 캐시 유효
         }
       } catch {}
-      fetch("/api/main/user-review?page=1&limit=10&sort=latest")
+      fetch("/api/main/user-review?page=1&limit=20&sort=latest")
         .then((r) => r.json())
         .then((data) => {
           sessionStorage.setItem(cacheKey, JSON.stringify({ data, ts: Date.now() }));

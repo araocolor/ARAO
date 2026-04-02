@@ -83,6 +83,7 @@ export function MainUserReviewPage() {
   const { isSignedIn } = useUser();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const bottomSentinelRef = useRef<HTMLDivElement>(null);
 
   const [items, setItems] = useState<UserReviewItem[]>(() => getListCache()?.items ?? []);
   const [loading, setLoading] = useState(false);
@@ -94,7 +95,7 @@ export function MainUserReviewPage() {
   const [queryInput, setQueryInput] = useState("");
   const [query, setQuery] = useState("");
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
-  const limit = 10;
+  const limit = 20;
 
   useEffect(() => {
     try {
@@ -102,6 +103,39 @@ export function MainUserReviewPage() {
       if (stored) setReadIds(new Set(JSON.parse(stored) as string[]));
     } catch {}
   }, []);
+
+  // 아이템 로드 후 상위 10개 router.prefetch (새글 우선)
+  useEffect(() => {
+    if (items.length === 0 || !isSignedIn) return;
+    const sorted = [
+      ...items.filter((item) => !readIds.has(item.id)),
+      ...items.filter((item) => readIds.has(item.id)),
+    ];
+    sorted.slice(0, 10).forEach((item) => {
+      router.prefetch(`/user_content/${item.id}`);
+    });
+  }, [items, readIds, isSignedIn]);
+
+  // 스크롤 하단 도달 시 나머지 10개 동시 prefetch
+  useEffect(() => {
+    if (items.length <= 10 || !isSignedIn) return;
+    const el = bottomSentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        observer.disconnect();
+        const sorted = [
+          ...items.filter((item) => !readIds.has(item.id)),
+          ...items.filter((item) => readIds.has(item.id)),
+        ];
+        sorted.slice(10).forEach((item) => {
+          router.prefetch(`/user_content/${item.id}`);
+        });
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [items, readIds, isSignedIn]);
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -357,6 +391,8 @@ export function MainUserReviewPage() {
           })}
         </div>
       )}
+
+      <div ref={bottomSentinelRef} aria-hidden="true" />
 
       <div className="user-review-bottom">
         <div className="user-review-search-row">
