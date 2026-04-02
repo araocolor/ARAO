@@ -31,13 +31,31 @@ export function UserContentPage({ id }: { id: string }) {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
+    // sessionStorage 캐시 먼저 확인 → 즉시 표시
+    try {
+      const cached = sessionStorage.getItem(`user-review-content-${id}`);
+      if (cached) {
+        const { data, ts } = JSON.parse(cached) as { data: ReviewItem; ts: number };
+        if (Date.now() - ts < 300000 && data) {
+          setItem(data);
+          return;
+        }
+      }
+    } catch {}
+
+    // 캐시 없으면 API fetch
     fetch(`/api/main/user-review/${id}`)
       .then((r) => {
         if (!r.ok) { setNotFound(true); return null; }
         return r.json() as Promise<ReviewItem>;
       })
       .then((data) => {
-        if (data) setItem(data);
+        if (data) {
+          setItem(data);
+          try {
+            sessionStorage.setItem(`user-review-content-${id}`, JSON.stringify({ data, ts: Date.now() }));
+          } catch {}
+        }
       })
       .catch(() => setNotFound(true));
   }, [id]);

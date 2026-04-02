@@ -104,7 +104,24 @@ export function MainUserReviewPage() {
     } catch {}
   }, []);
 
-  // 아이템 로드 후 상위 10개 router.prefetch (새글 우선)
+  function prefetchContentData(id: string) {
+    const key = `user-review-content-${id}`;
+    try {
+      const cached = sessionStorage.getItem(key);
+      if (cached) {
+        const { ts } = JSON.parse(cached) as { ts: number };
+        if (Date.now() - ts < 300000) return; // 5분 유효
+      }
+    } catch {}
+    fetch(`/api/main/user-review/${id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) sessionStorage.setItem(key, JSON.stringify({ data, ts: Date.now() }));
+      })
+      .catch(() => {});
+  }
+
+  // 아이템 로드 후 상위 10개 router.prefetch + API 데이터 캐시 (새글 우선)
   useEffect(() => {
     if (items.length === 0 || !isSignedIn) return;
     const sorted = [
@@ -113,10 +130,11 @@ export function MainUserReviewPage() {
     ];
     sorted.slice(0, 10).forEach((item) => {
       router.prefetch(`/user_content/${item.id}`);
+      prefetchContentData(item.id);
     });
   }, [items, readIds, isSignedIn]);
 
-  // 스크롤 하단 도달 시 나머지 10개 동시 prefetch
+  // 스크롤 하단 도달 시 나머지 10개 동시 prefetch + API 데이터 캐시
   useEffect(() => {
     if (items.length <= 10 || !isSignedIn) return;
     const el = bottomSentinelRef.current;
@@ -130,6 +148,7 @@ export function MainUserReviewPage() {
         ];
         sorted.slice(10).forEach((item) => {
           router.prefetch(`/user_content/${item.id}`);
+          prefetchContentData(item.id);
         });
       }
     });
