@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { GeneralSettingsForm } from "@/components/general-settings-form";
 import { getCached, setCached } from "@/hooks/use-prefetch-cache";
@@ -24,6 +25,7 @@ function getGeneralCacheKey(email?: string | null) {
 
 export default function AccountGeneralPage() {
   useReviewsPrefetch();
+  const router = useRouter();
   const { user } = useUser();
   const [data, setData] = useState<GeneralData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -85,6 +87,16 @@ export default function AccountGeneralPage() {
 
   return (
     <div className="page-slide-down">
+      <button
+        type="button"
+        className="account-general-back-btn"
+        onClick={() => router.back()}
+        aria-label="뒤로가기"
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+      </button>
       <GeneralSettingsForm
         email={data.email}
         fullName={data.fullName}
