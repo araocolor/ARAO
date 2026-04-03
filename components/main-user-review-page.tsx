@@ -196,6 +196,7 @@ export function MainUserReviewPage() {
   const searchSheetDraggingRef = useRef(false);
   const searchSheetDragStartYRef = useRef(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [writeFabMounted, setWriteFabMounted] = useState(false);
   const limit = 20;
 
   // 마운트 후 캐시 데이터로 즉시 채우기 + new 파라미터 처리
@@ -232,6 +233,10 @@ export function MainUserReviewPage() {
     };
     window.addEventListener("community-search-open", openSearchSheet);
     return () => window.removeEventListener("community-search-open", openSearchSheet);
+  }, []);
+
+  useEffect(() => {
+    setWriteFabMounted(true);
   }, []);
 
   useEffect(() => {
@@ -805,14 +810,20 @@ export function MainUserReviewPage() {
             type="button"
             className="user-review-write-btn"
             onClick={() => router.push(`/write_review?board=${board}`)}
-            aria-label="새글작성"
-            title="새글작성"
+            aria-label={writeFabMounted ? "새글작성" : undefined}
+            title={writeFabMounted ? "새글작성" : undefined}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z" />
-            </svg>
-            <span className="user-review-sr-only">새글작성</span>
+            {writeFabMounted ? (
+              <>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z" />
+                </svg>
+                <span className="user-review-sr-only">새글작성</span>
+              </>
+            ) : (
+              "글작성"
+            )}
           </button>
         </div>
       </div>
