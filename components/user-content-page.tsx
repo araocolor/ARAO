@@ -31,6 +31,14 @@ function ContentImage({
   );
 }
 
+function getDistance(t1: React.Touch, t2: React.Touch) {
+  return Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+}
+
+function getMidpoint(t1: React.Touch, t2: React.Touch) {
+  return { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 };
+}
+
 function ImageViewer({
   images,
   startIndex,
@@ -48,9 +56,25 @@ function ImageViewer({
   const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // 줌 상태
+  const [scale, setScale] = useState(1);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const pinchRef = useRef<{ dist: number; scale: number } | null>(null);
+  const panStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const isPinching = useRef(false);
+
   const total = images.length;
   const hasPrev = current > 0;
   const hasNext = current < total - 1;
+  const isZoomed = scale > 1.05;
+
+  // 이미지 전환 시 줌 리셋
+  useEffect(() => {
+    setScale(1);
+    setPanX(0);
+    setPanY(0);
+  }, [current]);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -60,23 +84,60 @@ function ImageViewer({
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft" && hasPrev) setCurrent((c) => c - 1);
-      if (e.key === "ArrowRight" && hasNext) setCurrent((c) => c + 1);
+      if (e.key === "ArrowLeft" && hasPrev && !isZoomed) setCurrent((c) => c - 1);
+      if (e.key === "ArrowRight" && hasNext && !isZoomed) setCurrent((c) => c + 1);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [hasPrev, hasNext, onClose]);
+  }, [hasPrev, hasNext, onClose, isZoomed]);
 
   function handleTouchStart(e: React.TouchEvent) {
+    // 핀치 시작 (두 손가락)
+    if (e.touches.length === 2) {
+      isPinching.current = true;
+      pinchRef.current = {
+        dist: getDistance(e.touches[0], e.touches[1]),
+        scale,
+      };
+      touchStartRef.current = null;
+      setIsDragging(false);
+      return;
+    }
+
+    // 한 손가락
     const t = e.touches[0];
-    touchStartRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
-    setIsDragging(true);
+    if (isZoomed) {
+      // 줌 상태: 팬 시작
+      panStartRef.current = { x: t.clientX, y: t.clientY, panX, panY };
+    } else {
+      // 기본: 슬라이드 스와이프
+      touchStartRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
+      setIsDragging(true);
+    }
   }
 
   function handleTouchMove(e: React.TouchEvent) {
+    // 핀치 줌
+    if (e.touches.length === 2 && pinchRef.current) {
+      const newDist = getDistance(e.touches[0], e.touches[1]);
+      const ratio = newDist / pinchRef.current.dist;
+      const newScale = Math.min(Math.max(pinchRef.current.scale * ratio, 1), 4);
+      setScale(newScale);
+      if (newScale <= 1.05) { setPanX(0); setPanY(0); }
+      return;
+    }
+
+    // 줌 상태: 팬 이동
+    if (isZoomed && panStartRef.current && e.touches.length === 1) {
+      const t = e.touches[0];
+      setPanX(panStartRef.current.panX + t.clientX - panStartRef.current.x);
+      setPanY(panStartRef.current.panY + t.clientY - panStartRef.current.y);
+      return;
+    }
+
+    // 기본: 슬라이드 드래그
     if (!touchStartRef.current) return;
     const dx = e.touches[0].clientX - touchStartRef.current.x;
-    // 끝에서 저항감: 더 이상 넘길 수 없으면 이동량 줄임
     if ((!hasPrev && dx > 0) || (!hasNext && dx < 0)) {
       setDragX(dx * 0.3);
     } else {
@@ -85,6 +146,26 @@ function ImageViewer({
   }
 
   function handleTouchEnd(e: React.TouchEvent) {
+    // 핀치 종료
+    if (isPinching.current) {
+      isPinching.current = false;
+      pinchRef.current = null;
+      // 줌이 1에 가까우면 리셋
+      if (scale <= 1.05) {
+        setScale(1);
+        setPanX(0);
+        setPanY(0);
+      }
+      return;
+    }
+
+    // 줌 팬 종료
+    if (isZoomed) {
+      panStartRef.current = null;
+      return;
+    }
+
+    // 기본: 슬라이드 스와이프 종료
     if (!touchStartRef.current) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - touchStartRef.current.x;
@@ -94,17 +175,43 @@ function ImageViewer({
     setIsDragging(false);
     setDragX(0);
 
-    // 탭 → UI 토글
+    // 탭 → 카운터만 토글 (X 버튼은 항상 표시)
     if (Math.abs(dx) < 20 && Math.abs(dy) < 20 && dt < 300) {
-      setShowUI((v) => !v);
+      const target = e.target as HTMLElement;
+      if (!target.closest(".user-content-viewer-close") && !target.closest(".user-content-viewer-arrow")) {
+        setShowUI((v) => !v);
+      }
       return;
     }
 
-    // 스와이프: 50px 이상 또는 빠른 플릭 (velocity > 0.3)
+    // 스와이프
     const velocity = Math.abs(dx) / dt;
     if ((Math.abs(dx) > 50 || velocity > 0.3) && Math.abs(dx) > Math.abs(dy)) {
       if (dx < 0 && hasNext) setCurrent((c) => c + 1);
       if (dx > 0 && hasPrev) setCurrent((c) => c - 1);
+    }
+  }
+
+  // 더블탭 줌 토글
+  const lastTapRef = useRef(0);
+  function handleDoubleClick(e: React.MouseEvent) {
+    const target = e.target as HTMLElement;
+    if (target.closest(".user-content-viewer-close") || target.closest(".user-content-viewer-arrow")) return;
+
+    if (isZoomed) {
+      setScale(1);
+      setPanX(0);
+      setPanY(0);
+    } else {
+      setScale(2.5);
+      // 클릭한 위치를 중심으로 줌
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (rect) {
+        const cx = e.clientX - rect.left - rect.width / 2;
+        const cy = e.clientY - rect.top - rect.height / 2;
+        setPanX(-cx * 1.5);
+        setPanY(-cy * 1.5);
+      }
     }
   }
 
@@ -123,6 +230,9 @@ function ImageViewer({
     transition: isDragging ? "none" : "transform 0.35s cubic-bezier(0.25, 0.1, 0.25, 1)",
   };
 
+  const imageTransform = `scale(${scale}) translate(${panX / scale}px, ${panY / scale}px)`;
+  const imageTransition = isPinching.current || panStartRef.current ? "none" : "transform 0.25s ease-out";
+
   return (
     <div
       ref={containerRef}
@@ -130,20 +240,19 @@ function ImageViewer({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onDoubleClick={handleDoubleClick}
     >
-      {showUI && (
-        <button
-          type="button"
-          className="user-content-viewer-close"
-          onClick={onClose}
-          aria-label="닫기"
-        >
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-      )}
+      <button
+        type="button"
+        className="user-content-viewer-close"
+        onClick={onClose}
+        aria-label="닫기"
+      >
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
 
       {showUI && total > 1 && (
         <div className="user-content-viewer-counter">
@@ -151,7 +260,7 @@ function ImageViewer({
         </div>
       )}
 
-      {/* 슬라이드 트랙: 모든 이미지를 가로로 나열 */}
+      {/* 슬라이드 트랙 */}
       <div style={trackStyle}>
         {images.map((src, i) => (
           <div key={i} className="user-content-viewer-wrap" style={{ width: "100vw", flexShrink: 0 }}>
@@ -162,7 +271,11 @@ function ImageViewer({
                   src={src}
                   alt=""
                   className="user-content-viewer-img"
-                  style={{ opacity: loadedSet.has(i) ? 1 : 0 }}
+                  style={{
+                    opacity: loadedSet.has(i) ? 1 : 0,
+                    transform: i === current ? imageTransform : undefined,
+                    transition: i === current ? `opacity 0.2s, ${imageTransition}` : "opacity 0.2s",
+                  }}
                   onLoad={() => handleImageLoaded(i)}
                 />
               </>
@@ -171,7 +284,7 @@ function ImageViewer({
         ))}
       </div>
 
-      {showUI && hasPrev && (
+      {showUI && !isZoomed && hasPrev && (
         <button
           type="button"
           className="user-content-viewer-arrow left"
@@ -183,7 +296,7 @@ function ImageViewer({
           </svg>
         </button>
       )}
-      {showUI && hasNext && (
+      {showUI && !isZoomed && hasNext && (
         <button
           type="button"
           className="user-content-viewer-arrow right"
