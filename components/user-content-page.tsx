@@ -387,37 +387,6 @@ export function UserContentPage({ id }: { id: string }) {
   const originalCacheRef = useRef<Record<string, boolean>>({});
   const [upgradedImages, setUpgradedImages] = useState<Record<number, string>>({});
 
-  // 본문 체류 중 리스트 캐시 2분마다 백그라운드 갱신
-  useEffect(() => {
-    function refreshListCache() {
-      fetch("/api/main/user-review?page=1&limit=20&sort=latest")
-        .then((r) => r.json())
-        .then((data: { items: Array<{ thumbnailImage?: string | null; [key: string]: unknown }>; total?: number; [key: string]: unknown }) => {
-          const slim = {
-            ...data,
-            items: Array.isArray(data.items)
-              ? data.items.map((item) => {
-                  let firstImage: string | null = null;
-                  if (item.thumbnailImage) {
-                    try {
-                      const parsed = JSON.parse(item.thumbnailImage);
-                      firstImage = Array.isArray(parsed) ? (parsed[0] ?? null) : item.thumbnailImage;
-                    } catch {
-                      firstImage = item.thumbnailImage;
-                    }
-                  }
-                  return { ...item, thumbnailImage: firstImage };
-                })
-              : [],
-          };
-          sessionStorage.setItem("user-review-list-cache", JSON.stringify({ data: slim, ts: Date.now() }));
-        })
-        .catch(() => {});
-    }
-    const timer = setInterval(refreshListCache, 120000);
-    return () => clearInterval(timer);
-  }, []);
-
   // 1단계: 마운트 후 캐시 데이터로 즉시 채우기
   useEffect(() => {
     const cached = getContentCache(id);

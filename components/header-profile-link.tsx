@@ -103,35 +103,25 @@ export function HeaderProfileLink() {
     }
   }
 
-  function prefetchGalleryFirst() {
+  function prefetchGalleryFirst(force = false) {
     // 첫 번째 카드(people/0) 공개 데이터 prefetch (로그인 무관)
     const publicKey = "gallery_public_people_0";
     const commentsKey = "gallery_comments_people_0";
-    if (!getCached(publicKey)) {
-      fetch("/api/gallery/people/0/likes")
-        .then((r) => r.json())
-        .then((d: { count?: number; firstLiker?: string | null; commentCount?: number }) => {
-          setCached(publicKey, { count: d.count ?? 0, firstLiker: d.firstLiker ?? null, commentCount: d.commentCount ?? 0 });
-          if (!getCached(commentsKey)) {
-            fetch("/api/gallery/people/0/comments")
-              .then((r) => r.json())
-              .then((d2) => setCached(commentsKey, d2))
-              .catch(() => {});
-          }
-        })
-        .catch(() => {});
-    }
+    if (!force && getCached(publicKey)) return;
+    fetch("/api/gallery/people/0/likes")
+      .then((r) => r.json())
+      .then((d: { count?: number; firstLiker?: string | null; commentCount?: number }) => {
+        setCached(publicKey, { count: d.count ?? 0, firstLiker: d.firstLiker ?? null, commentCount: d.commentCount ?? 0 });
+        fetch("/api/gallery/people/0/comments")
+          .then((r) => r.json())
+          .then((d2) => setCached(commentsKey, d2))
+          .catch(() => {});
+      })
+      .catch(() => {});
   }
 
   function prefetchUserReviewList() {
     const cacheKey = "user-review-list-cache";
-    try {
-      const cached = sessionStorage.getItem(cacheKey);
-      if (cached) {
-        const { ts } = JSON.parse(cached) as { ts: number };
-        if (Date.now() - ts < 60000) return; // 1분 이내 유효
-      }
-    } catch {}
     fetch("/api/main/user-review?page=1&limit=20&sort=latest")
       .then((r) => r.json())
       .then((data: { items: Array<{ thumbnailImage?: string | null; thumbnailFirst?: string | null; [key: string]: unknown }>; [key: string]: unknown }) => {
@@ -165,6 +155,17 @@ export function HeaderProfileLink() {
     if (savedBadge > 0) setBadgeCount(savedBadge);
     prefetchGalleryFirst();
     prefetchUserReviewList();
+  }, []);
+
+  // 사이트 체류 중 2분마다 리스트/갤러리 캐시 백그라운드 갱신 (탭 visible일 때만)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        prefetchUserReviewList();
+        prefetchGalleryFirst(true);
+      }
+    }, 120000);
+    return () => clearInterval(timer);
   }, []);
 
   // 초기 로드: 아바타 먼저 → 알림 / 로그아웃 시 캐시 제거
