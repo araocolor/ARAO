@@ -386,7 +386,7 @@ export function MainUserReviewPage() {
               <button
                 key={item.id}
                 type="button"
-                className={`user-review-item list${item.id === newItemId ? " user-review-item--new" : ""}`}
+                className="user-review-item list"
                 onClick={() => openReview(item.id)}
               >
                 <div className="user-review-item-main">
