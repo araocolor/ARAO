@@ -2,6 +2,8 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
+const IMAGE_CACHE_CONTROL = "31536000";
+
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) {
@@ -28,7 +30,11 @@ export async function POST(request: Request) {
           const buffer = Buffer.from(ab);
           const { error } = await supabase.storage
             .from("board_image")
-            .upload(path, buffer, { contentType: "image/jpeg", upsert: true });
+            .upload(path, buffer, {
+              contentType: file.type || "image/jpeg",
+              cacheControl: IMAGE_CACHE_CONTROL,
+              upsert: false,
+            });
 
           if (error) {
             console.error(`Storage upload error [${key}]:`, error);

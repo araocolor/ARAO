@@ -387,11 +387,13 @@ function WriteReviewContent() {
 
         // 한 번의 API 호출로 모든 파일 업로드
         const batch: Array<{ blob: Blob; path: string; key: string }> = [];
+        const uploadVersion = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         for (const { i, orig, med, thumb } of compressed) {
           const idx = i + 1;
-          if (orig) batch.push({ blob: dataUrlToBlob(orig), path: `${postId}/${idPrefix}_original_${idx}.jpg`, key: `orig_${i}` });
-          if (med) batch.push({ blob: dataUrlToBlob(med), path: `${postId}/${idPrefix}_medium_${idx}.jpg`, key: `med_${i}` });
-          if (thumb) batch.push({ blob: dataUrlToBlob(thumb), path: `${postId}/${idPrefix}_thumb_${idx}.jpg`, key: `thumb_${i}` });
+          const baseName = `${idPrefix}_${uploadVersion}_${idx}`;
+          if (orig) batch.push({ blob: dataUrlToBlob(orig), path: `${postId}/${baseName}_original.jpg`, key: `orig_${i}` });
+          if (med) batch.push({ blob: dataUrlToBlob(med), path: `${postId}/${baseName}_medium.jpg`, key: `med_${i}` });
+          if (thumb) batch.push({ blob: dataUrlToBlob(thumb), path: `${postId}/${baseName}_thumb.jpg`, key: `thumb_${i}` });
         }
 
         const urls = await uploadBatch(batch);
