@@ -494,7 +494,7 @@ export function UserContentPage({ id }: { id: string }) {
   }
 
   return (
-    <main className="landing-page">
+    <main className="landing-page user-content-page">
       <UserContentHeader reviewId={id} isAuthor={item?.isAuthor ?? false} board={item?.board} />
       <div className="landing-shell">
         {notFound ? (

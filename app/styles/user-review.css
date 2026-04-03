@@ -665,6 +665,18 @@
 
 /* ── 후기 내용 페이지 ── */
 
+.user-content-page {
+  width: min(100%, 480px);
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .user-content-page {
+    width: min(calc(100% - 48px), var(--tablet-width, 820px));
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
 .user-content-article {
   display: flex;
   flex-direction: column;
@@ -752,7 +764,7 @@
 
 .user-content-thumb {
   width: 100%;
-  max-width: 480px;
+  max-width: 100%;
   border-radius: 12px;
   object-fit: cover;
   border: 1px solid var(--line);
@@ -771,7 +783,7 @@
   background: none;
   cursor: pointer;
   width: 100%;
-  max-width: 480px;
+  max-width: 100%;
 }
 
 /* ── 이미지 슬라이드 뷰어 (1024px 원본) ── */
