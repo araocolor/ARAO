@@ -511,7 +511,6 @@ export function UserContentPage({ id }: { id: string }) {
                     </svg>
                   </span>
                   <span className="user-content-file-name">{attachedFile.name}</span>
-                  <span className="user-content-file-dl-label">다운로드</span>
                 </a>
               )}
               <p className="user-content-body">{item.content}</p>
