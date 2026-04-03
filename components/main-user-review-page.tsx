@@ -125,11 +125,7 @@ export function MainUserReviewPage() {
     const newId = searchParams.get("new");
     if (newId) {
       setNewItemId(newId);
-      // URL에서 파라미터 제거 (히스토리 오염 방지)
       router.replace("/user_review");
-      // 2초 후 하이라이트 해제
-      const t = setTimeout(() => setNewItemId(null), 2000);
-      return () => clearTimeout(t);
     }
   }, []);
 
@@ -304,6 +300,7 @@ export function MainUserReviewPage() {
       router.push("/sign-in");
       return;
     }
+    if (id === newItemId) setNewItemId(null);
     setReadIds((prev) => {
       const next = new Set(prev);
       next.add(id);
