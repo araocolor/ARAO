@@ -277,15 +277,21 @@
 
 .header-community-search-trigger {
   display: inline-flex;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(17, 17, 17, 0.08);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
+  border: none;
+  border-radius: 0;
+  background: transparent;
   color: #111;
   cursor: pointer;
+  padding: 0;
+}
+
+.header-community-search-icon {
+  width: 22px;
+  height: 22px;
 }
 
 .header-community-search-trigger:active {
