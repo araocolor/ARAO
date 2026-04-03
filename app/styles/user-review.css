@@ -378,6 +378,54 @@
   font-size: 13px;
 }
 
+/* ── 스켈레톤 로딩 ── */
+
+@keyframes skeleton-pulse {
+  0% { opacity: 0.45; }
+  50% { opacity: 0.9; }
+  100% { opacity: 0.45; }
+}
+
+.skeleton-bone {
+  background: #e5e7eb;
+  border-radius: 4px;
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.skeleton-row {
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 1fr 64px;
+  gap: 10px;
+  align-items: center;
+}
+
+.skeleton-row + .skeleton-row {
+  border-top: 1px solid var(--line);
+}
+
+.skeleton-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton-title {
+  height: 15px;
+  width: 65%;
+}
+
+.skeleton-meta {
+  height: 12px;
+  width: 45%;
+}
+
+.skeleton-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+}
+
 /* ── 후기 내용 페이지 ── */
 
 .user-content-article {

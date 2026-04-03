@@ -354,9 +354,19 @@ export function MainUserReviewPage() {
         </div>
       )}
 
-      {loading ? (
-        <div className="user-review-empty">불러오는 중...</div>
-      ) : items.length === 0 ? (
+      {loading && items.length === 0 ? (
+        <div className="user-review-list">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className="skeleton-row">
+              <div className="skeleton-row-body">
+                <div className="skeleton-bone skeleton-title" style={i % 3 === 1 ? { width: "50%" } : i % 3 === 2 ? { width: "80%" } : undefined} />
+                <div className="skeleton-bone skeleton-meta" style={i % 2 === 1 ? { width: "35%" } : undefined} />
+              </div>
+              <div className="skeleton-bone skeleton-thumb" />
+            </div>
+          ))}
+        </div>
+      ) : items.length === 0 && !loading ? (
         <div className="user-review-empty">표시할 후기가 없습니다.</div>
       ) : viewMode === "list" ? (
         <div className="user-review-list">
