@@ -6,6 +6,7 @@ import { useUser } from "@clerk/nextjs";
 import { BoardHeader } from "@/components/board-header";
 
 type Category = "일반" | "공지";
+type BoardType = "notice" | "review" | "qna" | "arao";
 
 const MAX_IMAGES = 10;
 const ORIGINAL_WIDTH = 1024;
@@ -16,11 +17,17 @@ const THUMB_WIDTH = 200;
 const THUMB_QUALITY = 0.5;
 const MAX_BYTES = 1 * 1024 * 1024; // 1MB 미리보기 제한
 const PAGE_CACHE_PREFIX = "user-review-page-cache-v1:";
-const BOARD_VALUES = new Set(["notice", "review", "qna", "arao"]);
+const BOARD_VALUES = new Set<BoardType>(["notice", "review", "qna", "arao"]);
+const BOARD_OPTIONS: Array<{ value: BoardType; label: string }> = [
+  { value: "notice", label: "공지사항" },
+  { value: "review", label: "사용자후기" },
+  { value: "qna", label: "Q&A" },
+  { value: "arao", label: "ARAO" },
+];
 
-function normalizeBoard(board: string | null): string {
+function normalizeBoard(board: string | null): BoardType {
   if (!board) return "review";
-  return BOARD_VALUES.has(board) ? board : "review";
+  return BOARD_VALUES.has(board as BoardType) ? (board as BoardType) : "review";
 }
 
 function getBoardListCacheKey(board: string): string {
@@ -91,7 +98,8 @@ function WriteReviewContent() {
   const { isSignedIn } = useUser();
   const [board, setBoard] = useState(initialBoardParam);
   const [category, setCategory] = useState<Category>("일반");
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [boardDropdownOpen, setBoardDropdownOpen] = useState(false);
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
@@ -534,22 +542,84 @@ function WriteReviewContent() {
       <BoardHeader menuItems={[{ label: "취소", onClick: handleCancel }]} />
 
       <div className="write-review-body">
-        {/* 카테고리 드롭다운 + 이미지 첨부 */}
+        {/* 게시판/카테고리 드롭다운 + 이미지 첨부 */}
         <div className="write-review-dropdown-wrap">
-          <button
-            type="button"
-            className="user-review-dropdown-trigger"
-            onClick={() => setDropdownOpen((v) => !v)}
-          >
-            {category}
-            <svg
-              className={`user-review-dropdown-arrow${dropdownOpen ? " open" : ""}`}
-              width="14" height="14" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+          <div className="write-review-inline-dropdown">
+            <button
+              type="button"
+              className="user-review-dropdown-trigger"
+              onClick={() => {
+                setBoardDropdownOpen((v) => !v);
+                setCategoryDropdownOpen(false);
+              }}
             >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
+              {BOARD_OPTIONS.find((opt) => opt.value === board)?.label ?? "사용자후기"}
+              <svg
+                className={`user-review-dropdown-arrow${boardDropdownOpen ? " open" : ""}`}
+                width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+            {boardDropdownOpen && (
+              <div className="user-review-dropdown-menu">
+                {BOARD_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`user-review-dropdown-option${board === opt.value ? " active" : ""}`}
+                    onClick={() => {
+                      setBoard(opt.value);
+                      setBoardDropdownOpen(false);
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <span className="write-review-dropdown-separator">|</span>
+
+          <div className="write-review-inline-dropdown">
+            <button
+              type="button"
+              className="user-review-dropdown-trigger"
+              onClick={() => {
+                setCategoryDropdownOpen((v) => !v);
+                setBoardDropdownOpen(false);
+              }}
+            >
+              {category}
+              <svg
+                className={`user-review-dropdown-arrow${categoryDropdownOpen ? " open" : ""}`}
+                width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+            {categoryDropdownOpen && (
+              <div className="user-review-dropdown-menu">
+                {(["일반", "공지"] as Category[]).map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    className={`user-review-dropdown-option${category === opt ? " active" : ""}`}
+                    onClick={() => {
+                      setCategory(opt);
+                      setCategoryDropdownOpen(false);
+                    }}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <span className="write-review-dropdown-separator">|</span>
           <button type="button" className="write-review-inline-attach-btn" aria-label="이미지 첨부" onClick={() => imageInputRef.current?.click()}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -558,19 +628,6 @@ function WriteReviewContent() {
               <polyline points="21 15 16 10 5 21" />
             </svg>
           </button>
-          {dropdownOpen && (
-            <div className="user-review-dropdown-menu">
-              {(["일반", "공지"] as Category[]).map((opt) => (
-                <button
-                  key={opt} type="button"
-                  className={`user-review-dropdown-option${category === opt ? " active" : ""}`}
-                  onClick={() => { setCategory(opt); setDropdownOpen(false); }}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className="write-review-divider" />

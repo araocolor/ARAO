@@ -161,13 +161,6 @@
   font-weight: 400;
 }
 
-.user-review-item-num {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--muted);
-  flex-shrink: 0;
-}
-
 .user-review-item-stats {
   display: inline-flex;
   align-items: center;
@@ -1207,6 +1200,12 @@
   display: flex;
   align-items: center;
   gap: 0;
+}
+
+.write-review-inline-dropdown {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
 }
 
 .write-review-dropdown-separator {
