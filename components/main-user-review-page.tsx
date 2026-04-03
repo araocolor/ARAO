@@ -95,19 +95,25 @@ export function MainUserReviewPage() {
   const listRef = useRef<HTMLDivElement>(null);
   const bottomSentinelRef = useRef<HTMLDivElement>(null);
 
-  const [items, setItems] = useState<UserReviewItem[]>(() => getListCache()?.items ?? []);
+  const [items, setItems] = useState<UserReviewItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [sortMode, setSortMode] = useState<SortMode>("latest");
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [total, setTotal] = useState(() => getListCache()?.total ?? 0);
+  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [queryInput, setQueryInput] = useState("");
   const [query, setQuery] = useState("");
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const limit = 20;
 
+  // 마운트 후 캐시 데이터로 즉시 채우기
   useEffect(() => {
+    const cached = getListCache();
+    if (cached) {
+      setItems(cached.items);
+      setTotal(cached.total);
+    }
     try {
       const stored = localStorage.getItem("user-review-read-ids");
       if (stored) setReadIds(new Set(JSON.parse(stored) as string[]));

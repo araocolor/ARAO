@@ -43,6 +43,8 @@ function ImageViewer({
   const [current, setCurrent] = useState(startIndex);
   const [showUI, setShowUI] = useState(true);
   const [loadedSet, setLoadedSet] = useState<Set<number>>(() => new Set());
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -55,7 +57,6 @@ function ImageViewer({
     return () => { document.body.style.overflow = ""; };
   }, []);
 
-  // 키보드 네비게이션
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -69,6 +70,18 @@ function ImageViewer({
   function handleTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
     touchStartRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
+    setIsDragging(true);
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (!touchStartRef.current) return;
+    const dx = e.touches[0].clientX - touchStartRef.current.x;
+    // 끝에서 저항감: 더 이상 넘길 수 없으면 이동량 줄임
+    if ((!hasPrev && dx > 0) || (!hasNext && dx < 0)) {
+      setDragX(dx * 0.3);
+    } else {
+      setDragX(dx);
+    }
   }
 
   function handleTouchEnd(e: React.TouchEvent) {
@@ -78,15 +91,18 @@ function ImageViewer({
     const dy = t.clientY - touchStartRef.current.y;
     const dt = Date.now() - touchStartRef.current.t;
     touchStartRef.current = null;
+    setIsDragging(false);
+    setDragX(0);
 
-    // 탭 (이동 적음, 시간 짧음) → UI 토글
+    // 탭 → UI 토글
     if (Math.abs(dx) < 20 && Math.abs(dy) < 20 && dt < 300) {
       setShowUI((v) => !v);
       return;
     }
 
-    // 스와이프 (수평 50px 이상)
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+    // 스와이프: 50px 이상 또는 빠른 플릭 (velocity > 0.3)
+    const velocity = Math.abs(dx) / dt;
+    if ((Math.abs(dx) > 50 || velocity > 0.3) && Math.abs(dx) > Math.abs(dy)) {
       if (dx < 0 && hasNext) setCurrent((c) => c + 1);
       if (dx > 0 && hasPrev) setCurrent((c) => c - 1);
     }
@@ -100,14 +116,21 @@ function ImageViewer({
     });
   }
 
+  const trackStyle: React.CSSProperties = {
+    display: "flex",
+    height: "100%",
+    transform: `translateX(calc(${-current * 100}vw + ${dragX}px))`,
+    transition: isDragging ? "none" : "transform 0.35s cubic-bezier(0.25, 0.1, 0.25, 1)",
+  };
+
   return (
     <div
       ref={containerRef}
       className="user-content-viewer-overlay"
       onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* X 닫기 버튼 */}
       {showUI && (
         <button
           type="button"
@@ -122,27 +145,32 @@ function ImageViewer({
         </button>
       )}
 
-      {/* 페이지 표시 */}
       {showUI && total > 1 && (
         <div className="user-content-viewer-counter">
           {current + 1} / {total}
         </div>
       )}
 
-      {/* 이미지 */}
-      <div className="user-content-viewer-wrap">
-        {!loadedSet.has(current) && <div className="user-content-viewer-spinner" />}
-        <img
-          key={current}
-          src={images[current]}
-          alt=""
-          className="user-content-viewer-img"
-          style={{ opacity: loadedSet.has(current) ? 1 : 0 }}
-          onLoad={() => handleImageLoaded(current)}
-        />
+      {/* 슬라이드 트랙: 모든 이미지를 가로로 나열 */}
+      <div style={trackStyle}>
+        {images.map((src, i) => (
+          <div key={i} className="user-content-viewer-wrap" style={{ width: "100vw", flexShrink: 0 }}>
+            {Math.abs(i - current) <= 1 && (
+              <>
+                {!loadedSet.has(i) && <div className="user-content-viewer-spinner" />}
+                <img
+                  src={src}
+                  alt=""
+                  className="user-content-viewer-img"
+                  style={{ opacity: loadedSet.has(i) ? 1 : 0 }}
+                  onLoad={() => handleImageLoaded(i)}
+                />
+              </>
+            )}
+          </div>
+        ))}
       </div>
 
-      {/* 데스크탑 좌우 화살표 */}
       {showUI && hasPrev && (
         <button
           type="button"
@@ -206,11 +234,19 @@ function getContentCache(id: string): ReviewItem | null {
 }
 
 export function UserContentPage({ id }: { id: string }) {
-  const [item, setItem] = useState<ReviewItem | null>(() => getContentCache(id));
+  const [item, setItem] = useState<ReviewItem | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const originalCacheRef = useRef<Record<string, boolean>>({});
+  const [upgradedImages, setUpgradedImages] = useState<Record<number, string>>({});
 
+  // 1단계: 마운트 후 캐시 데이터로 즉시 채우기
+  useEffect(() => {
+    const cached = getContentCache(id);
+    if (cached) setItem(cached);
+  }, [id]);
+
+  // 2단계: 서버에서 최신 데이터 가져오기
   useEffect(() => {
     fetch(`/api/main/user-review/${id}`)
       .then((r) => {
@@ -249,17 +285,23 @@ export function UserContentPage({ id }: { id: string }) {
     } catch {}
   }
 
-  // 본문 표시용: 480px 우선
-  const displayImages = originalImages.map((orig, i) => mediumImages[i] ?? orig);
+  // 본문 표시용: 1024px 로드 완료 시 교체, 아니면 480px 우선
+  const displayImages = originalImages.map((orig, i) => upgradedImages[i] ?? mediumImages[i] ?? orig);
 
-  // 페이지 로드 후 1024px 원본 백그라운드 캐싱
+  // 페이지 로드 후 1024px 원본 백그라운드 로드 → 완료 시 본문 이미지 교체
   useEffect(() => {
     if (!item || originalImages.length === 0) return;
     const timer = setTimeout(() => {
-      originalImages.forEach((src) => {
-        if (originalCacheRef.current[src]) return;
+      originalImages.forEach((src, i) => {
+        if (originalCacheRef.current[src]) {
+          setUpgradedImages((prev) => ({ ...prev, [i]: src }));
+          return;
+        }
         const img = new Image();
-        img.onload = () => { originalCacheRef.current[src] = true; };
+        img.onload = () => {
+          originalCacheRef.current[src] = true;
+          setUpgradedImages((prev) => ({ ...prev, [i]: src }));
+        };
         img.src = src;
       });
     }, 500);

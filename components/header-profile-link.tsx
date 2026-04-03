@@ -27,12 +27,7 @@ export function HeaderProfileLink() {
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 배지 카운트: localStorage 초기값으로 즉시 표시 (Clerk 인증 대기 없음)
-  const [badgeCount, setBadgeCount] = useState<number>(() => {
-    if (typeof window !== "undefined") {
-      return Number(localStorage.getItem("header-badge-count") ?? 0);
-    }
-    return 0;
-  });
+  const [badgeCount, setBadgeCount] = useState<number>(0);
 
   // 아바타만 먼저 조회 (빠른 업데이트)
   async function fetchAvatar() {
@@ -166,6 +161,8 @@ export function HeaderProfileLink() {
   useEffect(() => {
     const cached = localStorage.getItem("header-avatar");
     if (cached) setIconImage(cached);
+    const savedBadge = Number(localStorage.getItem("header-badge-count") ?? 0);
+    if (savedBadge > 0) setBadgeCount(savedBadge);
     prefetchGalleryFirst();
     prefetchUserReviewList();
   }, []);
