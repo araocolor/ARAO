@@ -227,7 +227,7 @@ function ImageViewer({
     display: "flex",
     height: "100%",
     transform: `translateX(calc(${-current * 100}vw + ${dragX}px))`,
-    transition: isDragging ? "none" : "transform 0.35s cubic-bezier(0.25, 0.1, 0.25, 1)",
+    transition: isDragging ? "none" : "transform 0.35s cubic-bezier(0.2, 0.8, 0.3, 1)",
   };
 
   const imageTransform = `scale(${scale}) translate(${panX / scale}px, ${panY / scale}px)`;
