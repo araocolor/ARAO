@@ -90,6 +90,7 @@ function WriteReviewContent() {
   const [fileError, setFileError] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
 
   // 수정 모드: 기존 데이터 로드
   useEffect(() => {
@@ -98,15 +99,48 @@ function WriteReviewContent() {
       .then((r) => r.json())
       .then((d) => {
         if (d.title) setTitle(d.title);
-        if (d.content) setContent(d.content);
+        if (d.content) {
+          setContent(d.content);
+          if (editorRef.current) {
+            editorRef.current.innerText = d.content;
+          }
+        }
         if (d.category && (d.category === "일반" || d.category === "공지")) setCategory(d.category);
         if (d.thumbnailImage) {
+          let urls: string[] = [];
           try {
             const parsed = JSON.parse(d.thumbnailImage);
-            if (Array.isArray(parsed)) setExistingImageUrls(parsed);
-            else setExistingImageUrls([d.thumbnailImage]);
+            urls = Array.isArray(parsed) ? parsed : [d.thumbnailImage];
           } catch {
-            setExistingImageUrls([d.thumbnailImage]);
+            urls = [d.thumbnailImage];
+          }
+          setExistingImageUrls(urls);
+          // 에디터에 기존 이미지 표시
+          if (editorRef.current) {
+            for (const src of urls) {
+              const wrapper = document.createElement("div");
+              wrapper.className = "write-review-inline-image";
+              wrapper.contentEditable = "false";
+              const img = document.createElement("img");
+              img.src = src;
+              img.alt = "첨부 이미지";
+              const removeBtn = document.createElement("button");
+              removeBtn.type = "button";
+              removeBtn.className = "write-review-image-remove";
+              removeBtn.textContent = "\u2715";
+              removeBtn.setAttribute("aria-label", "이미지 제거");
+              removeBtn.addEventListener("click", () => {
+                wrapper.remove();
+                const remaining = editorRef.current?.querySelectorAll(".write-review-inline-image img") ?? [];
+                setExistingImageUrls(Array.from(remaining).map((el) => (el as HTMLImageElement).src));
+              });
+              wrapper.appendChild(img);
+              wrapper.appendChild(removeBtn);
+              editorRef.current.appendChild(wrapper);
+            }
+            const newLine = document.createElement("div");
+            newLine.appendChild(document.createElement("br"));
+            editorRef.current.appendChild(newLine);
           }
         }
         if (d.attachedFile) {
@@ -118,6 +152,19 @@ function WriteReviewContent() {
       })
       .catch(() => {});
   }, [editId]);
+
+  // contentEditable에서 텍스트만 추출
+  function getEditorText(): string {
+    if (!editorRef.current) return content;
+    const clone = editorRef.current.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll(".write-review-inline-image").forEach((el) => el.remove());
+    return (clone.innerText ?? "").trim();
+  }
+
+  // 에디터 내용 변경 시 content state 동기화
+  function syncEditorContent() {
+    setContent(getEditorText());
+  }
 
   function handleCancel() {
     router.back();
@@ -156,6 +203,54 @@ function WriteReviewContent() {
         }
         return next;
       });
+
+      // contentEditable 에디터에 커서 위치에 이미지 삽입
+      if (editorRef.current) {
+        const editor = editorRef.current;
+        editor.focus();
+        const sel = window.getSelection();
+        for (const r of results) {
+          const wrapper = document.createElement("div");
+          wrapper.className = "write-review-inline-image";
+          wrapper.contentEditable = "false";
+          const img = document.createElement("img");
+          img.src = r.dataUrl;
+          img.alt = "첨부 이미지";
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.className = "write-review-image-remove";
+          removeBtn.textContent = "\u2715";
+          removeBtn.setAttribute("aria-label", "이미지 제거");
+          removeBtn.addEventListener("click", () => {
+            wrapper.remove();
+            syncEditorContent();
+          });
+          wrapper.appendChild(img);
+          wrapper.appendChild(removeBtn);
+
+          // 커서 위치에 삽입
+          if (sel && sel.rangeCount > 0) {
+            const range = sel.getRangeAt(0);
+            range.deleteContents();
+            range.insertNode(wrapper);
+            // 이미지 다음에 빈 단락 추가 후 커서 이동
+            const newLine = document.createElement("div");
+            newLine.appendChild(document.createElement("br"));
+            wrapper.after(newLine);
+            const newRange = document.createRange();
+            newRange.setStart(newLine, 0);
+            newRange.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(newRange);
+          } else {
+            editor.appendChild(wrapper);
+            const newLine = document.createElement("div");
+            newLine.appendChild(document.createElement("br"));
+            editor.appendChild(newLine);
+          }
+        }
+        syncEditorContent();
+      }
     }
 
     if (skipped > 0) setImageError("사진은 최대 10장 가능합니다.");
@@ -192,6 +287,9 @@ function WriteReviewContent() {
   async function handleSave() {
     if (!title.trim() || saving) return;
     if (!isSignedIn) { router.push("/sign-in"); return; }
+    // 저장 직전 에디터 내용 동기화
+    const finalContent = getEditorText();
+    setContent(finalContent);
     setSaving(true);
 
     try {
@@ -206,7 +304,7 @@ function WriteReviewContent() {
         body: JSON.stringify({
           category,
           title: title.trim(),
-          content: content.trim(),
+          content: finalContent.trim(),
           attachedFile: attachedFile ? JSON.stringify(attachedFile) : null,
         }),
       });
@@ -267,7 +365,7 @@ function WriteReviewContent() {
           body: JSON.stringify({
             category,
             title: title.trim(),
-            content: content.trim(),
+            content: finalContent.trim(),
             thumbnailImage: allOriginals.length === 1 ? allOriginals[0] : JSON.stringify(allOriginals),
             thumbnailSmall: allMediums.length > 0 ? JSON.stringify(allMediums) : null,
             thumbnailFirst: firstThumb,
@@ -282,7 +380,7 @@ function WriteReviewContent() {
           body: JSON.stringify({
             category,
             title: title.trim(),
-            content: content.trim(),
+            content: finalContent.trim(),
             thumbnailImage: existingImageUrls.length === 0 ? null : existingImageUrls.length === 1 ? existingImageUrls[0] : JSON.stringify(existingImageUrls),
             attachedFile: attachedFile ? JSON.stringify(attachedFile) : null,
           }),
@@ -299,7 +397,7 @@ function WriteReviewContent() {
             const newItem = {
               id: postId,
               title: title.trim(),
-              content: content.trim(),
+              content: finalContent.trim(),
               thumbnailImage: savedOriginalImage,
               thumbnailSmall: null,
               thumbnailFirst: savedThumbFirst,
@@ -328,7 +426,7 @@ function WriteReviewContent() {
       <BoardHeader menuItems={[{ label: "취소", onClick: handleCancel }]} />
 
       <div className="write-review-body">
-        {/* 카테고리 드롭다운 */}
+        {/* 카테고리 드롭다운 + 이미지 첨부 */}
         <div className="write-review-dropdown-wrap">
           <button
             type="button"
@@ -342,6 +440,14 @@ function WriteReviewContent() {
               stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
             >
               <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          <span className="write-review-dropdown-separator">|</span>
+          <button type="button" className="write-review-inline-attach-btn" aria-label="이미지 첨부" onClick={() => imageInputRef.current?.click()}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="3" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
             </svg>
           </button>
           {dropdownOpen && (
@@ -372,34 +478,19 @@ function WriteReviewContent() {
 
         <div className="write-review-divider" />
 
-        <textarea
+        <div
+          ref={editorRef}
           className="write-review-content-input"
-          placeholder="내용을 입력해주세요"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
+          contentEditable
+          data-placeholder="내용을 입력해주세요"
+          onInput={syncEditorContent}
+          onPaste={(e) => {
+            e.preventDefault();
+            const text = e.clipboardData.getData("text/plain");
+            document.execCommand("insertText", false, text);
+          }}
+          suppressContentEditableWarning
         />
-
-        {/* 이미지 프리뷰 그리드 */}
-        {totalImages > 0 && (
-          <div className="write-review-image-grid">
-            {existingImageUrls.map((src, i) => (
-              <div key={`existing-${i}`} className="write-review-image-thumb">
-                <img src={src} alt={`첨부 이미지 ${i + 1}`} />
-                <button type="button" className="write-review-image-remove" onClick={() => removeExistingImage(i)} aria-label="이미지 제거">✕</button>
-              </div>
-            ))}
-            {images.map((src, i) => (
-              <div key={`new-${i}`} className="write-review-image-thumb">
-                <img src={src} alt={`첨부 이미지 ${existingImageUrls.length + i + 1}`} />
-                <button type="button" className="write-review-image-remove" onClick={() => removeNewImage(i)} aria-label="이미지 제거">✕</button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {totalImages > 0 && (
-          <p className="write-review-image-count">{totalImages} / {MAX_IMAGES}</p>
-        )}
 
         {imageError && <p className="write-review-image-error">{imageError}</p>}
 
@@ -421,13 +512,6 @@ function WriteReviewContent() {
       </div>
 
       <footer className="write-review-toolbar">
-        <button type="button" className="write-review-tool-btn" aria-label="이미지 첨부" onClick={() => imageInputRef.current?.click()}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="3" />
-            <circle cx="8.5" cy="8.5" r="1.5" />
-            <polyline points="21 15 16 10 5 21" />
-          </svg>
-        </button>
         <button type="button" className="write-review-tool-btn" aria-label="파일 첨부" onClick={() => fileInputRef.current?.click()}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
