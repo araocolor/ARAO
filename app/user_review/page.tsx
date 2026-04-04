@@ -9,7 +9,6 @@ export default async function MainUserReviewListPage() {
 
       <div className="landing-shell">
         <section className="landing-stack-sm">
-          <span className="landing-section-label">사용자 후기</span>
           <Suspense fallback={<div className="user-review-page" />}>
             <MainUserReviewPage />
           </Suspense>

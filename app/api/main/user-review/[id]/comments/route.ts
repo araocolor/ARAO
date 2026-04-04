@@ -26,11 +26,22 @@ export async function GET(
 
   const { data, error } = await supabase
     .from("user_review_comments")
-    .select("id, content, created_at, is_deleted, parent_id, profile_id, profile:profile_id(username, email, icon_image)")
+    .select("id, content, created_at, is_deleted, parent_id, profile_id, like_count, profile:profile_id(username, email, icon_image)")
     .eq("review_id", id)
     .order("created_at", { ascending: true });
 
   if (error) return NextResponse.json({ comments: [] });
+
+  const commentIds = (data ?? []).map((r: any) => r.id);
+  let likedSet = new Set<string>();
+  if (viewerProfileId && commentIds.length > 0) {
+    const { data: likeRows } = await supabase
+      .from("user_review_comment_likes")
+      .select("comment_id")
+      .eq("profile_id", viewerProfileId)
+      .in("comment_id", commentIds);
+    likedSet = new Set((likeRows ?? []).map((r: any) => r.comment_id));
+  }
 
   const comments = (data ?? []).map((row: any) => {
     const p = Array.isArray(row.profile) ? row.profile[0] : row.profile;
@@ -44,6 +55,8 @@ export async function GET(
       authorId,
       iconImage: p?.icon_image ?? null,
       isMine: viewerProfileId ? viewerProfileId === row.profile_id : false,
+      likeCount: row.like_count ?? 0,
+      liked: likedSet.has(row.id),
     };
   });
 
@@ -104,4 +117,66 @@ export async function POST(
     iconImage: profile.icon_image ?? null,
     isDeleted: false,
   }, { status: 201 });
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ message: "로그인이 필요합니다." }, { status: 401 });
+
+  const { id } = await params;
+  const user = await currentUser();
+  const email = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses[0]?.emailAddress;
+  const profile = await syncProfile({ email });
+  if (!profile) return NextResponse.json({ message: "프로필을 찾을 수 없습니다." }, { status: 404 });
+
+  const body = (await request.json()) as { commentId?: string; content?: string };
+  const commentId = (body.commentId ?? "").trim();
+  const content = (body.content ?? "").trim();
+  if (!commentId || !content) return NextResponse.json({ message: "내용을 입력해주세요." }, { status: 400 });
+
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from("user_review_comments")
+    .update({ content })
+    .eq("id", commentId)
+    .eq("review_id", id)
+    .eq("profile_id", profile.id)
+    .eq("is_deleted", false);
+
+  if (error) return NextResponse.json({ message: "댓글 수정 실패" }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ message: "로그인이 필요합니다." }, { status: 401 });
+
+  const { id } = await params;
+  const user = await currentUser();
+  const email = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses[0]?.emailAddress;
+  const profile = await syncProfile({ email });
+  if (!profile) return NextResponse.json({ message: "프로필을 찾을 수 없습니다." }, { status: 404 });
+
+  const body = (await request.json()) as { commentId?: string };
+  const commentId = (body.commentId ?? "").trim();
+  if (!commentId) return NextResponse.json({ message: "commentId가 필요합니다." }, { status: 400 });
+
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from("user_review_comments")
+    .update({ is_deleted: true, deleted_at: new Date().toISOString() })
+    .eq("id", commentId)
+    .eq("review_id", id)
+    .eq("profile_id", profile.id);
+
+  if (error) return NextResponse.json({ message: "댓글 삭제 실패" }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
 }

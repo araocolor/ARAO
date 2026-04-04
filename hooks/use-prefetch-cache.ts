@@ -6,6 +6,8 @@
 
 const CACHE_PREFIX = "arao_prefetch_";
 const CACHE_TTL = 60 * 1000; // 1분
+const MAX_PREFETCH_CACHE_BYTES = 150 * 1024; // 150KB
+const PRUNE_BATCH_SIZE = 30;
 
 interface CacheData<T> {
   data: T;
@@ -51,10 +53,10 @@ function prunePrefetchCache(keepKey: string): void {
     }
   }
 
-  // 2) 오래된 캐시부터 최대 10개 삭제
+  // 2) 오래된 캐시부터 최대 30개 삭제
   prefetchEntries
     .sort((a, b) => a.timestamp - b.timestamp)
-    .slice(0, 10)
+    .slice(0, PRUNE_BATCH_SIZE)
     .forEach((entry) => {
       try {
         sessionStorage.removeItem(entry.storageKey);
@@ -100,6 +102,7 @@ export function setCached<T>(key: string, data: T): void {
     timestamp: Date.now(),
   };
   const payload = JSON.stringify(cacheData);
+  if (payload.length > MAX_PREFETCH_CACHE_BYTES) return;
 
   try {
     sessionStorage.setItem(storageKey, payload);
@@ -110,8 +113,13 @@ export function setCached<T>(key: string, data: T): void {
         sessionStorage.setItem(storageKey, payload);
         return;
       } catch (retryError) {
-        console.error(`[Cache Error] Quota recovery failed for ${key}:`, retryError);
-        return;
+        try {
+          clearAllPrefetchCache();
+          sessionStorage.setItem(storageKey, payload);
+          return;
+        } catch {
+          return;
+        }
       }
     }
     console.error(`[Cache Error] Failed to set cache for ${key}:`, error);

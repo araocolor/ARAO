@@ -260,12 +260,16 @@ function WriteReviewContent() {
       .catch(() => {});
   }, [editId]);
 
-  // contentEditable에서 텍스트만 추출
+  // contentEditable에서 텍스트만 추출 (단락 간 빈줄 보존)
   function getEditorText(): string {
     if (!editorRef.current) return content;
     const clone = editorRef.current.cloneNode(true) as HTMLElement;
     clone.querySelectorAll(".write-review-inline-image").forEach((el) => el.remove());
-    return (clone.innerText ?? "").trim();
+    // 블록 요소(div, p) 앞에 \n 삽입하여 단락 구분 보존
+    clone.querySelectorAll("div, p").forEach((el) => {
+      el.prepend(document.createTextNode("\n"));
+    });
+    return (clone.innerText ?? "").replace(/^\n/, "").trimEnd();
   }
 
   // 에디터 내용 변경 시 content state 동기화

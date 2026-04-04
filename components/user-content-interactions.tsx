@@ -13,6 +13,8 @@ type Comment = {
   authorId: string;
   iconImage: string | null;
   isMine?: boolean;
+  likeCount: number;
+  liked: boolean;
 };
 
 type ReplyContext = {
@@ -68,7 +70,7 @@ function getCommentsCache(reviewId: string): Comment[] | null {
     if (!cached) return null;
     const { data, ts } = JSON.parse(cached) as { data: { comments: Comment[] }; ts: number };
     if (Date.now() - ts < 60000) {
-      return (data.comments ?? []).map((comment) => ({ ...comment, parentId: comment.parentId ?? null }));
+      return (data.comments ?? []).map((comment) => ({ ...comment, parentId: comment.parentId ?? null, likeCount: comment.likeCount ?? 0, liked: comment.liked ?? false }));
     }
   } catch {}
   return null;
@@ -145,6 +147,11 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
   const [commentInput, setCommentInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [replyTo, setReplyTo] = useState<ReplyContext | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editInput, setEditInput] = useState("");
+  const editTextareaElRef = useRef<HTMLTextAreaElement>(null);
+  const [menuComment, setMenuComment] = useState<Comment | null>(null);
+  const [menuParentId, setMenuParentId] = useState<string | null>(null);
 
   function setCommentsCache(nextComments: Comment[]) {
     try {
@@ -160,7 +167,7 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
       .then((r) => r.json())
       .then((d) => {
         const nextComments: Comment[] = Array.isArray(d.comments)
-          ? d.comments.map((comment: Comment) => ({ ...comment, parentId: comment.parentId ?? null }))
+          ? d.comments.map((comment: Comment) => ({ ...comment, parentId: comment.parentId ?? null, likeCount: comment.likeCount ?? 0, liked: comment.liked ?? false }))
           : [];
         setComments(nextComments);
         try {
@@ -172,6 +179,10 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
       })
       .catch(() => {});
   }, [reviewId]);
+
+  function editRows(text: string) {
+    return Math.max(text.split("\n").length, 1);
+  }
 
   async function handleSubmitComment() {
     if (!isSignedIn) { router.push("/sign-in"); return; }
@@ -199,6 +210,63 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
     }
   }
 
+  async function handleEditComment(commentId: string) {
+    if (!editInput.trim() || submitting) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/main/user-review/${reviewId}/comments`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commentId, content: editInput.trim() }),
+      });
+      if (res.ok) {
+        setComments((prev) => {
+          const next = prev.map((c) => c.id === commentId ? { ...c, content: editInput.trim() } : c);
+          setCommentsCache(next);
+          return next;
+        });
+        setEditingId(null);
+        setEditInput("");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleLikeComment(commentId: string) {
+    if (!isSignedIn) { router.push("/sign-in"); return; }
+    const res = await fetch(`/api/main/user-review/${reviewId}/comments/${commentId}/likes`, { method: "POST" });
+    if (res.ok) {
+      const d = await res.json() as { liked: boolean; likeCount: number };
+      setComments((prev) => {
+        const next = prev.map((c) => c.id === commentId ? { ...c, liked: d.liked, likeCount: d.likeCount } : c);
+        setCommentsCache(next);
+        return next;
+      });
+    }
+  }
+
+  async function handleDeleteComment(commentId: string) {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/main/user-review/${reviewId}/comments`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commentId }),
+      });
+      if (res.ok) {
+        setComments((prev) => {
+          const next = prev.map((c) => c.id === commentId ? { ...c, isDeleted: true, content: "삭제된 댓글입니다." } : c);
+          setCommentsCache(next);
+          return next;
+        });
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   const rootComments = comments.filter((comment) => !comment.parentId);
   const getReplies = (parentId: string) => comments.filter((comment) => comment.parentId === parentId);
   const isReviewAuthor = (authorId: string) => !!reviewAuthorId && authorId === reviewAuthorId;
@@ -220,27 +288,62 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
                   }
                 </span>
                 <div className="user-content-comment-body">
-                  <span className="user-content-comment-author">
-                    {comment.authorId}
-                    {isReviewAuthor(comment.authorId) && (
-                      <span className="user-content-comment-author-badge" aria-label="작성자">
-                        작성자
-                      </span>
+                  <div className="user-content-comment-author-row">
+                    <span className="user-content-comment-author">
+                      {comment.authorId}
+                      {isReviewAuthor(comment.authorId) && (
+                        <span className="user-content-comment-author-badge" aria-label="작성자">작성자</span>
+                      )}
+                    </span>
+                    {comment.isMine && !comment.isDeleted && (
+                      <button
+                        type="button"
+                        className="user-content-comment-more-btn"
+                        onClick={() => { setMenuComment(comment); setMenuParentId(comment.id); }}
+                      >
+                        ...
+                      </button>
                     )}
-                  </span>
-                  <p className={`user-content-comment-text${comment.isDeleted ? " deleted" : ""}`}>{comment.content}</p>
+                  </div>
+                  {editingId === comment.id ? (
+                    <div className="user-content-comment-edit-form">
+                      <textarea
+                        className="user-content-comment-input"
+                        value={editInput}
+                        onChange={(e) => setEditInput(e.target.value)}
+                        rows={editRows(editInput)}
+                        maxLength={300}
+                        ref={(el) => { if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }}
+                      />
+                      <div className="user-content-comment-edit-actions">
+                        <button type="button" className="user-content-comment-action-btn" onClick={() => { setEditingId(null); setEditInput(""); }}>취소</button>
+                        <button type="button" className="user-content-comment-action-btn" onClick={() => handleEditComment(comment.id)} disabled={!editInput.trim() || submitting}>저장</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className={`user-content-comment-text${comment.isDeleted ? " deleted" : ""}`}>{comment.content}</p>
+                  )}
                   <span className="user-content-comment-date">{formatDate(comment.createdAt)}</span>
-                  {!comment.isDeleted && (
-                    <div className="user-content-comment-actions">
+                  <div className="user-content-comment-actions">
+                    {!comment.isDeleted && (
                       <button
                         type="button"
                         className="user-content-comment-action-btn"
                         onClick={() => setReplyTo({ target: comment, parentId: comment.id })}
                       >
-                        답글 달기
+                        답글
                       </button>
-                    </div>
-                  )}
+                    )}
+                    <button
+                      type="button"
+                      className="user-content-comment-like-btn"
+                      onClick={() => handleLikeComment(comment.id)}
+                      aria-label="좋아요"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill={comment.liked ? "#E02424" : "none"} stroke={comment.liked ? "#E02424" : "currentColor"} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                      {comment.likeCount > 0 && <span>{comment.likeCount}</span>}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -254,27 +357,68 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
                       }
                     </span>
                     <div className="user-content-comment-body">
-                      <span className="user-content-comment-author">
-                        {reply.authorId}
-                        {isReviewAuthor(reply.authorId) && (
-                          <span className="user-content-comment-author-badge" aria-label="작성자">
-                            작성자
-                          </span>
-                        )}
-                      </span>
-                      <p className={`user-content-comment-text${reply.isDeleted ? " deleted" : ""}`}>{reply.content}</p>
+                      <div className="user-content-comment-author-row">
+                        <span className="user-content-comment-author">
+                          {reply.authorId}
+                          {isReviewAuthor(reply.authorId) && (
+                            <span className="user-content-comment-author-badge" aria-label="작성자">작성자</span>
+                          )}
+                        </span>
+                        <div className="user-content-comment-right">
+                          {reply.isMine && !reply.isDeleted && (
+                            <button
+                              type="button"
+                              className="user-content-comment-more-btn"
+                              onClick={() => { setMenuComment(reply); setMenuParentId(comment.id); }}
+                            >
+                              ...
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {editingId === reply.id ? (
+                        <div className="user-content-comment-edit-form">
+                          <textarea
+                            ref={editTextareaRef}
+                            className="user-content-comment-input"
+                            value={editInput}
+                            onChange={(e) => {
+                              setEditInput(e.target.value);
+                              e.target.style.height = "auto";
+                              e.target.style.height = `${e.target.scrollHeight}px`;
+                            }}
+                            maxLength={300}
+                            style={{ height: `${(editInput.split("\n").length) * 21 + 12 + 42}px` }}
+                          />
+                          <div className="user-content-comment-edit-actions">
+                            <button type="button" className="user-content-comment-action-btn" onClick={() => { setEditingId(null); setEditInput(""); }}>취소</button>
+                            <button type="button" className="user-content-comment-action-btn" onClick={() => handleEditComment(reply.id)} disabled={!editInput.trim() || submitting}>저장</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className={`user-content-comment-text${reply.isDeleted ? " deleted" : ""}`}>{reply.content}</p>
+                      )}
                       <span className="user-content-comment-date">{formatDate(reply.createdAt)}</span>
-                      {!reply.isDeleted && (
-                        <div className="user-content-comment-actions">
+                      <div className="user-content-comment-actions">
+                        {!reply.isDeleted && (
                           <button
                             type="button"
                             className="user-content-comment-action-btn"
                             onClick={() => setReplyTo({ target: reply, parentId: comment.id })}
                           >
-                            답글 달기
+                            답글
                           </button>
-                        </div>
-                      )}
+                        )}
+                        <button
+                          type="button"
+                          className="user-content-comment-like-btn"
+                          onClick={() => handleLikeComment(reply.id)}
+                          aria-label="좋아요"
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill={reply.liked ? "#E02424" : "none"} stroke={reply.liked ? "#E02424" : "currentColor"} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                          {reply.likeCount > 0 && <span>{reply.likeCount}</span>}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -299,19 +443,60 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
           className="user-content-comment-input"
           placeholder={replyTo ? "답글을 남겨보세요" : "댓글을 남겨보세요"}
           value={commentInput}
-          onChange={(e) => setCommentInput(e.target.value)}
+          onChange={(e) => {
+            setCommentInput(e.target.value);
+            e.target.style.height = "auto";
+            e.target.style.height = `${e.target.scrollHeight}px`;
+          }}
           maxLength={300}
           rows={1}
         />
+        <button
+          type="button"
+          className={`user-content-comment-submit${commentInput.trim() ? " active" : ""}`}
+          onClick={handleSubmitComment}
+          disabled={!commentInput.trim() || submitting}
+        >
+          등록
+        </button>
       </div>
-      <button
-        type="button"
-        className={`user-content-comment-submit${commentInput.trim() ? " active" : ""}`}
-        onClick={handleSubmitComment}
-        disabled={!commentInput.trim() || submitting}
-      >
-        등록
-      </button>
+
+      {/* 댓글 메뉴 바텀시트 */}
+      {menuComment && (
+        <>
+          <div className="user-content-comment-sheet-backdrop" onClick={() => setMenuComment(null)} />
+          <div className="user-content-comment-sheet">
+            <button
+              type="button"
+              className="user-content-comment-sheet-item"
+              onClick={() => {
+                setEditingId(menuComment.id);
+                setEditInput(menuComment.content);
+                setMenuComment(null);
+              }}
+            >
+              수정하기
+            </button>
+            <button
+              type="button"
+              className="user-content-comment-sheet-item danger"
+              onClick={() => {
+                handleDeleteComment(menuComment.id);
+                setMenuComment(null);
+              }}
+            >
+              삭제하기
+            </button>
+            <button
+              type="button"
+              className="user-content-comment-sheet-item cancel"
+              onClick={() => setMenuComment(null)}
+            >
+              창닫기
+            </button>
+          </div>
+        </>
+      )}
     </section>
   );
 }
