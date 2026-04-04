@@ -254,7 +254,6 @@ export function AdminDashboard({ email, role, landingContent }: AdminDashboardPr
       </aside>
 
       <div className="admin-panel stack" onClick={() => (menuOpen ? closeMenu() : null)}>
-        <p className="muted">Admin</p>
         <div className="admin-panel-card stack">
           <p className="muted">{activeSection.eyebrow}</p>
           <h2>{activeSection.title}</h2>
