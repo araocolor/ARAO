@@ -1087,12 +1087,28 @@
     height: 40px;
     border: 1px solid rgba(17, 17, 17, 0.08);
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.82);
     align-items: center;
     justify-content: center;
     flex-direction: column;
     gap: 4px;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .admin-mobile-menu-toggle::before {
+    content: "";
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    bottom: -12px;
+    left: -12px;
+  }
+
+  .admin-mobile-menu-toggle.is-hidden {
+    opacity: 0;
+    pointer-events: none;
   }
 
   .admin-mobile-menu-toggle span {
@@ -1102,83 +1118,32 @@
     background: #111111;
   }
 
-  .admin-mobile-drawer-backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 55;
+  .admin-mobile-nav-button {
+    border: 0;
     background: transparent;
+    width: 100%;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    text-align: left;
   }
 
-  .admin-mobile-drawer {
-    width: max-content;
-    min-width: 0;
-    max-width: calc(100vw - 24px);
-    margin: 62px 0 0 12px;
-    border: 1px solid rgba(17, 17, 17, 0.08);
-    border-radius: 20px;
-    padding: 24px 14px;
-    background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 16px 40px rgba(17, 17, 17, 0.12);
-    backdrop-filter: blur(14px);
-    display: flex;
-    flex-direction: column;
-    transition: transform 180ms ease, opacity 180ms ease;
+  .admin-mobile-nav-button.is-active {
+    background: var(--surface-soft);
   }
 
-  .admin-mobile-drawer.is-open {
-    transform: translateX(0);
-    opacity: 1;
+  .admin-mobile-footer-link {
+    font-size: 15px;
+    font-weight: 600;
   }
 
-  .admin-mobile-drawer.is-closing {
-    transform: translateX(-18px);
-    opacity: 0;
+  .admin-mobile-logout-button {
+    width: 100%;
   }
 
-  .admin-mobile-drawer .admin-menu-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    align-items: flex-start;
-    margin: 0;
-  }
-
-  .admin-mobile-drawer .admin-sidebar-title {
-    font-size: 12px;
-    font-weight: 400;
-    color: var(--muted);
-    margin: 0 0 4px;
-    white-space: nowrap;
-  }
-
-  .admin-mobile-drawer .admin-menu-item,
-  .admin-mobile-drawer .admin-menu-link {
-    font-size: 20px;
-    font-weight: 700;
-    white-space: nowrap;
-    padding: 0;
-    border: none;
-    background: transparent;
-    border-radius: 0;
-    box-shadow: none;
-    width: auto;
-  }
-
-  .admin-mobile-drawer .admin-menu-item.active {
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    color: var(--text);
-    opacity: 0.4;
-  }
-
-  .admin-mobile-drawer .admin-menu-link-home {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 20px;
-    font-weight: 700;
+  .admin-mobile-nav-button:active,
+  .admin-mobile-footer-link:active {
+    background: var(--surface-soft);
   }
 
 }

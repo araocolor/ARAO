@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { LandingContent } from "@/lib/landing-content";
 
 type LandingPageFooterProps = {
@@ -45,9 +44,6 @@ export function LandingPageFooter({ content }: LandingPageFooterProps) {
             {link.label}
           </a>
         ))}
-        <Link className="landing-footer-link" href="/admin">
-          admin
-        </Link>
       </nav>
     </footer>
   );

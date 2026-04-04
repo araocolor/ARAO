@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { SignOutButton } from "@clerk/nextjs";
@@ -9,6 +10,8 @@ import { AdminPricingManager } from "@/components/admin-pricing-manager";
 import { AdminConsultingManager } from "@/components/admin-consulting-manager";
 import { AdminWorkLogsManager } from "@/components/admin-work-logs-manager";
 import { AdminSignOut } from "@/components/admin-sign-out";
+
+const MOBILE_DRAWER_CLOSE_MS = 280;
 
 const adminSections = [
   {
@@ -102,6 +105,19 @@ export function AdminDashboard({ email, role, landingContent }: AdminDashboardPr
     };
   }, []);
 
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
+    document.body.style.overflow = "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
+
   const openMenu = () => {
     if (closeTimerRef.current) {
       clearTimeout(closeTimerRef.current);
@@ -119,7 +135,7 @@ export function AdminDashboard({ email, role, landingContent }: AdminDashboardPr
     closeTimerRef.current = setTimeout(() => {
       setMenuMounted(false);
       closeTimerRef.current = null;
-    }, 180);
+    }, MOBILE_DRAWER_CLOSE_MS);
   };
 
   return (
@@ -127,7 +143,7 @@ export function AdminDashboard({ email, role, landingContent }: AdminDashboardPr
       <button
         aria-expanded={menuOpen}
         aria-label="관리 메뉴 열기"
-        className="admin-mobile-menu-toggle"
+        className={menuOpen ? "admin-mobile-menu-toggle is-hidden" : "admin-mobile-menu-toggle"}
         type="button"
         onClick={() => (menuOpen ? closeMenu() : openMenu())}
       >
@@ -138,47 +154,67 @@ export function AdminDashboard({ email, role, landingContent }: AdminDashboardPr
 
       {menuMounted ? (
         <div
-          className={menuOpen ? "admin-mobile-drawer-backdrop is-open" : "admin-mobile-drawer-backdrop is-closing"}
+          className={`nav-drawer-backdrop${menuOpen ? " is-open" : ""}`}
           onClick={() => closeMenu()}
           role="presentation"
+          aria-hidden="true"
         >
           <aside
-            className={menuOpen ? "admin-mobile-drawer is-open" : "admin-mobile-drawer is-closing"}
+            className={`nav-drawer${menuOpen ? " is-open" : ""}`}
             onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="관리 메뉴"
           >
-            <p className="admin-sidebar-title">관리 메뉴</p>
-            <div className="admin-menu-list">
-              <Link className="admin-menu-link admin-menu-link-home" href="/" onClick={() => closeMenu()}>
-                <span className="admin-home-link-content">
-                  <span className="admin-home-icon" aria-hidden="true" />
-                  <span>홈</span>
-                </span>
+            <div className="nav-drawer-header">
+              <Link href="/" className="nav-drawer-logo" onClick={() => closeMenu()}>
+                <Image src="/logo.svg" alt="ARAO" width={72} height={26} />
               </Link>
-              {adminSections.map((section) => (
+              <button
+                type="button"
+                className="nav-drawer-close"
+                onClick={closeMenu}
+                aria-label="닫기"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            <nav className="nav-drawer-list">
+              <Link className="nav-drawer-link" href="/" onClick={() => closeMenu()}>
+                1. 홈
+              </Link>
+              {adminSections.map((section, sectionIndex) => (
                 <button
                   key={`mobile-${section.id}`}
-                  className={section.id === activeSectionId ? "admin-menu-item active" : "admin-menu-item"}
+                  className={section.id === activeSectionId ? "nav-drawer-link admin-mobile-nav-button is-active" : "nav-drawer-link admin-mobile-nav-button"}
                   type="button"
                   onClick={() => {
                     setActiveSectionId(section.id);
                     closeMenu();
                   }}
                 >
-                  {section.menu}
+                  {`${sectionIndex + 2}. ${section.menu}`}
                 </button>
               ))}
-              <SignOutButton>
-                <button className="admin-menu-item" type="button" onClick={() => closeMenu()}>
-                  로그아웃
-                </button>
-              </SignOutButton>
+            </nav>
+
+            <div className="nav-drawer-footer">
               <Link
-                className="admin-menu-link"
+                className="admin-mobile-footer-link"
                 href="/admin/work-list"
                 onClick={() => closeMenu()}
               >
                 커밋리스트
               </Link>
+              <SignOutButton>
+                <button className="header-logout-button admin-mobile-logout-button" type="button" onClick={() => closeMenu()}>
+                  로그아웃
+                </button>
+              </SignOutButton>
             </div>
           </aside>
         </div>
