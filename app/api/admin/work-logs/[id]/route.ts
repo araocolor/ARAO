@@ -10,6 +10,7 @@ type UpdateBody = {
   title?: string;
   summary?: string;
   details?: string | null;
+  originalReview?: string | null;
   status?: WorkLogStatus;
   reportUrl?: string | null;
   deployedAt?: string | null;
@@ -62,6 +63,10 @@ export async function PATCH(
     }
     if (body.summary !== undefined) updateData.summary = body.summary.trim();
     if (body.details !== undefined) updateData.details = typeof body.details === "string" ? body.details.trim() : null;
+    if (body.originalReview !== undefined) {
+      updateData.original_review =
+        typeof body.originalReview === "string" ? body.originalReview.trim() : null;
+    }
     if (body.status !== undefined) {
       if (body.status !== "draft" && body.status !== "done" && body.status !== "rollback") {
         return NextResponse.json({ message: "invalid status" }, { status: 400 });
@@ -81,7 +86,7 @@ export async function PATCH(
       .update(updateData)
       .eq("id", id)
       .select(
-        "id, commit_hash, title, summary, details, status, report_url, deployed_at, author_profile_id, author_name_snapshot, created_at, updated_at"
+        "id, commit_hash, title, summary, details, original_review, status, report_url, deployed_at, author_profile_id, author_name_snapshot, created_at, updated_at"
       )
       .single();
 

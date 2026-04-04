@@ -218,6 +218,7 @@ create table if not exists work_logs (
   title                 text not null,
   summary               text not null default '',
   details               text,
+  original_review       text,
   status                text not null default 'done' check (status in ('draft', 'done', 'rollback')),
   report_url            text,
   deployed_at           timestamptz,
@@ -226,6 +227,8 @@ create table if not exists work_logs (
   created_at            timestamptz not null default now(),
   updated_at            timestamptz not null default now()
 );
+
+alter table work_logs add column if not exists original_review text;
 
 create index if not exists work_logs_created_at_idx on work_logs (created_at desc);
 create index if not exists work_logs_status_created_at_idx on work_logs (status, created_at desc);

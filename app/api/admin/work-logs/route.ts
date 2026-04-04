@@ -11,6 +11,7 @@ type WorkLogRow = {
   title: string;
   summary: string;
   details: string | null;
+  original_review: string | null;
   status: WorkLogStatus;
   report_url: string | null;
   deployed_at: string | null;
@@ -61,7 +62,7 @@ export async function GET(request: Request) {
   let query = supabase
     .from("work_logs")
     .select(
-      "id, commit_hash, title, summary, details, status, report_url, deployed_at, author_profile_id, author_name_snapshot, created_at, updated_at"
+      "id, commit_hash, title, summary, details, original_review, status, report_url, deployed_at, author_profile_id, author_name_snapshot, created_at, updated_at"
     )
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -73,7 +74,7 @@ export async function GET(request: Request) {
   if (q) {
     const escaped = q.replace(/,/g, " ");
     query = query.or(
-      `commit_hash.ilike.%${escaped}%,title.ilike.%${escaped}%,summary.ilike.%${escaped}%,author_name_snapshot.ilike.%${escaped}%`
+      `commit_hash.ilike.%${escaped}%,title.ilike.%${escaped}%,summary.ilike.%${escaped}%,details.ilike.%${escaped}%,original_review.ilike.%${escaped}%,author_name_snapshot.ilike.%${escaped}%`
     );
   }
 
@@ -96,6 +97,7 @@ export async function POST(request: Request) {
       title?: string;
       summary?: string;
       details?: string | null;
+      originalReview?: string | null;
       status?: WorkLogStatus;
       reportUrl?: string | null;
       deployedAt?: string | null;
@@ -105,6 +107,8 @@ export async function POST(request: Request) {
     const title = (body.title ?? "").trim();
     const summary = (body.summary ?? "").trim();
     const details = typeof body.details === "string" ? body.details.trim() : null;
+    const originalReview =
+      typeof body.originalReview === "string" ? body.originalReview.trim() : null;
     const status: WorkLogStatus =
       body.status === "draft" || body.status === "rollback" || body.status === "done"
         ? body.status
@@ -122,6 +126,7 @@ export async function POST(request: Request) {
       title,
       summary,
       details,
+      original_review: originalReview,
       status,
       report_url: reportUrl,
       deployed_at: deployedAt,
@@ -134,7 +139,7 @@ export async function POST(request: Request) {
       .from("work_logs")
       .upsert(payload, { onConflict: "commit_hash", ignoreDuplicates: false })
       .select(
-        "id, commit_hash, title, summary, details, status, report_url, deployed_at, author_profile_id, author_name_snapshot, created_at, updated_at"
+        "id, commit_hash, title, summary, details, original_review, status, report_url, deployed_at, author_profile_id, author_name_snapshot, created_at, updated_at"
       )
       .single();
 

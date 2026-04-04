@@ -174,9 +174,7 @@ export function AdminDashboard({ email, role, landingContent }: AdminDashboardPr
               </SignOutButton>
               <Link
                 className="admin-menu-link"
-                href="/my/work_List_withgpt.html"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/admin/work-list"
                 onClick={() => closeMenu()}
               >
                 커밋리스트
@@ -211,9 +209,7 @@ export function AdminDashboard({ email, role, landingContent }: AdminDashboardPr
         <div className="admin-sidebar-bottom">
           <Link
             className="admin-menu-link"
-            href="/my/work_List_withgpt.html"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/admin/work-list"
           >
             커밋리스트
           </Link>

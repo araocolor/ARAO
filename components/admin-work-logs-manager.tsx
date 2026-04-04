@@ -10,6 +10,7 @@ type WorkLog = {
   title: string;
   summary: string;
   details: string | null;
+  original_review: string | null;
   status: WorkLogStatus;
   report_url: string | null;
   deployed_at: string | null;
@@ -76,6 +77,7 @@ export function AdminWorkLogsManager() {
   const [editTitle, setEditTitle] = useState("");
   const [editSummary, setEditSummary] = useState("");
   const [editDetails, setEditDetails] = useState("");
+  const [editOriginalReview, setEditOriginalReview] = useState("");
   const [editStatus, setEditStatus] = useState<WorkLogStatus>("done");
   const [editReportUrl, setEditReportUrl] = useState("");
   const [editDeployedAt, setEditDeployedAt] = useState("");
@@ -137,6 +139,7 @@ export function AdminWorkLogsManager() {
     setEditTitle(selectedLog.title);
     setEditSummary(selectedLog.summary);
     setEditDetails(selectedLog.details ?? "");
+    setEditOriginalReview(selectedLog.original_review ?? "");
     setEditStatus(selectedLog.status);
     setEditReportUrl(selectedLog.report_url ?? "");
     setEditDeployedAt(toLocalInputValue(selectedLog.deployed_at));
@@ -209,6 +212,7 @@ export function AdminWorkLogsManager() {
           title,
           summary: editSummary,
           details: editDetails,
+          originalReview: editOriginalReview,
           status: editStatus,
           reportUrl: editReportUrl.trim() || null,
           deployedAt: fromLocalInputValue(editDeployedAt),
@@ -302,7 +306,7 @@ export function AdminWorkLogsManager() {
           className="admin-input"
           value={queryInput}
           onChange={(event) => setQueryInput(event.target.value)}
-          placeholder="검색어(커밋/제목/요약/작성자)"
+          placeholder="검색어(커밋/제목/요약/상세/원본/작성자)"
           onKeyDown={(event) => {
             if (event.key === "Enter") setQuery(queryInput.trim());
           }}
@@ -393,7 +397,7 @@ export function AdminWorkLogsManager() {
                   className="admin-input"
                   value={editReportUrl}
                   onChange={(event) => setEditReportUrl(event.target.value)}
-                  placeholder="/my/work_List_withgpt.html"
+                  placeholder="/admin/work-list"
                 />
               </div>
               <div className="admin-worklog-detail-line">
@@ -419,6 +423,15 @@ export function AdminWorkLogsManager() {
                   className="admin-textarea"
                   value={editDetails}
                   onChange={(event) => setEditDetails(event.target.value)}
+                />
+              </div>
+              <div className="admin-worklog-detail-line">
+                <label>원본 리뷰</label>
+                <textarea
+                  className="admin-textarea"
+                  value={editOriginalReview}
+                  onChange={(event) => setEditOriginalReview(event.target.value)}
+                  placeholder="실제 결과 보고 원문을 보관합니다."
                 />
               </div>
 
