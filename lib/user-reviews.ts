@@ -11,6 +11,7 @@ export type UserReviewListItem = {
   attachedFile: string | null;
   viewCount: number;
   likeCount: number;
+  commentCount: number;
   createdAt: string;
   authorId: string;
   authorIconImage: string | null;
@@ -69,6 +70,7 @@ function mapRowToListItem(row: any, viewerProfileId?: string | null): UserReview
     attachedFile: row.attached_file ?? null,
     viewCount: row.view_count ?? 0,
     likeCount: row.like_count ?? 0,
+    commentCount: Array.isArray(row.comment_count) ? (row.comment_count[0]?.count ?? 0) : (typeof row.comment_count === "number" ? row.comment_count : 0),
     createdAt: row.created_at ?? new Date(0).toISOString(),
     authorId: mapAuthorId(row),
     authorIconImage: profile?.icon_image ?? null,
@@ -101,7 +103,7 @@ export async function getUserReviewList(params: {
   let query = supabase
     .from("user_reviews")
     .select(
-      "id, profile_id, title, content, thumbnail_image, thumbnail_first, attached_file, view_count, like_count, is_public, board, created_at, updated_at, profile:profile_id(username, email, icon_image)",
+      "id, profile_id, title, content, thumbnail_image, thumbnail_first, attached_file, view_count, like_count, is_public, board, created_at, updated_at, profile:profile_id(username, email, icon_image), comment_count:user_review_comments(count)",
       { count: "exact" }
     )
     .eq("board", board);
