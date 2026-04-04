@@ -72,6 +72,21 @@ function parseCommitTitle(title) {
   };
 }
 
+function hasKorean(text) {
+  return /[가-힣]/.test(text);
+}
+
+function scopeToKorean(scope) {
+  const value = scope.toLowerCase();
+  if (value === "admin") return "관리자";
+  if (value === "report") return "보고서";
+  if (value === "content") return "본문";
+  if (value === "community") return "커뮤니티";
+  if (value === "notifications") return "알림";
+  if (value === "images") return "이미지";
+  return scope;
+}
+
 function typeToKorean(type) {
   if (type === "feat") return "기능 추가";
   if (type === "fix") return "오류 수정";
@@ -91,7 +106,10 @@ function compactFiles(files, maxCount = 6) {
 function generateKoreanSummaryAndDetails({ title, files, gitBody }) {
   const parsed = parseCommitTitle(title);
   const typeLabel = typeToKorean(parsed.type);
-  const scopeLabel = parsed.scope ? `${parsed.scope} 영역` : "대상 영역";
+  const scopeLabel = parsed.scope ? `${scopeToKorean(parsed.scope)} 영역` : "대상 영역";
+  const titleKorean = hasKorean(title)
+    ? title
+    : `${parsed.scope ? scopeToKorean(parsed.scope) : "시스템"} ${typeLabel}`;
   const summary = `${scopeLabel}의 ${typeLabel} 작업을 반영했습니다.`;
 
   const fileList = compactFiles(files)
@@ -114,6 +132,7 @@ function generateKoreanSummaryAndDetails({ title, files, gitBody }) {
   ].filter(Boolean);
 
   return {
+    title: titleKorean,
     summary,
     details: detailsLines.join("\n"),
   };
@@ -160,6 +179,7 @@ async function main() {
     gitBody,
   });
 
+  const reportTitle = (args.title || generated.title || gitTitle).trim();
   const summary = (args.summary || generated.summary || firstLine(gitBody) || gitTitle).trim();
   const details = (args.details || generated.details || gitBody || "").trim();
   const originalReview = (args.original || details || summary).trim();
@@ -174,7 +194,7 @@ async function main() {
 
   const payload = {
     commit_hash: commitHash,
-    title,
+    title: reportTitle,
     summary,
     details: details || null,
     original_review: originalReview || null,
