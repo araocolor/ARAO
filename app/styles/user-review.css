@@ -761,9 +761,9 @@
 .user-content-thumb {
   width: 100%;
   max-width: 100%;
-  border-radius: 12px;
+  border-radius: 0;
   object-fit: cover;
-  border: 1px solid var(--line);
+  border: none;
 }
 
 .user-content-thumb-blur {
@@ -774,16 +774,28 @@
 .user-content-thumb-btn {
   display: block;
   padding: 0;
-  margin: 0 auto;
+  margin: 0;
   border: none;
   background: none;
   cursor: pointer;
-  width: 100%;
-  max-width: 480px;
+  width: 100vw;
+  max-width: none;
+  margin-left: calc(50% - 50vw);
+}
+
+.user-content-thumb-btn:first-of-type {
+  margin-top: 12px;
 }
 
 .user-content-thumb-btn.is-upgraded {
-  max-width: 600px;
+  max-width: none;
+}
+
+@media (min-width: 768px) {
+  .user-content-thumb-btn {
+    width: 100%;
+    margin-left: 0;
+  }
 }
 
 /* ── 이미지 슬라이드 뷰어 (1024px 원본) ── */
@@ -908,7 +920,7 @@
 }
 
 .user-content-body {
-  margin: 0;
+  margin: 12px 0 0;
   font-size: 16px;
   line-height: 1.75;
   color: var(--text);
@@ -1004,6 +1016,12 @@
   align-items: flex-start;
 }
 
+.user-content-comment-item.is-mine {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  padding: 10px;
+}
+
 .user-content-comment-item.is-reply .user-content-comment-avatar {
   width: 28px;
   height: 28px;
@@ -1042,9 +1060,21 @@
 }
 
 .user-content-comment-author {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text);
+}
+
+.user-content-comment-author-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .user-content-comment-text {

@@ -14,11 +14,19 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const { userId } = await auth();
+  let viewerProfileId: string | null = null;
+  if (userId) {
+    const user = await currentUser();
+    const email = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses[0]?.emailAddress;
+    const profile = await syncProfile({ email });
+    viewerProfileId = profile?.id ?? null;
+  }
   const supabase = createSupabaseAdminClient();
 
   const { data, error } = await supabase
     .from("user_review_comments")
-    .select("id, content, created_at, is_deleted, parent_id, profile:profile_id(username, email, icon_image)")
+    .select("id, content, created_at, is_deleted, parent_id, profile_id, profile:profile_id(username, email, icon_image)")
     .eq("review_id", id)
     .order("created_at", { ascending: true });
 
@@ -35,6 +43,7 @@ export async function GET(
       parentId: row.parent_id ?? null,
       authorId,
       iconImage: p?.icon_image ?? null,
+      isMine: viewerProfileId ? viewerProfileId === row.profile_id : false,
     };
   });
 

@@ -590,7 +590,7 @@ export function UserContentPage({ id }: { id: string }) {
               <p className="user-content-body">{item.content}</p>
               <UserContentLikeSection reviewId={id} />
             </article>
-            <UserContentInteractions reviewId={id} />
+            <UserContentInteractions reviewId={id} reviewAuthorId={item.authorId} />
           </>
         )}
       </div>

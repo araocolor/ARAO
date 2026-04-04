@@ -12,6 +12,7 @@ type Comment = {
   parentId: string | null;
   authorId: string;
   iconImage: string | null;
+  isMine?: boolean;
 };
 
 type ReplyContext = {
@@ -136,7 +137,7 @@ export function UserContentLikeSection({ reviewId }: { reviewId: string }) {
   );
 }
 
-export function UserContentInteractions({ reviewId }: { reviewId: string }) {
+export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId: string; reviewAuthorId?: string | null }) {
   const { isSignedIn } = useUser();
   const router = useRouter();
   const cachedComments = getCommentsCache(reviewId);
@@ -200,6 +201,7 @@ export function UserContentInteractions({ reviewId }: { reviewId: string }) {
 
   const rootComments = comments.filter((comment) => !comment.parentId);
   const getReplies = (parentId: string) => comments.filter((comment) => comment.parentId === parentId);
+  const isReviewAuthor = (authorId: string) => !!reviewAuthorId && authorId === reviewAuthorId;
 
   return (
     <section className="user-content-comment-section">
@@ -210,7 +212,7 @@ export function UserContentInteractions({ reviewId }: { reviewId: string }) {
         <div className="user-content-comment-thread-list">
           {rootComments.map((comment) => (
             <div key={comment.id} className="user-content-comment-thread">
-              <div className="user-content-comment-item">
+              <div className={`user-content-comment-item${comment.isMine ? " is-mine" : ""}`}>
                 <span className="user-content-comment-avatar">
                   {comment.iconImage
                     ? <img src={comment.iconImage} alt="" className="user-content-comment-avatar-img" />
@@ -218,7 +220,14 @@ export function UserContentInteractions({ reviewId }: { reviewId: string }) {
                   }
                 </span>
                 <div className="user-content-comment-body">
-                  <span className="user-content-comment-author">{comment.authorId}</span>
+                  <span className="user-content-comment-author">
+                    {comment.authorId}
+                    {isReviewAuthor(comment.authorId) && (
+                      <span className="user-content-comment-author-badge" aria-label="작성자">
+                        작성자
+                      </span>
+                    )}
+                  </span>
                   <p className={`user-content-comment-text${comment.isDeleted ? " deleted" : ""}`}>{comment.content}</p>
                   <span className="user-content-comment-date">{formatDate(comment.createdAt)}</span>
                   {!comment.isDeleted && (
@@ -237,7 +246,7 @@ export function UserContentInteractions({ reviewId }: { reviewId: string }) {
 
               <div className="user-content-comment-replies">
                 {getReplies(comment.id).map((reply) => (
-                  <div key={reply.id} className="user-content-comment-item is-reply">
+                  <div key={reply.id} className={`user-content-comment-item is-reply${reply.isMine ? " is-mine" : ""}`}>
                     <span className="user-content-comment-avatar">
                       {reply.iconImage
                         ? <img src={reply.iconImage} alt="" className="user-content-comment-avatar-img" />
@@ -245,7 +254,14 @@ export function UserContentInteractions({ reviewId }: { reviewId: string }) {
                       }
                     </span>
                     <div className="user-content-comment-body">
-                      <span className="user-content-comment-author">{reply.authorId}</span>
+                      <span className="user-content-comment-author">
+                        {reply.authorId}
+                        {isReviewAuthor(reply.authorId) && (
+                          <span className="user-content-comment-author-badge" aria-label="작성자">
+                            작성자
+                          </span>
+                        )}
+                      </span>
                       <p className={`user-content-comment-text${reply.isDeleted ? " deleted" : ""}`}>{reply.content}</p>
                       <span className="user-content-comment-date">{formatDate(reply.createdAt)}</span>
                       {!reply.isDeleted && (
