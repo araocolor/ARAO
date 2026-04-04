@@ -295,24 +295,23 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
 
       {/* 댓글 입력폼 */}
       <div className="user-content-comment-form">
-        <input
-          type="text"
+        <textarea
           className="user-content-comment-input"
           placeholder={replyTo ? "답글을 남겨보세요" : "댓글을 남겨보세요"}
           value={commentInput}
           onChange={(e) => setCommentInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleSubmitComment(); }}
           maxLength={300}
+          rows={1}
         />
-        <button
-          type="button"
-          className={`user-content-comment-submit${commentInput.trim() ? " active" : ""}`}
-          onClick={handleSubmitComment}
-          disabled={!commentInput.trim() || submitting}
-        >
-          등록
-        </button>
       </div>
+      <button
+        type="button"
+        className={`user-content-comment-submit${commentInput.trim() ? " active" : ""}`}
+        onClick={handleSubmitComment}
+        disabled={!commentInput.trim() || submitting}
+      >
+        등록
+      </button>
     </section>
   );
 }

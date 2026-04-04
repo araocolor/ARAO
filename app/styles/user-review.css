@@ -1148,7 +1148,7 @@
 .user-content-comment-form {
   display: flex;
   gap: 8px;
-  align-items: center;
+  align-items: flex-start;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
@@ -1160,6 +1160,10 @@
   border: none;
   background: transparent;
   font-size: 16px;
+  resize: none;
+  overflow-y: auto;
+  min-height: 40px;
+  max-height: 120px;
   color: var(--text);
   outline: none;
   font-family: inherit;
@@ -1171,7 +1175,10 @@
 }
 
 .user-content-comment-submit {
-  border: none;
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  border: 1px solid var(--line);
   background: transparent;
   color: var(--muted);
   font-size: 14px;
