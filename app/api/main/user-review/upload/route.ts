@@ -31,7 +31,7 @@ export async function POST(request: Request) {
           const { error } = await supabase.storage
             .from("board_image")
             .upload(path, buffer, {
-              contentType: file.type || "image/jpeg",
+              contentType: file.type || "application/octet-stream",
               cacheControl: IMAGE_CACHE_CONTROL,
               upsert: false,
             });

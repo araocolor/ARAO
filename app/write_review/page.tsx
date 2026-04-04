@@ -72,6 +72,63 @@ function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([array], { type: mime });
 }
 
+type AttachedFileMeta = {
+  name: string;
+  type: string;
+  url?: string;
+  data?: string;
+};
+
+function toSafeFileName(value: string): string {
+  const cleaned = value.trim().replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "_");
+  return cleaned.length > 0 ? cleaned : "file";
+}
+
+async function uploadSingleFile(file: File, path: string): Promise<string | null> {
+  const form = new FormData();
+  form.append("file_0", file, file.name);
+  form.append("path_0", path);
+  form.append("key_0", "attachment");
+  try {
+    const res = await fetch("/api/main/user-review/upload", { method: "POST", body: form });
+    if (!res.ok) { console.error("upload error:", await res.text()); return null; }
+    const data = (await res.json()) as { urls: Record<string, string> };
+    return data.urls.attachment ?? null;
+  } catch (e) {
+    console.error("upload error:", e);
+    return null;
+  }
+}
+
+async function uploadAttachedFile(
+  postId: string,
+  meta: AttachedFileMeta | null,
+  rawFile: File | null
+): Promise<AttachedFileMeta | null> {
+  if (!meta) return null;
+  if (!rawFile && meta.url) {
+    return { name: meta.name, type: meta.type, url: meta.url };
+  }
+
+  let uploadFile: File | null = null;
+  if (rawFile) {
+    uploadFile = rawFile;
+  } else if (meta.data) {
+    const blob = dataUrlToBlob(meta.data);
+    const contentType = meta.type || blob.type || "application/octet-stream";
+    uploadFile = new File([blob], meta.name, { type: contentType });
+  }
+
+  if (!uploadFile) return null;
+
+  const safeName = toSafeFileName(uploadFile.name);
+  const unique = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const path = `${postId}/attachments/${unique}_${safeName}`;
+  const url = await uploadSingleFile(uploadFile, path);
+  if (!url) throw new Error("첨부파일 업로드에 실패했습니다.");
+  return { name: uploadFile.name, type: uploadFile.type || meta.type || "application/octet-stream", url };
+}
+
 async function uploadBatch(
   files: Array<{ blob: Blob; path: string; key: string }>
 ): Promise<Record<string, string>> {
@@ -115,7 +172,8 @@ function WriteReviewContent() {
   const [initialMediumImages, setInitialMediumImages] = useState<Array<string | null>>([]);
   const [initialThumbFirst, setInitialThumbFirst] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
-  const [attachedFile, setAttachedFile] = useState<{ name: string; type: string; data: string } | null>(null);
+  const [attachedFile, setAttachedFile] = useState<AttachedFileMeta | null>(null);
+  const [attachedFileRaw, setAttachedFileRaw] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -186,7 +244,16 @@ function WriteReviewContent() {
         if (d.attachedFile) {
           try {
             const parsed = JSON.parse(d.attachedFile);
-            if (parsed && typeof parsed.name === "string") setAttachedFile(parsed);
+            if (parsed && typeof parsed.name === "string") {
+              const next: AttachedFileMeta = {
+                name: parsed.name,
+                type: typeof parsed.type === "string" ? parsed.type : "",
+              };
+              if (typeof parsed.url === "string") next.url = parsed.url;
+              if (typeof parsed.data === "string") next.data = parsed.data;
+              setAttachedFile(next);
+              setAttachedFileRaw(null);
+            }
           } catch {}
         }
       })
@@ -315,13 +382,8 @@ function WriteReviewContent() {
     if (!file) return;
     setFileError(null);
     if (file.size > FILE_MAX_BYTES) { setFileError("파일은 5MB 이하만 첨부 가능합니다."); return; }
-    const data = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => resolve(ev.target?.result as string);
-      reader.onerror = () => reject();
-      reader.readAsDataURL(file);
-    });
-    setAttachedFile({ name: file.name, type: file.type, data });
+    setAttachedFile({ name: file.name, type: file.type || "application/octet-stream" });
+    setAttachedFileRaw(file);
   }
 
   async function handleSave() {
@@ -346,7 +408,6 @@ function WriteReviewContent() {
           category,
           title: title.trim(),
           content: finalContent.trim(),
-          attachedFile: attachedFile ? JSON.stringify(attachedFile) : null,
           board,
         }),
       });
@@ -362,6 +423,7 @@ function WriteReviewContent() {
       let savedThumbFirst: string | null = null;
       let savedOriginalImage: string | null = null;
       let savedThumbnailSmall: string | null = null;
+      let savedAttachedFile: AttachedFileMeta | null = null;
 
       const imageOrderUnchanged =
         existingImageUrls.length === initialImageUrls.length &&
@@ -415,26 +477,7 @@ function WriteReviewContent() {
         savedOriginalImage = allOriginals.length === 1 ? allOriginals[0] : JSON.stringify(allOriginals);
         savedThumbnailSmall = allMediums.some((img) => !!img) ? JSON.stringify(allMediums) : null;
 
-        // 3단계: 이미지 URL로 DB 업데이트
-        setSavingMsg("마무리 중...");
-        const updateResponse = await fetch(`/api/main/user-review/${postId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            category,
-            title: title.trim(),
-            content: finalContent.trim(),
-            thumbnailImage: allOriginals.length === 1 ? allOriginals[0] : JSON.stringify(allOriginals),
-            thumbnailSmall: savedThumbnailSmall,
-            thumbnailFirst: firstThumb,
-            attachedFile: attachedFile ? JSON.stringify(attachedFile) : null,
-            board,
-          }),
-        });
-        if (!updateResponse.ok) {
-          const message = (await updateResponse.json().catch(() => null)) as { message?: string } | null;
-          throw new Error(message?.message ?? "이미지 저장에 실패했습니다.");
-        }
+        savedOriginalImage = allOriginals.length === 1 ? allOriginals[0] : JSON.stringify(allOriginals);
       } else if (isEditMode && existingImageUrls.length >= 0) {
         // 수정 모드에서 이미지 변경 없이 저장
         const nextThumbnailImage =
@@ -454,7 +497,23 @@ function WriteReviewContent() {
         savedOriginalImage = nextThumbnailImage;
         savedThumbnailSmall = nextThumbnailSmall;
         savedThumbFirst = nextThumbFirst;
+      }
 
+      if (attachedFile) {
+        setSavingMsg("첨부파일 업로드 중...");
+        savedAttachedFile = await uploadAttachedFile(postId, attachedFile, attachedFileRaw);
+        setAttachedFile(savedAttachedFile);
+        setAttachedFileRaw(null);
+      }
+
+      const attachedFilePayload = savedAttachedFile ? JSON.stringify(savedAttachedFile) : null;
+      const shouldFinalizeUpdate = imageFiles.length > 0 || isEditMode || attachedFile !== null;
+      if (shouldFinalizeUpdate) {
+        const thumbnailImage =
+          savedOriginalImage
+          ?? (existingImageUrls.length === 0 ? null : existingImageUrls.length === 1 ? existingImageUrls[0] : JSON.stringify(existingImageUrls));
+
+        setSavingMsg("마무리 중...");
         const updateResponse = await fetch(`/api/main/user-review/${postId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -462,16 +521,16 @@ function WriteReviewContent() {
             category,
             title: title.trim(),
             content: finalContent.trim(),
-            thumbnailImage: nextThumbnailImage,
-            thumbnailSmall: nextThumbnailSmall,
-            thumbnailFirst: nextThumbFirst,
-            attachedFile: attachedFile ? JSON.stringify(attachedFile) : null,
+            thumbnailImage,
+            thumbnailSmall: savedThumbnailSmall,
+            thumbnailFirst: savedThumbFirst,
+            attachedFile: attachedFilePayload,
             board,
           }),
         });
         if (!updateResponse.ok) {
           const message = (await updateResponse.json().catch(() => null)) as { message?: string } | null;
-          throw new Error(message?.message ?? "수정 저장에 실패했습니다.");
+          throw new Error(message?.message ?? "저장에 실패했습니다.");
         }
       }
 
@@ -485,7 +544,7 @@ function WriteReviewContent() {
         thumbnailImage,
         thumbnailSmall: savedThumbnailSmall,
         thumbnailFirst: savedThumbFirst ?? null,
-        attachedFile: attachedFile ? JSON.stringify(attachedFile) : null,
+        attachedFile: attachedFilePayload,
         viewCount: 0,
         createdAt: new Date().toISOString(),
         authorId: "",
@@ -672,7 +731,14 @@ function WriteReviewContent() {
               </svg>
             </span>
             <span className="write-review-file-name">{attachedFile.name}</span>
-            <button type="button" className="write-review-file-remove" onClick={() => { setAttachedFile(null); setFileError(null); }} aria-label="파일 제거">✕</button>
+            <button
+              type="button"
+              className="write-review-file-remove"
+              onClick={() => { setAttachedFile(null); setAttachedFileRaw(null); setFileError(null); }}
+              aria-label="파일 제거"
+            >
+              ✕
+            </button>
           </div>
         )}
         {fileError && <p className="write-review-image-error">{fileError}</p>}

@@ -485,12 +485,18 @@ export function UserContentPage({ id }: { id: string }) {
     setViewerIndex(null);
   }, []);
 
-  let attachedFile: { name: string; type: string; data: string } | null = null;
+  let attachedFile: { name: string; type: string; url?: string; data?: string } | null = null;
   if (item?.attachedFile) {
     try {
       const parsed = JSON.parse(item.attachedFile);
-      if (parsed && typeof parsed.name === "string" && typeof parsed.data === "string") {
-        attachedFile = parsed;
+      if (parsed && typeof parsed.name === "string") {
+        const next: { name: string; type: string; url?: string; data?: string } = {
+          name: parsed.name,
+          type: typeof parsed.type === "string" ? parsed.type : "",
+        };
+        if (typeof parsed.url === "string") next.url = parsed.url;
+        if (typeof parsed.data === "string") next.data = parsed.data;
+        if (next.url || next.data) attachedFile = next;
       }
     } catch {}
   }
@@ -543,8 +549,9 @@ export function UserContentPage({ id }: { id: string }) {
                   type="button"
                   className="user-content-file-download"
                   onClick={() => {
-                    const dataUrl = attachedFile.data;
-                    fetch(dataUrl)
+                    const sourceUrl = attachedFile.url ?? attachedFile.data;
+                    if (!sourceUrl) return;
+                    fetch(sourceUrl)
                       .then((r) => r.blob())
                       .then(async (blob) => {
                         const file = new File([blob], attachedFile.name, { type: blob.type || attachedFile.type });
@@ -562,8 +569,10 @@ export function UserContentPage({ id }: { id: string }) {
                       })
                       .catch(() => {
                         const a = document.createElement("a");
-                        a.href = dataUrl;
+                        a.href = sourceUrl;
                         a.download = attachedFile.name;
+                        a.rel = "noopener";
+                        a.target = "_blank";
                         a.click();
                       });
                   }}
