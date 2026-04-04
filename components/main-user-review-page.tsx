@@ -892,13 +892,7 @@ export function MainUserReviewPage() {
                     <span>{item.authorId}</span>
                     <span>{formatDate(item.createdAt)}</span>
                     <span>조회 {item.viewCount}</span>
-                    {item.commentCount > 0 && (
-                      <span className="user-review-item-stat">
-                        <svg className="user-review-item-comment" aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                        {item.commentCount}
-                      </span>
-                    )}
-                    {(item.attachedFile || item.likeCount > 0) && (
+                    {(item.attachedFile || item.likeCount > 0 || item.commentCount > 0) && (
                       <span className="user-review-item-meta-icons">
                         {item.attachedFile && (
                           <svg className="user-review-item-clip" aria-label="첨부파일" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
@@ -907,6 +901,12 @@ export function MainUserReviewPage() {
                           <span className="user-review-item-stat">
                             <svg className="user-review-item-heart" aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 22V11m-4 1v8a2 2 0 0 0 2 2h12.4a2 2 0 0 0 2-1.6l1.2-8A2 2 0 0 0 18.6 9H14V4a2 2 0 0 0-2-2h-.1a2 2 0 0 0-1.9 1.4L7 11"/></svg>
                             {item.likeCount}
+                          </span>
+                        )}
+                        {item.commentCount > 0 && (
+                          <span className="user-review-item-stat">
+                            <svg className="user-review-item-comment" aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="none" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            {item.commentCount}
                           </span>
                         )}
                       </span>
