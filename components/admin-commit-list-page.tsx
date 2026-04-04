@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 type CommitReportSection = {
@@ -87,10 +88,20 @@ function parseDateParts(iso: string | null): { year: number; month: number; day:
   if (Number.isNaN(date.getTime())) {
     return { year: 0, month: 0, day: 0 };
   }
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = formatter.formatToParts(date);
+  const year = Number(parts.find((part) => part.type === "year")?.value ?? "0");
+  const month = Number(parts.find((part) => part.type === "month")?.value ?? "0");
+  const day = Number(parts.find((part) => part.type === "day")?.value ?? "0");
   return {
-    year: date.getFullYear(),
-    month: date.getMonth() + 1,
-    day: date.getDate(),
+    year,
+    month,
+    day,
   };
 }
 
@@ -156,6 +167,7 @@ function toReportItem(row: WorkLogApiRow): CommitReportItem {
 }
 
 export function AdminCommitListPage() {
+  const router = useRouter();
   const today = new Date();
   const initialYear = today.getFullYear() === 2027 ? "2027" : "2026";
   const initialMonth = String(Math.min(Math.max(today.getMonth() + 1, 1), 12));
@@ -176,7 +188,7 @@ export function AdminCommitListPage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const response = await fetch("/api/admin/work-logs?limit=200");
+      const response = await fetch("/api/admin/work-logs?limit=1000");
       const data = (await response.json()) as { items?: WorkLogApiRow[]; message?: string };
       if (!response.ok) {
         throw new Error(data.message ?? "작업 이력을 불러오지 못했습니다.");
@@ -213,6 +225,27 @@ export function AdminCommitListPage() {
     } catch {
       // no-op
     }
+  }, [theme]);
+
+  useEffect(() => {
+    const pageRoot = document.querySelector<HTMLElement>(".admin-work-list-page");
+    if (!pageRoot) return;
+    if (theme === "dark") {
+      pageRoot.dataset.reportTheme = "dark";
+      return () => {
+        pageRoot.removeAttribute("data-report-theme");
+      };
+    }
+    if (theme === "light") {
+      pageRoot.dataset.reportTheme = "light";
+      return () => {
+        pageRoot.removeAttribute("data-report-theme");
+      };
+    }
+    pageRoot.removeAttribute("data-report-theme");
+    return () => {
+      pageRoot.removeAttribute("data-report-theme");
+    };
   }, [theme]);
 
   const dateFilteredItems = useMemo(() => {
@@ -255,9 +288,16 @@ export function AdminCommitListPage() {
           <div className="admin-commit-report-top">
             <div className="admin-commit-report-head">
               <div className="admin-commit-report-top-actions">
-                <Link href="/admin" className="admin-commit-report-home-link">
+                <Link href="/" className="admin-commit-report-home-link">
                   홈
                 </Link>
+                <button
+                  type="button"
+                  className="admin-commit-report-nav-button"
+                  onClick={() => router.back()}
+                >
+                  이전
+                </button>
                 <button
                   type="button"
                   className="admin-commit-report-theme-btn admin-commit-report-theme-btn-compact"

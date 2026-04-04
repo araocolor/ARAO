@@ -38,7 +38,7 @@ export default async function AdminWorkListPage() {
           <p className="muted">message: {profileError.message ?? "없음"}</p>
           <p className="muted">hint: {profileError.hint ?? "없음"}</p>
           <p className="muted">로그인 이메일: {email ?? "없음"}</p>
-          <Link href="/admin">홈</Link>
+          <Link href="/">홈</Link>
         </section>
       </main>
     );

@@ -46,7 +46,7 @@ function normalizeStatus(input: unknown): WorkLogStatus | "all" {
 function normalizeLimit(input: string | null): number {
   const n = Number(input ?? "40");
   if (!Number.isFinite(n) || n <= 0) return 40;
-  return Math.min(Math.floor(n), 200);
+  return Math.min(Math.floor(n), 1000);
 }
 
 export async function GET(request: Request) {

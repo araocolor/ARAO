@@ -595,10 +595,26 @@
 
 .admin-work-list-page {
   overflow-x: hidden;
+  min-height: 100vh;
+  transition: background-color 180ms ease, color 180ms ease;
 }
 
 .admin-work-list-shell {
   animation: admin-work-list-slide-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.admin-work-list-page[data-report-theme="dark"] {
+  background: #0f0f10;
+  color: #efefef;
+}
+
+.admin-work-list-page[data-report-theme="dark"] .admin-work-list-shell {
+  background: #0f0f10;
+  border-color: #2f2f33;
+}
+
+.admin-work-list-page[data-report-theme="dark"] .muted {
+  color: #b4b4b4;
 }
 
 @keyframes admin-work-list-slide-in {
@@ -701,6 +717,21 @@
   font-size: 13px;
   text-decoration: none;
   line-height: 1;
+}
+
+.admin-commit-report-nav-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  border: 1px solid var(--report-line);
+  border-radius: 8px;
+  background: var(--report-panel);
+  color: var(--report-fg);
+  padding: 4px 10px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .admin-commit-report-date-filters {
