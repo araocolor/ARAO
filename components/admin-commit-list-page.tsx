@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type CommitReportSection = {
@@ -12,6 +13,10 @@ type CommitReportItem = {
   menu: string;
   heading: string;
   displayDateTime: string;
+  displayTime: string;
+  year: number;
+  month: number;
+  day: number;
   aiAgent: string;
   originalReview: string;
   meta?: string;
@@ -34,20 +39,12 @@ type WorkLogApiRow = {
   updated_at: string;
 };
 
+const YEAR_OPTIONS = [2026, 2027] as const;
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => index + 1);
+const DAY_OPTIONS = Array.from({ length: 31 }, (_, index) => index + 1);
+
 function normalizeQuery(value: string): string {
   return value.trim().toLowerCase();
-}
-
-function splitCommitLabel(menu: string): { commit: string | null; title: string } {
-  const marker = " - ";
-  const idx = menu.indexOf(marker);
-  if (idx <= 0) return { commit: null, title: menu };
-  const commit = menu.slice(0, idx).trim();
-  const title = menu.slice(idx + marker.length).trim();
-  if (!/^[a-z0-9]+$/i.test(commit) || commit.length > 16 || !title) {
-    return { commit: null, title: menu };
-  }
-  return { commit, title };
 }
 
 function formatDateTime(iso: string | null): string {
@@ -64,6 +61,17 @@ function formatDateTime(iso: string | null): string {
   return `${year}/${month}/${day} ${hour12}:${minute}${period}`;
 }
 
+function formatTimeOnly(iso: string | null): string {
+  if (!iso) return "-";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "-";
+  const hour24 = date.getHours();
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  const period = hour24 < 12 ? "am" : "pm";
+  const hour12 = hour24 % 12 || 12;
+  return `${hour12}:${minute} ${period}`;
+}
+
 function linesToBullets(input: string): string[] {
   return input
     .split("\n")
@@ -71,11 +79,28 @@ function linesToBullets(input: string): string[] {
     .filter(Boolean);
 }
 
+function parseDateParts(iso: string | null): { year: number; month: number; day: number } {
+  if (!iso) {
+    return { year: 0, month: 0, day: 0 };
+  }
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return { year: 0, month: 0, day: 0 };
+  }
+  return {
+    year: date.getFullYear(),
+    month: date.getMonth() + 1,
+    day: date.getDate(),
+  };
+}
+
 function toReportItem(row: WorkLogApiRow): CommitReportItem {
   const summary = row.summary?.trim() ?? "";
   const details = row.details?.trim() ?? "";
   const originalReview = row.original_review?.trim() || details || summary || "원본 리뷰가 아직 없습니다.";
   const menu = `${row.commit_hash} - ${row.title}`;
+  const sourceIso = row.deployed_at ?? row.updated_at ?? row.created_at;
+  const dateParts = parseDateParts(sourceIso);
 
   const sections: CommitReportSection[] = [];
   if (summary) {
@@ -109,7 +134,11 @@ function toReportItem(row: WorkLogApiRow): CommitReportItem {
     id: row.id,
     menu,
     heading: row.title,
-    displayDateTime: formatDateTime(row.deployed_at ?? row.updated_at ?? row.created_at),
+    displayDateTime: formatDateTime(sourceIso),
+    displayTime: formatTimeOnly(sourceIso),
+    year: dateParts.year,
+    month: dateParts.month,
+    day: dateParts.day,
     aiAgent: row.author_name_snapshot?.trim() || "Unknown",
     originalReview,
     meta: metaParts.join(" / "),
@@ -127,8 +156,16 @@ function toReportItem(row: WorkLogApiRow): CommitReportItem {
 }
 
 export function AdminCommitListPage() {
+  const today = new Date();
+  const initialYear = today.getFullYear() === 2027 ? "2027" : "2026";
+  const initialMonth = String(Math.min(Math.max(today.getMonth() + 1, 1), 12));
+  const initialDay = String(Math.min(Math.max(today.getDate(), 1), 31));
+
   const [theme, setTheme] = useState<"light" | "dark" | null>(null);
   const [query, setQuery] = useState("");
+  const [selectedYear, setSelectedYear] = useState(initialYear);
+  const [selectedMonth, setSelectedMonth] = useState(initialMonth);
+  const [selectedDay, setSelectedDay] = useState(initialDay);
   const [openId, setOpenId] = useState<string | null>(null);
   const [detailItemId, setDetailItemId] = useState<string | null>(null);
   const [items, setItems] = useState<CommitReportItem[]>([]);
@@ -178,14 +215,24 @@ export function AdminCommitListPage() {
     }
   }, [theme]);
 
+  const dateFilteredItems = useMemo(() => {
+    return items.filter((item) => {
+      return (
+        item.year === Number(selectedYear) &&
+        item.month === Number(selectedMonth) &&
+        item.day === Number(selectedDay)
+      );
+    });
+  }, [items, selectedYear, selectedMonth, selectedDay]);
+
   const filteredItems = useMemo(() => {
     const normalized = normalizeQuery(query);
-    if (!normalized) return items;
-    return items.filter((item) => {
+    if (!normalized) return dateFilteredItems;
+    return dateFilteredItems.filter((item) => {
       const text = `${item.menu} ${item.heading} ${item.meta ?? ""} ${item.keywords.join(" ")}`.toLowerCase();
       return text.includes(normalized);
     });
-  }, [items, query]);
+  }, [dateFilteredItems, query]);
 
   useEffect(() => {
     if (!openId) return;
@@ -206,20 +253,68 @@ export function AdminCommitListPage() {
       <div className={`admin-commit-report-stage${detailItem ? " is-detail-open" : ""}`}>
         <div className="admin-commit-report-screen admin-commit-report-screen-main">
           <div className="admin-commit-report-top">
-            <input
-              className="admin-commit-report-search"
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="검색어: 커밋명, 제목, 리뷰"
-            />
-            <button
-              type="button"
-              className="admin-commit-report-theme-btn"
-              onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))}
-            >
-              테마
-            </button>
+            <div className="admin-commit-report-head">
+              <div className="admin-commit-report-top-actions">
+                <Link href="/admin" className="admin-commit-report-home-link">
+                  홈
+                </Link>
+                <button
+                  type="button"
+                  className="admin-commit-report-theme-btn admin-commit-report-theme-btn-compact"
+                  onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))}
+                >
+                  테마
+                </button>
+              </div>
+            </div>
+
+            <div className="admin-commit-report-top-main">
+              <input
+                className="admin-commit-report-search"
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="검색어: 커밋명, 제목, 리뷰"
+              />
+            </div>
+
+            <div className="admin-commit-report-date-filters">
+              <select
+                className="admin-commit-report-select admin-commit-report-select-year"
+                value={selectedYear}
+                onChange={(event) => setSelectedYear(event.target.value)}
+              >
+                {YEAR_OPTIONS.map((year) => (
+                  <option key={year} value={String(year)}>
+                    {year}년
+                  </option>
+                ))}
+              </select>
+
+              <select
+                className="admin-commit-report-select admin-commit-report-select-month"
+                value={selectedMonth}
+                onChange={(event) => setSelectedMonth(event.target.value)}
+              >
+                {MONTH_OPTIONS.map((month) => (
+                  <option key={month} value={String(month)}>
+                    {month}월
+                  </option>
+                ))}
+              </select>
+
+              <select
+                className="admin-commit-report-select admin-commit-report-select-day"
+                value={selectedDay}
+                onChange={(event) => setSelectedDay(event.target.value)}
+              >
+                {DAY_OPTIONS.map((day) => (
+                  <option key={day} value={String(day)}>
+                    {day}일
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="admin-commit-report-list-head">
@@ -237,7 +332,6 @@ export function AdminCommitListPage() {
             <ul className="admin-commit-report-rows">
               {filteredItems.map((item) => {
                 const expanded = item.id === openId;
-                const label = splitCommitLabel(item.menu);
                 return (
                   <li key={item.id} className="admin-commit-report-row">
                     <button
@@ -248,10 +342,9 @@ export function AdminCommitListPage() {
                       aria-controls={`report-panel-${item.id}`}
                     >
                       <span className="admin-commit-report-row-main">
-                        {label.commit ? (
-                          <span className="admin-commit-report-row-commit">{label.commit}</span>
-                        ) : null}
-                        <span className="admin-commit-report-row-title">{label.title}</span>
+                        <span className="admin-commit-report-row-commit">{item.displayTime}</span>
+                        <span className="admin-commit-report-row-divider">/</span>
+                        <span className="admin-commit-report-row-title">{item.heading}</span>
                         <span className="admin-commit-report-row-divider">/</span>
                         <span className="admin-commit-report-row-model">{item.aiAgent}</span>
                       </span>
@@ -266,15 +359,9 @@ export function AdminCommitListPage() {
                           <h2>{item.heading}</h2>
                           <div className="admin-commit-report-title-actions">
                             <span className="admin-commit-report-datetime">{item.displayDateTime}</span>
-                            <button
-                              type="button"
-                              className="admin-commit-report-detail-btn"
-                              onClick={() => setDetailItemId(item.id)}
-                            >
-                              상세보기
-                            </button>
                           </div>
                         </div>
+                        <p className="admin-commit-report-meta">작업 AI: {item.aiAgent}</p>
                         {item.meta ? <p className="admin-commit-report-meta">{item.meta}</p> : null}
                         {item.sections.map((section) => (
                           <div key={`${item.id}-${section.title}`}>

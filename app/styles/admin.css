@@ -658,12 +658,57 @@
 }
 
 .admin-commit-report-top {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
   border-bottom: 1px solid var(--report-line);
   background: var(--report-bg);
   padding: 10px 12px;
+}
+
+.admin-commit-report-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.admin-commit-report-head .muted {
+  margin: 0;
+}
+
+.admin-commit-report-top-main {
+  display: block;
+}
+
+.admin-commit-report-top-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.admin-commit-report-home-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  border: 1px solid var(--report-line);
+  border-radius: 8px;
+  background: var(--report-panel);
+  color: var(--report-fg);
+  padding: 4px 10px;
+  font-size: 13px;
+  text-decoration: none;
+  line-height: 1;
+}
+
+.admin-commit-report-date-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
 }
 
 .admin-commit-report-stage {
@@ -707,6 +752,39 @@
   padding: 0 10px;
   font-size: 13px;
   cursor: pointer;
+}
+
+.admin-commit-report-theme-btn-compact {
+  height: auto;
+  min-height: 30px;
+  padding: 4px 10px;
+  line-height: 1;
+}
+
+.admin-commit-report-select {
+  width: auto;
+  height: 32px;
+  border: 1px solid var(--report-line);
+  border-radius: 8px;
+  background: var(--report-panel);
+  color: var(--report-fg);
+  padding: 0 24px 0 10px;
+  font-size: 13px;
+  flex: 0 0 auto;
+}
+
+.admin-commit-report-select-year {
+  min-width: 96px;
+}
+
+.admin-commit-report-select-month,
+.admin-commit-report-select-day {
+  min-width: 72px;
+}
+
+.admin-commit-report-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .admin-commit-report-list-head {
@@ -940,6 +1018,15 @@
     border-right: 0;
     border-bottom: 1px solid var(--line);
     max-height: 260px;
+  }
+
+  .admin-commit-report-top-actions {
+    justify-content: flex-end;
+  }
+
+  .admin-commit-report-date-filters {
+    overflow-x: auto;
+    white-space: nowrap;
   }
 
   .admin-commit-report-title-row {

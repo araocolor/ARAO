@@ -64,6 +64,7 @@ export async function GET(request: Request) {
     .select(
       "id, commit_hash, title, summary, details, original_review, status, report_url, deployed_at, author_profile_id, author_name_snapshot, created_at, updated_at"
     )
+    .order("deployed_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .limit(limit);
 

@@ -138,6 +138,18 @@ function generateKoreanSummaryAndDetails({ title, files, gitBody }) {
   };
 }
 
+function compactTimeKey(iso) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "000000000000";
+  const yyyy = String(date.getUTCFullYear());
+  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(date.getUTCDate()).padStart(2, "0");
+  const hh = String(date.getUTCHours()).padStart(2, "0");
+  const min = String(date.getUTCMinutes()).padStart(2, "0");
+  const ss = String(date.getUTCSeconds()).padStart(2, "0");
+  return `${yyyy}${mm}${dd}${hh}${min}${ss}`;
+}
+
 async function main() {
   loadEnvFile(".env.local");
   loadEnvFile(".env");
@@ -146,7 +158,7 @@ async function main() {
   if (args.help === "true") {
     console.log("Usage:");
     console.log(
-      "  npm run report:push -- [--commit HEAD] [--title \"...\"] [--summary \"...\"] [--details \"...\"] [--original \"...\"] [--status done] [--model \"GPT-5 Codex\"] [--report-url \"/admin/work-list\"] [--dry-run]"
+      "  npm run report:push -- [--commit HEAD] [--title \"...\"] [--summary \"...\"] [--details \"...\"] [--original \"...\"] [--status done] --model \"<AI 이름>\" [--report-url \"/admin/work-list\"] [--dry-run]"
     );
     process.exit(0);
   }
@@ -158,10 +170,12 @@ async function main() {
   }
 
   const commitRef = args.commit || "HEAD";
-  const commitHash = args.hash || git(`git rev-parse --short=12 ${commitRef}`);
+  const baseCommitHash = args.hash || git(`git rev-parse --short=12 ${commitRef}`);
   const gitTitle = git(`git log -1 --pretty=%s ${commitRef}`);
   const gitBody = git(`git log -1 --pretty=%b ${commitRef}`);
   const commitDate = git(`git log -1 --pretty=%cI ${commitRef}`);
+  const deployedAt = (args["deployed-at"] || commitDate || new Date().toISOString()).trim();
+  const commitHash = `${baseCommitHash}-${compactTimeKey(deployedAt)}`;
   const changedFilesRaw = git(`git show --name-only --pretty=format: ${commitRef}`);
   const changedFiles = changedFilesRaw
     .split("\n")
@@ -180,29 +194,34 @@ async function main() {
   });
 
   const reportTitle = (args.title || generated.title || gitTitle).trim();
-  const summary = (args.summary || generated.summary || firstLine(gitBody) || gitTitle).trim();
-  const details = (args.details || generated.details || gitBody || "").trim();
-  const originalReview = (args.original || details || summary).trim();
   const status = args.status || "done";
-  const model = (args.model || "GPT-5 Codex").trim();
+  const model = (args.model || "").trim();
+  if (!model) {
+    throw new Error("--model 값이 필요합니다. 임의 기본 AI 값은 사용하지 않습니다.");
+  }
   const reportUrl = (args["report-url"] || "/admin/work-list").trim();
-  const deployedAt = (args["deployed-at"] || commitDate || new Date().toISOString()).trim();
 
   if (!["draft", "done", "rollback"].includes(status)) {
     throw new Error("status는 draft | done | rollback 중 하나여야 합니다.");
   }
 
+  const detailsBase = (args.details || generated.details || gitBody || "").trim();
+  const details =
+    detailsBase.length > 0 ? `작업 AI: ${model}\n${detailsBase}` : `작업 AI: ${model}`;
+  const summary = (args.summary || generated.summary || firstLine(gitBody) || gitTitle).trim();
+  const originalReview = (args.original || details || summary).trim();
+
   const payload = {
     commit_hash: commitHash,
     title: reportTitle,
     summary,
-    details: details || null,
+    details: details,
     original_review: originalReview || null,
     status,
     report_url: reportUrl || null,
     deployed_at: deployedAt || null,
     author_profile_id: null,
-    author_name_snapshot: model || "GPT-5 Codex",
+    author_name_snapshot: model,
     updated_at: new Date().toISOString(),
   };
 

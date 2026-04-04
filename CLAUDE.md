@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 체크리스트
 
 - [ ] 이미지는 Supabase Storage에 업로드 후 URL만 DB에 저장 (base64 DB 직접 저장 금지)
-- [ ] 커뮤니티 이미지 저장 방식을 Supabase Storage URL 방식으로 전환
+- [ ] 커뮤니티 이미지 저장 방식을 Supabase Storage URL 방식
 
 ## Quick Start
 
@@ -117,16 +117,28 @@ alter publication supabase_realtime add table inquiries;
 
 - **"XXX로 올려"** → commit message를 "XXX" 그대로 사용
 - **커밋/푸시는 사용자가 명시적으로 요청할 때만.** 절대 먼저 하지 않는다.
-- **Format:** `git commit -m "message" -m "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"`
+- Format: 각 AI는 본인의 명칭과 이메일을 'Co-Authored-By' 필드에 작성하여 커밋할 것.
 
 ## Pre-Push Checklist
 
 1. `npm run build` — 최소 게이트 (`npm run lint`는 현재 Next.js 16 환경에서 실패함)
-2. Dev 서버에서 수동 확인
+2. Dev 서버에서 수동 확인 사용자에게 물어볼것.
 
-## Language
 
-사용자는 **한국어**로 소통. "~게" = 사용자가 할 것, "~려" = 어시스턴트에게 지시
+
+## Language Rules (Core)
+
+### 1. 종결 어미 규약
+- **~게**: 사용자가 할 일 (선언)
+- **~하세요**: 어시스턴트 지시 (명령)
+- **~함 / ~임**: 작업 완료 보고 및 팩트 전달 (요약)
+- **~나?**: 코드 리뷰 및 수정 제안
+
+### 2. 소통 원칙
+- **톤앤매너**: 감정 배제, 짧고 간결한 전문가 어조, 이모지/은유 금지.
+- **포맷**: 분석/정리는 무조건 **표(Table)** 사용.
+- **단위**: 거리 `cm`, 가격 `원` 환산 필수.
+- **긴급**: 치명적 오류 시 **🚨** 접두어 사용.
 
 ## Common Gotchas
 

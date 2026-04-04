@@ -33,13 +33,12 @@ export default async function AdminWorkListPage() {
     return (
       <main className="page stack">
         <section className="section stack">
-          <p className="muted">Admin / Commit List</p>
           <h1>프로필 연결 오류</h1>
           <p className="muted">이 계정의 Supabase profile을 읽는 중 문제가 발생했습니다.</p>
           <p className="muted">message: {profileError.message ?? "없음"}</p>
           <p className="muted">hint: {profileError.hint ?? "없음"}</p>
           <p className="muted">로그인 이메일: {email ?? "없음"}</p>
-          <Link href="/admin">관리자 대시보드로 이동</Link>
+          <Link href="/admin">홈</Link>
         </section>
       </main>
     );
@@ -49,7 +48,6 @@ export default async function AdminWorkListPage() {
     return (
       <main className="page stack">
         <section className="section stack">
-          <p className="muted">Admin / Commit List</p>
           <h1>관리자 권한이 필요합니다</h1>
           <p className="muted">
             현재 로그인한 계정은 관리자 권한이 없습니다. 현재 역할: {profile?.role ?? "unknown"}
@@ -63,10 +61,6 @@ export default async function AdminWorkListPage() {
   return (
     <main className="admin-page admin-work-list-page">
       <section className="admin-panel-card stack admin-work-list-shell">
-        <div className="admin-commit-page-head">
-          <p className="muted">Admin / Commit List</p>
-          <Link href="/admin">관리자 대시보드로 이동</Link>
-        </div>
         <AdminCommitListPage />
       </section>
     </main>
