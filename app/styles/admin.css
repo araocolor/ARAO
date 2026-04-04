@@ -942,6 +942,13 @@
   gap: 8px;
 }
 
+.admin-commit-report-action-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 .admin-commit-report-datetime {
   font-size: 12px;
   color: var(--report-muted);
@@ -957,6 +964,7 @@
   padding: 0 10px;
   font-size: 12px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .admin-commit-report-delete-btn {
@@ -1090,6 +1098,11 @@
   .admin-commit-report-title-actions {
     width: 100%;
     justify-content: space-between;
+    gap: 10px;
+  }
+
+  .admin-commit-report-action-buttons {
+    margin-left: auto;
   }
 
   .admin-worklog-detail-line {

@@ -435,21 +435,23 @@ export function AdminCommitListPage() {
                           <h2>{item.heading}</h2>
                           <div className="admin-commit-report-title-actions">
                             <span className="admin-commit-report-datetime">{item.displayDateTime}</span>
-                            <button
-                              type="button"
-                              className="admin-commit-report-detail-btn"
-                              onClick={() => setDetailItemId(item.id)}
-                            >
-                              상세보기
-                            </button>
-                            <button
-                              type="button"
-                              className="admin-commit-report-detail-btn admin-commit-report-delete-btn"
-                              onClick={() => void handleDeleteItem(item)}
-                              disabled={deletingItemId === item.id}
-                            >
-                              {deletingItemId === item.id ? "삭제중..." : "삭제"}
-                            </button>
+                            <div className="admin-commit-report-action-buttons">
+                              <button
+                                type="button"
+                                className="admin-commit-report-detail-btn"
+                                onClick={() => setDetailItemId(item.id)}
+                              >
+                                상세보기
+                              </button>
+                              <button
+                                type="button"
+                                className="admin-commit-report-detail-btn admin-commit-report-delete-btn"
+                                onClick={() => void handleDeleteItem(item)}
+                                disabled={deletingItemId === item.id}
+                              >
+                                {deletingItemId === item.id ? "삭제중..." : "삭제"}
+                              </button>
+                            </div>
                           </div>
                         </div>
                         <p className="admin-commit-report-meta">작업 AI: {item.aiAgent}</p>
