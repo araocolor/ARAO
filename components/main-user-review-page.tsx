@@ -13,6 +13,8 @@ const UserReviewAlbum = dynamic(() => import("./user-review-album").then((mod) =
   loading: () => <div className="user-review-album" />,
 });
 
+const UserContentPage = dynamic(() => import("./user-content-page").then((mod) => ({ default: mod.UserContentPage })));
+
 type ViewMode = "list" | "feed" | "album";
 type SortMode = "latest" | "views" | "likes";
 
@@ -209,6 +211,7 @@ export function MainUserReviewPage() {
   const [searchSheetResults, setSearchSheetResults] = useState<UserReviewItem[]>([]);
   const [searchSheetTotal, setSearchSheetTotal] = useState(0);
   const [searchSheetKeyword, setSearchSheetKeyword] = useState("");
+  const [activeContentId, setActiveContentId] = useState<string | null>(null);
   const searchSheetDraggingRef = useRef(false);
   const searchSheetDragStartYRef = useRef(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -286,6 +289,18 @@ export function MainUserReviewPage() {
     const timer = window.setTimeout(() => searchInputRef.current?.focus(), 120);
     return () => window.clearTimeout(timer);
   }, [searchSheetOpen]);
+
+  useEffect(() => {
+    if (!activeContentId) return;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [activeContentId]);
 
   useEffect(() => {
     if (!searchSheetOpen) return;
@@ -696,9 +711,13 @@ export function MainUserReviewPage() {
       } catch {}
       return next;
     });
-    saveScroll();
-    router.push(`/user_content/${id}?board=${board}`);
+    void fetch(`/api/main/user-review/${id}/views`, { method: "POST" }).catch(() => {});
+    setActiveContentId(id);
   };
+
+  function closeActiveContent() {
+    setActiveContentId(null);
+  }
 
   function closeSearchSheet() {
     if (!searchSheetOpen || searchSheetClosing) return;
@@ -1088,6 +1107,14 @@ export function MainUserReviewPage() {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {activeContentId && (
+        <div className="user-review-content-overlay" role="dialog" aria-modal="true">
+          <div className="user-review-content-overlay-panel">
+            <UserContentPage id={activeContentId} onRequestClose={closeActiveContent} />
           </div>
         </div>
       )}

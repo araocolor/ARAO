@@ -1,6 +1,7 @@
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. See **frontend.md**, **backend.md**, and **share.md** for detailed specifications.
+Also follow **AGENTS.md** for shared agent workflow and verification rules.
 
 > **레이아웃 수정 요청 시 반드시 아래 순서를 따를 것 (생략 금지):**
 > 1. **LAYOUT_MAP.md** 를 먼저 참조하여 해당 구역의 파일과 클래스를 확인

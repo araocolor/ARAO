@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createPortal } from "react-dom";
 import { UserContentHeader } from "@/components/user-content-header";
 import { UserContentInteractions, UserContentLikeSection } from "@/components/user-content-interactions";
 
@@ -50,6 +52,7 @@ function ImageViewer({
   startIndex: number;
   onClose: () => void;
 }) {
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const [current, setCurrent] = useState(startIndex);
   const [showUI, setShowUI] = useState(true);
   const [loadedSet, setLoadedSet] = useState<Set<number>>(() => new Set());
@@ -78,6 +81,11 @@ function ImageViewer({
     setPanX(0);
     setPanY(0);
   }, [current]);
+
+  useEffect(() => {
+    setPortalTarget(document.body);
+    return () => setPortalTarget(null);
+  }, []);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -239,7 +247,7 @@ function ImageViewer({
   const imageTransform = `scale(${scale}) translate(${panX / scale}px, ${panY / scale}px)`;
   const imageTransition = isPinching.current || panStartRef.current ? "none" : "transform 0.25s ease-out";
 
-  return (
+  const viewerNode = (
     <div
       ref={containerRef}
       className="user-content-viewer-overlay"
@@ -350,6 +358,9 @@ function ImageViewer({
       )}
     </div>
   );
+
+  if (!portalTarget) return null;
+  return createPortal(viewerNode, portalTarget);
 }
 
 type ReviewItem = {
@@ -391,12 +402,57 @@ function getContentCache(id: string): ReviewItem | null {
   return null;
 }
 
-export function UserContentPage({ id }: { id: string }) {
+const BOARD_VALUES = new Set(["notice", "review", "qna", "arao"]);
+
+function getNormalizedBoard(board?: string | null): string {
+  if (!board) return "review";
+  return BOARD_VALUES.has(board) ? board : "review";
+}
+
+function getBoardListPath(board: string): string {
+  return board === "review" ? "/user_review" : `/user_review?board=${board}`;
+}
+
+export function UserContentPage({ id, onRequestClose }: { id: string; onRequestClose?: () => void }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [item, setItem] = useState<ReviewItem | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const originalCacheRef = useRef<Record<string, boolean>>({});
   const [upgradedImages, setUpgradedImages] = useState<Record<number, string>>({});
+  const [isEntered, setIsEntered] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const closeTimerRef = useRef<number | null>(null);
+
+  const routeBoard = searchParams.get("board");
+  const normalizedBoard = getNormalizedBoard(routeBoard ?? item?.board ?? null);
+  const boardListPath = getBoardListPath(normalizedBoard);
+
+  useEffect(() => {
+    const raf = window.requestAnimationFrame(() => {
+      setIsEntered(true);
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+    };
+  }, []);
+
+  const closeWithSlide = useCallback(() => {
+    if (isClosing) return;
+    setIsClosing(true);
+    closeTimerRef.current = window.setTimeout(() => {
+      if (onRequestClose) {
+        onRequestClose();
+        return;
+      }
+      router.push(boardListPath, { scroll: false });
+    }, 260);
+  }, [isClosing, onRequestClose, router, boardListPath]);
 
   // 1단계: 마운트 후 캐시 데이터로 즉시 채우기
   useEffect(() => {
@@ -502,8 +558,8 @@ export function UserContentPage({ id }: { id: string }) {
   }
 
   return (
-    <main className="landing-page user-content-page">
-      <UserContentHeader reviewId={id} isAuthor={item?.isAuthor ?? false} board={item?.board} />
+    <main className={`landing-page user-content-page user-content-page-shell${isEntered ? " is-entered" : ""}${isClosing ? " is-closing" : ""}`}>
+      <UserContentHeader reviewId={id} isAuthor={item?.isAuthor ?? false} board={item?.board} onBack={closeWithSlide} />
       <div className="landing-shell">
         {notFound ? (
           <section className="section stack">

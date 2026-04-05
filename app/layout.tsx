@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import Script from "next/script";
+import { AppQueryProvider } from "@/components/query-provider";
 import "./globals.css";
 import "./styles/header.css";
 import "./styles/landing.css";
@@ -28,7 +29,7 @@ export default function RootLayout({
     >
       <html lang="ko">
         <body>
-          {children}
+          <AppQueryProvider>{children}</AppQueryProvider>
           <Script id="perf-probe" strategy="afterInteractive">
             {`
               (() => {

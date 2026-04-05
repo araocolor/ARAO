@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
 
 type Comment = {
   id: string;
@@ -44,10 +45,12 @@ function getLikesCache(reviewId: string): { liked: boolean; likeCount: number } 
 
 function setLikesCache(reviewId: string, next: { liked: boolean; likeCount: number }) {
   try {
+    const PAGE_CACHE_PREFIX = "user-review-page-cache-v1:";
     sessionStorage.setItem(`user-review-likes-${reviewId}`, JSON.stringify({ data: next, ts: Date.now() }));
     for (let i = sessionStorage.length - 1; i >= 0; i -= 1) {
       const key = sessionStorage.key(i);
-      if (!key || !key.startsWith("user-review-list-cache")) continue;
+      if (!key) continue;
+      if (!key.startsWith("user-review-list-cache") && !key.startsWith(PAGE_CACHE_PREFIX)) continue;
       const raw = sessionStorage.getItem(key);
       if (!raw) continue;
       const parsed = JSON.parse(raw) as {
@@ -55,9 +58,16 @@ function setLikesCache(reviewId: string, next: { liked: boolean; likeCount: numb
         ts?: number;
       };
       if (!parsed.data || !Array.isArray(parsed.data.items)) continue;
+      let changed = false;
       parsed.data.items = parsed.data.items.map((item) =>
-        item.id === reviewId ? { ...item, likeCount: next.likeCount } : item
+        item.id === reviewId
+          ? (() => {
+              changed = true;
+              return { ...item, likeCount: next.likeCount };
+            })()
+          : item
       );
+      if (!changed) continue;
       parsed.ts = Date.now();
       sessionStorage.setItem(key, JSON.stringify(parsed));
     }
@@ -144,6 +154,7 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
   const router = useRouter();
   const cachedComments = getCommentsCache(reviewId);
   const [comments, setComments] = useState<Comment[]>(cachedComments ?? []);
+  const commentsRef = useRef<Comment[]>(cachedComments ?? []);
   const [commentInput, setCommentInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [replyTo, setReplyTo] = useState<ReplyContext | null>(null);
@@ -152,6 +163,7 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
   const editTextareaElRef = useRef<HTMLTextAreaElement>(null);
   const [menuComment, setMenuComment] = useState<Comment | null>(null);
   const [menuParentId, setMenuParentId] = useState<string | null>(null);
+  const [pendingLikeCommentIds, setPendingLikeCommentIds] = useState<Set<string>>(new Set());
 
   function setCommentsCache(nextComments: Comment[]) {
     try {
@@ -161,6 +173,69 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
       );
     } catch {}
   }
+
+  useEffect(() => {
+    commentsRef.current = comments;
+  }, [comments]);
+
+  function setCommentLikePending(commentId: string, pending: boolean) {
+    setPendingLikeCommentIds((prev) => {
+      const next = new Set(prev);
+      if (pending) next.add(commentId);
+      else next.delete(commentId);
+      return next;
+    });
+  }
+
+  const likeCommentMutation = useMutation<
+    { liked: boolean; likeCount: number },
+    Error,
+    string,
+    { previousComments: Comment[]; commentId: string }
+  >({
+    mutationFn: async (commentId: string) => {
+      const res = await fetch(`/api/main/user-review/${reviewId}/comments/${commentId}/likes`, { method: "POST" });
+      if (!res.ok) throw new Error("댓글 좋아요 반영 실패");
+      return (await res.json()) as { liked: boolean; likeCount: number };
+    },
+    onMutate: async (commentId: string) => {
+      const previousComments = commentsRef.current;
+      setCommentLikePending(commentId, true);
+      setComments((prev) => {
+        const next = prev.map((comment) => {
+          if (comment.id !== commentId) return comment;
+          const nextLiked = !comment.liked;
+          return {
+            ...comment,
+            liked: nextLiked,
+            likeCount: Math.max(comment.likeCount + (nextLiked ? 1 : -1), 0),
+          };
+        });
+        setCommentsCache(next);
+        return next;
+      });
+      return { previousComments, commentId };
+    },
+    onSuccess: (data, commentId) => {
+      setComments((prev) => {
+        const next = prev.map((comment) =>
+          comment.id === commentId
+            ? { ...comment, liked: data.liked, likeCount: data.likeCount }
+            : comment
+        );
+        setCommentsCache(next);
+        return next;
+      });
+    },
+    onError: (_error, _commentId, context) => {
+      if (!context) return;
+      setComments(context.previousComments);
+      setCommentsCache(context.previousComments);
+    },
+    onSettled: (_data, _error, commentId, context) => {
+      setCommentLikePending(context?.commentId ?? commentId, false);
+    },
+  });
 
   useEffect(() => {
     fetch(`/api/main/user-review/${reviewId}/comments`)
@@ -235,15 +310,8 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
 
   async function handleLikeComment(commentId: string) {
     if (!isSignedIn) { router.push("/sign-in"); return; }
-    const res = await fetch(`/api/main/user-review/${reviewId}/comments/${commentId}/likes`, { method: "POST" });
-    if (res.ok) {
-      const d = await res.json() as { liked: boolean; likeCount: number };
-      setComments((prev) => {
-        const next = prev.map((c) => c.id === commentId ? { ...c, liked: d.liked, likeCount: d.likeCount } : c);
-        setCommentsCache(next);
-        return next;
-      });
-    }
+    if (pendingLikeCommentIds.has(commentId)) return;
+    likeCommentMutation.mutate(commentId);
   }
 
   async function handleDeleteComment(commentId: string) {
@@ -339,6 +407,7 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
                       className="user-content-comment-like-btn"
                       onClick={() => handleLikeComment(comment.id)}
                       aria-label="좋아요"
+                      disabled={pendingLikeCommentIds.has(comment.id)}
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill={comment.liked ? "#E02424" : "none"} stroke={comment.liked ? "#E02424" : "currentColor"} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                       {comment.likeCount > 0 && <span>{comment.likeCount}</span>}
@@ -410,6 +479,7 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
                           className="user-content-comment-like-btn"
                           onClick={() => handleLikeComment(reply.id)}
                           aria-label="좋아요"
+                          disabled={pendingLikeCommentIds.has(reply.id)}
                         >
                           <svg width="13" height="13" viewBox="0 0 24 24" fill={reply.liked ? "#E02424" : "none"} stroke={reply.liked ? "#E02424" : "currentColor"} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                           {reply.likeCount > 0 && <span>{reply.likeCount}</span>}

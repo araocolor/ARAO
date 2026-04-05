@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BoardHeader } from "@/components/board-header";
 
@@ -7,6 +8,7 @@ type Props = {
   reviewId: string;
   isAuthor: boolean;
   board?: string;
+  onBack?: () => void;
 };
 
 const BOARD_VALUES = new Set(["notice", "review", "qna", "arao"]);
@@ -25,12 +27,16 @@ function getBoardListPath(board: string): string {
   return board === "review" ? "/user_review" : `/user_review?board=${board}`;
 }
 
-export function UserContentHeader({ reviewId, isAuthor, board }: Props) {
+export function UserContentHeader({ reviewId, isAuthor, board, onBack }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const fromWrite = searchParams.get("from") === "write";
   const routeBoard = searchParams.get("board");
   const normalizedBoard = getNormalizedBoard(routeBoard ?? board);
+  const boardListPath = getBoardListPath(normalizedBoard);
+
+  useEffect(() => {
+    router.prefetch(boardListPath);
+  }, [router, boardListPath]);
 
   async function handleDelete() {
     if (!confirm("게시글을 삭제할까요?")) return;
@@ -63,7 +69,7 @@ export function UserContentHeader({ reviewId, isAuthor, board }: Props) {
         }
       } catch {}
 
-      router.push(getBoardListPath(normalizedBoard));
+      router.push(boardListPath, { scroll: false });
     } catch {
       alert("삭제 중 네트워크 오류가 발생했습니다.");
     }
@@ -76,5 +82,5 @@ export function UserContentHeader({ reviewId, isAuthor, board }: Props) {
       ]
     : [];
 
-  return <BoardHeader menuItems={menuItems} onBack={fromWrite ? () => router.push(getBoardListPath(normalizedBoard)) : undefined} />;
+  return <BoardHeader menuItems={menuItems} onBack={onBack ?? (() => router.push(boardListPath, { scroll: false }))} />;
 }
