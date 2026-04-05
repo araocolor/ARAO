@@ -413,7 +413,15 @@ function getBoardListPath(board: string): string {
   return board === "review" ? "/user_review" : `/user_review?board=${board}`;
 }
 
-export function UserContentPage({ id, onRequestClose }: { id: string; onRequestClose?: () => void }) {
+export function UserContentPage({
+  id,
+  onRequestClose,
+  onReviewCountsChange,
+}: {
+  id: string;
+  onRequestClose?: () => void;
+  onReviewCountsChange?: (next: { reviewId: string; likeCount?: number; commentCount?: number }) => void;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [item, setItem] = useState<ReviewItem | null>(null);
@@ -644,9 +652,20 @@ export function UserContentPage({ id, onRequestClose }: { id: string; onRequestC
                 </button>
               )}
               <p className="user-content-body">{item.content}</p>
-              <UserContentLikeSection reviewId={id} />
+              <UserContentLikeSection
+                reviewId={id}
+                onLikeCountChange={(nextLikeCount) => {
+                  onReviewCountsChange?.({ reviewId: id, likeCount: nextLikeCount });
+                }}
+              />
             </article>
-            <UserContentInteractions reviewId={id} reviewAuthorId={item.authorId} />
+            <UserContentInteractions
+              reviewId={id}
+              reviewAuthorId={item.authorId}
+              onCommentCountChange={(nextCommentCount) => {
+                onReviewCountsChange?.({ reviewId: id, commentCount: nextCommentCount });
+              }}
+            />
           </>
         )}
       </div>

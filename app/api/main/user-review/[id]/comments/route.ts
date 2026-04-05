@@ -116,6 +116,9 @@ export async function POST(
     authorId,
     iconImage: profile.icon_image ?? null,
     isDeleted: false,
+    likeCount: 0,
+    liked: false,
+    isMine: true,
   }, { status: 201 });
 }
 

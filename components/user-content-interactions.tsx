@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
@@ -22,6 +22,58 @@ type ReplyContext = {
   target: Comment;
   parentId: string;
 };
+
+type ReviewCountPatch = {
+  likeCount?: number;
+  commentCount?: number;
+};
+
+function sanitizeCount(value: number | undefined): number | undefined {
+  if (typeof value !== "number" || Number.isNaN(value)) return undefined;
+  return Math.max(Math.trunc(value), 0);
+}
+
+function patchReviewCountCaches(reviewId: string, patch: ReviewCountPatch) {
+  const nextLikeCount = sanitizeCount(patch.likeCount);
+  const nextCommentCount = sanitizeCount(patch.commentCount);
+  if (nextLikeCount === undefined && nextCommentCount === undefined) return;
+
+  try {
+    const PAGE_CACHE_PREFIX = "user-review-page-cache-v1:";
+    for (let i = sessionStorage.length - 1; i >= 0; i -= 1) {
+      const key = sessionStorage.key(i);
+      if (!key) continue;
+      if (!key.startsWith("user-review-list-cache") && !key.startsWith(PAGE_CACHE_PREFIX)) continue;
+
+      const raw = sessionStorage.getItem(key);
+      if (!raw) continue;
+
+      const parsed = JSON.parse(raw) as {
+        data?: {
+          items?: Array<{ id: string; likeCount?: number; commentCount?: number; [key: string]: unknown }>;
+          [key: string]: unknown;
+        };
+        ts?: number;
+      };
+
+      if (!parsed.data || !Array.isArray(parsed.data.items)) continue;
+
+      let changed = false;
+      parsed.data.items = parsed.data.items.map((item) => {
+        if (item.id !== reviewId) return item;
+        const nextItem = { ...item };
+        if (nextLikeCount !== undefined) nextItem.likeCount = nextLikeCount;
+        if (nextCommentCount !== undefined) nextItem.commentCount = nextCommentCount;
+        changed = true;
+        return nextItem;
+      });
+
+      if (!changed) continue;
+      parsed.ts = Date.now();
+      sessionStorage.setItem(key, JSON.stringify(parsed));
+    }
+  } catch {}
+}
 
 function formatDate(value: string): string {
   const d = new Date(value);
@@ -45,33 +97,13 @@ function getLikesCache(reviewId: string): { liked: boolean; likeCount: number } 
 
 function setLikesCache(reviewId: string, next: { liked: boolean; likeCount: number }) {
   try {
-    const PAGE_CACHE_PREFIX = "user-review-page-cache-v1:";
     sessionStorage.setItem(`user-review-likes-${reviewId}`, JSON.stringify({ data: next, ts: Date.now() }));
-    for (let i = sessionStorage.length - 1; i >= 0; i -= 1) {
-      const key = sessionStorage.key(i);
-      if (!key) continue;
-      if (!key.startsWith("user-review-list-cache") && !key.startsWith(PAGE_CACHE_PREFIX)) continue;
-      const raw = sessionStorage.getItem(key);
-      if (!raw) continue;
-      const parsed = JSON.parse(raw) as {
-        data?: { items?: Array<{ id: string; likeCount?: number }>; [key: string]: unknown };
-        ts?: number;
-      };
-      if (!parsed.data || !Array.isArray(parsed.data.items)) continue;
-      let changed = false;
-      parsed.data.items = parsed.data.items.map((item) =>
-        item.id === reviewId
-          ? (() => {
-              changed = true;
-              return { ...item, likeCount: next.likeCount };
-            })()
-          : item
-      );
-      if (!changed) continue;
-      parsed.ts = Date.now();
-      sessionStorage.setItem(key, JSON.stringify(parsed));
-    }
   } catch {}
+  patchReviewCountCaches(reviewId, { likeCount: next.likeCount });
+}
+
+function setCommentCountCache(reviewId: string, nextCommentCount: number) {
+  patchReviewCountCaches(reviewId, { commentCount: nextCommentCount });
 }
 
 function getCommentsCache(reviewId: string): Comment[] | null {
@@ -86,7 +118,17 @@ function getCommentsCache(reviewId: string): Comment[] | null {
   return null;
 }
 
-export function UserContentLikeSection({ reviewId }: { reviewId: string }) {
+function getVisibleCommentCount(comments: Comment[]): number {
+  return comments.reduce((count, comment) => count + (comment.isDeleted ? 0 : 1), 0);
+}
+
+export function UserContentLikeSection({
+  reviewId,
+  onLikeCountChange,
+}: {
+  reviewId: string;
+  onLikeCountChange?: (nextLikeCount: number) => void;
+}) {
   const { isSignedIn } = useUser();
   const router = useRouter();
   const cachedLikes = getLikesCache(reviewId);
@@ -100,32 +142,40 @@ export function UserContentLikeSection({ reviewId }: { reviewId: string }) {
       .then((r) => r.json())
       .then((d) => {
         if (interactedRef.current) return;
-        setLiked(d.liked ?? false);
-        setLikeCount(d.likeCount ?? 0);
-        try {
-          sessionStorage.setItem(`user-review-likes-${reviewId}`, JSON.stringify({ data: d, ts: Date.now() }));
-        } catch {}
+        const nextLiked = d.liked ?? false;
+        const nextLikeCount = sanitizeCount(d.likeCount) ?? 0;
+        setLiked(nextLiked);
+        setLikeCount(nextLikeCount);
+        onLikeCountChange?.(nextLikeCount);
+        setLikesCache(reviewId, { liked: nextLiked, likeCount: nextLikeCount });
       })
       .catch(() => {});
-  }, [reviewId]);
+  }, [reviewId, onLikeCountChange]);
 
   async function handleLike() {
     if (!isSignedIn) { router.push("/sign-in"); return; }
     if (likeLoading) return;
+    const prevLiked = liked;
+    const prevLikeCount = likeCount;
     interactedRef.current = true;
     setLikeLoading(true);
-    const nextLiked = !liked;
+    const nextLiked = !prevLiked;
+    const optimisticLikeCount = Math.max(prevLikeCount + (nextLiked ? 1 : -1), 0);
     setLiked(nextLiked);
-    setLikeCount((c) => c + (nextLiked ? 1 : -1));
+    setLikeCount(optimisticLikeCount);
+    onLikeCountChange?.(optimisticLikeCount);
     try {
       const res = await fetch(`/api/main/user-review/${reviewId}/likes`, { method: "POST" });
       const d = await res.json();
+      const nextLikeCount = sanitizeCount(d.likeCount) ?? 0;
       setLiked(d.liked);
-      setLikeCount(d.likeCount);
-      setLikesCache(reviewId, { liked: d.liked, likeCount: d.likeCount });
+      setLikeCount(nextLikeCount);
+      setLikesCache(reviewId, { liked: d.liked, likeCount: nextLikeCount });
+      onLikeCountChange?.(nextLikeCount);
     } catch {
-      setLiked(!nextLiked);
-      setLikeCount((c) => c + (nextLiked ? -1 : 1));
+      setLiked(prevLiked);
+      setLikeCount(prevLikeCount);
+      onLikeCountChange?.(prevLikeCount);
     } finally {
       setLikeLoading(false);
       interactedRef.current = false;
@@ -149,7 +199,15 @@ export function UserContentLikeSection({ reviewId }: { reviewId: string }) {
   );
 }
 
-export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId: string; reviewAuthorId?: string | null }) {
+export function UserContentInteractions({
+  reviewId,
+  reviewAuthorId,
+  onCommentCountChange,
+}: {
+  reviewId: string;
+  reviewAuthorId?: string | null;
+  onCommentCountChange?: (nextCommentCount: number) => void;
+}) {
   const { isSignedIn } = useUser();
   const router = useRouter();
   const cachedComments = getCommentsCache(reviewId);
@@ -164,6 +222,7 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
   const [menuComment, setMenuComment] = useState<Comment | null>(null);
   const [menuParentId, setMenuParentId] = useState<string | null>(null);
   const [pendingLikeCommentIds, setPendingLikeCommentIds] = useState<Set<string>>(new Set());
+  const lastCommentCountRef = useRef<number | null>(null);
 
   function setCommentsCache(nextComments: Comment[]) {
     try {
@@ -174,9 +233,26 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
     } catch {}
   }
 
+  const syncCommentCount = useCallback((nextComments: Comment[]) => {
+    const nextCommentCount = getVisibleCommentCount(nextComments);
+    if (lastCommentCountRef.current === nextCommentCount) return;
+    lastCommentCountRef.current = nextCommentCount;
+    setCommentCountCache(reviewId, nextCommentCount);
+    onCommentCountChange?.(nextCommentCount);
+  }, [reviewId, onCommentCountChange]);
+
   useEffect(() => {
     commentsRef.current = comments;
   }, [comments]);
+
+  useEffect(() => {
+    syncCommentCount(comments);
+  }, [comments, syncCommentCount]);
+
+  useEffect(() => {
+    lastCommentCountRef.current = null;
+    syncCommentCount(commentsRef.current);
+  }, [reviewId, syncCommentCount]);
 
   function setCommentLikePending(commentId: string, pending: boolean) {
     setPendingLikeCommentIds((prev) => {
@@ -253,7 +329,7 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
         } catch {}
       })
       .catch(() => {});
-  }, [reviewId]);
+  }, [reviewId, syncCommentCount]);
 
   function editRows(text: string) {
     return Math.max(text.split("\n").length, 1);
@@ -270,8 +346,19 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
         body: JSON.stringify({ content: commentInput.trim(), parentId: replyTo?.parentId ?? null }),
       });
       if (res.ok) {
-        const rawComment = (await res.json()) as Comment;
-        const newComment: Comment = { ...rawComment, parentId: rawComment.parentId ?? null };
+        const rawComment = (await res.json()) as Partial<Comment>;
+        const newComment: Comment = {
+          id: rawComment.id ?? crypto.randomUUID(),
+          content: rawComment.content ?? "",
+          isDeleted: rawComment.isDeleted ?? false,
+          createdAt: rawComment.createdAt ?? new Date().toISOString(),
+          parentId: rawComment.parentId ?? null,
+          authorId: rawComment.authorId ?? "익명",
+          iconImage: rawComment.iconImage ?? null,
+          isMine: rawComment.isMine ?? true,
+          likeCount: sanitizeCount(rawComment.likeCount) ?? 0,
+          liked: rawComment.liked ?? false,
+        };
         setComments((prev) => {
           const next = [...prev, newComment];
           setCommentsCache(next);
@@ -338,10 +425,11 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
   const rootComments = comments.filter((comment) => !comment.parentId);
   const getReplies = (parentId: string) => comments.filter((comment) => comment.parentId === parentId);
   const isReviewAuthor = (authorId: string) => !!reviewAuthorId && authorId === reviewAuthorId;
+  const visibleCommentCount = getVisibleCommentCount(comments);
 
   return (
     <section className="user-content-comment-section">
-      <p className="user-content-comment-label">댓글 {comments.length > 0 ? comments.length : ""}</p>
+      <p className="user-content-comment-label">댓글 {visibleCommentCount > 0 ? visibleCommentCount : ""}</p>
 
       {/* 댓글 목록 */}
       {comments.length > 0 && (
@@ -399,7 +487,7 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
                         className="user-content-comment-action-btn"
                         onClick={() => setReplyTo({ target: comment, parentId: comment.id })}
                       >
-                        답글
+                        댓글달기
                       </button>
                     )}
                     <button
@@ -471,7 +559,7 @@ export function UserContentInteractions({ reviewId, reviewAuthorId }: { reviewId
                             className="user-content-comment-action-btn"
                             onClick={() => setReplyTo({ target: reply, parentId: comment.id })}
                           >
-                            답글
+                            댓글달기
                           </button>
                         )}
                         <button

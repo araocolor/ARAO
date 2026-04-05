@@ -103,7 +103,7 @@ export async function getUserReviewList(params: {
   let query = supabase
     .from("user_reviews")
     .select(
-      "id, profile_id, title, content, thumbnail_image, thumbnail_first, attached_file, view_count, like_count, is_public, board, created_at, updated_at, profile:profile_id(username, email, icon_image), comment_count:user_review_comments(count)",
+      "id, profile_id, title, content, thumbnail_image, thumbnail_first, attached_file, view_count, like_count, is_public, board, created_at, updated_at, profile:profile_id(username, email, icon_image)",
       { count: "exact" }
     )
     .eq("board", board);
@@ -140,6 +140,28 @@ export async function getUserReviewList(params: {
   }
 
   const items = (Array.isArray(data) ? data : []).map((row) => mapRowToListItem(row, params.viewerProfileId));
+
+  if (items.length > 0) {
+    const reviewIds = items.map((item) => item.id);
+    const { data: commentRows, error: commentError } = await supabase
+      .from("user_review_comments")
+      .select("review_id")
+      .in("review_id", reviewIds)
+      .eq("is_deleted", false);
+
+    if (!commentError && Array.isArray(commentRows)) {
+      const countByReviewId = new Map<string, number>();
+      commentRows.forEach((row: any) => {
+        const reviewId = row?.review_id;
+        if (typeof reviewId !== "string") return;
+        countByReviewId.set(reviewId, (countByReviewId.get(reviewId) ?? 0) + 1);
+      });
+      items.forEach((item) => {
+        item.commentCount = countByReviewId.get(item.id) ?? 0;
+      });
+    }
+  }
+
   return { items, total: count ?? 0 };
 }
 

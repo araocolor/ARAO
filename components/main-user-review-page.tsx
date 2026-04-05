@@ -212,6 +212,9 @@ export function MainUserReviewPage() {
   const [searchSheetTotal, setSearchSheetTotal] = useState(0);
   const [searchSheetKeyword, setSearchSheetKeyword] = useState("");
   const [activeContentId, setActiveContentId] = useState<string | null>(null);
+  const activeContentIdRef = useRef<string | null>(null);
+  const listScrollYRef = useRef(0);
+  const backgroundApplyResumeAtRef = useRef(0);
   const searchSheetDraggingRef = useRef(false);
   const searchSheetDragStartYRef = useRef(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -230,6 +233,33 @@ export function MainUserReviewPage() {
   const totalRef = useRef(0);
   const limit = 20;
 
+  const handleReviewCountsChange = useCallback(
+    (next: { reviewId: string; likeCount?: number; commentCount?: number }) => {
+      setItems((prev) => {
+        let changed = false;
+        const patched = prev.map((item) => {
+          if (item.id !== next.reviewId) return item;
+          const nextLikeCount =
+            typeof next.likeCount === "number" && !Number.isNaN(next.likeCount)
+              ? Math.max(Math.trunc(next.likeCount), 0)
+              : item.likeCount;
+          const nextCommentCount =
+            typeof next.commentCount === "number" && !Number.isNaN(next.commentCount)
+              ? Math.max(Math.trunc(next.commentCount), 0)
+              : item.commentCount;
+
+          if (nextLikeCount === item.likeCount && nextCommentCount === item.commentCount) {
+            return item;
+          }
+          changed = true;
+          return { ...item, likeCount: nextLikeCount, commentCount: nextCommentCount };
+        });
+        return changed ? patched : prev;
+      });
+    },
+    []
+  );
+
   useEffect(() => {
     currentListStateRef.current = {
       board,
@@ -238,6 +268,10 @@ export function MainUserReviewPage() {
       query: query.trim(),
     };
   }, [board, page, sortMode, query]);
+
+  useEffect(() => {
+    activeContentIdRef.current = activeContentId;
+  }, [activeContentId]);
 
   useEffect(() => {
     itemsRef.current = items;
@@ -436,6 +470,7 @@ export function MainUserReviewPage() {
   };
 
   const refreshListInBackground = useCallback(async () => {
+    if (Date.now() < backgroundApplyResumeAtRef.current) return;
     const normalizedQuery = query.trim();
     if (page !== 1 || sortMode !== "latest" || normalizedQuery) return;
     if (!canAggressivePrefetch()) return;
@@ -462,7 +497,9 @@ export function MainUserReviewPage() {
         current.board === board &&
         current.page === 1 &&
         current.sortMode === "latest" &&
-        !current.query
+        !current.query &&
+        !activeContentIdRef.current &&
+        Date.now() >= backgroundApplyResumeAtRef.current
       ) {
         setItems(nextItems);
         setTotal(nextTotal);
@@ -479,6 +516,7 @@ export function MainUserReviewPage() {
   }, [board, page, query, sortMode, limit]);
 
   const refreshTopItemsInBackground = useCallback(async () => {
+    if (Date.now() < backgroundApplyResumeAtRef.current) return;
     const normalizedQuery = query.trim();
     if (page !== 1 || sortMode !== "latest" || normalizedQuery) return;
     if (!canAggressivePrefetch()) return;
@@ -506,7 +544,9 @@ export function MainUserReviewPage() {
         currentState.board !== board ||
         currentState.page !== 1 ||
         currentState.sortMode !== "latest" ||
-        currentState.query
+        currentState.query ||
+        activeContentIdRef.current ||
+        Date.now() < backgroundApplyResumeAtRef.current
       ) {
         return;
       }
@@ -703,6 +743,9 @@ export function MainUserReviewPage() {
       return;
     }
     if (id === newItemId) setNewItemId(null);
+    backgroundApplyResumeAtRef.current = Number.POSITIVE_INFINITY;
+    listScrollYRef.current = window.scrollY;
+    saveScroll();
     setReadIds((prev) => {
       const next = new Set(prev);
       next.add(id);
@@ -716,7 +759,15 @@ export function MainUserReviewPage() {
   };
 
   function closeActiveContent() {
+    const targetY = listScrollYRef.current;
+    backgroundApplyResumeAtRef.current = Date.now() + 1200;
     setActiveContentId(null);
+    window.requestAnimationFrame(() => {
+      window.scrollTo(0, targetY);
+      window.requestAnimationFrame(() => {
+        window.scrollTo(0, targetY);
+      });
+    });
   }
 
   function closeSearchSheet() {
@@ -1114,7 +1165,11 @@ export function MainUserReviewPage() {
       {activeContentId && (
         <div className="user-review-content-overlay" role="dialog" aria-modal="true">
           <div className="user-review-content-overlay-panel">
-            <UserContentPage id={activeContentId} onRequestClose={closeActiveContent} />
+            <UserContentPage
+              id={activeContentId}
+              onRequestClose={closeActiveContent}
+              onReviewCountsChange={handleReviewCountsChange}
+            />
           </div>
         </div>
       )}
