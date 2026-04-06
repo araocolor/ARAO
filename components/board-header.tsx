@@ -46,7 +46,7 @@ export function BoardHeader({ menuItems, onBack }: BoardHeaderProps) {
         </button>
 
         {/* 로고 */}
-        <Link href="/" className="board-header-logo">
+        <Link href="/user_review" className="board-header-logo">
           <Image src="/logo.svg" alt="ARAO" width={72} height={26} priority />
         </Link>
 

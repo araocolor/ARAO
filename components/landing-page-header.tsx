@@ -16,7 +16,12 @@ const BASE_LINKS = [
   { href: "/account/general", label: "사용자설정", divider: true },
 ] as const;
 
-export function LandingPageHeader() {
+type LandingPageHeaderProps = {
+  brandHref?: string;
+  scrollTopOnLogoClick?: boolean;
+};
+
+export function LandingPageHeader({ brandHref = "/", scrollTopOnLogoClick = false }: LandingPageHeaderProps) {
   const { isSignedIn } = useUser();
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -56,6 +61,8 @@ export function LandingPageHeader() {
   return (
     <SiteHeader
       fullWidth
+      brandHref={brandHref}
+      onBrandClick={scrollTopOnLogoClick ? () => window.scrollTo({ top: 0, behavior: "smooth" }) : undefined}
       menuHeader="Arao Project"
       leading={<LandingAuthControls />}
       mobileLeading={<LandingAuthControlsCompact />}

@@ -429,10 +429,6 @@ export function UserContentPage({
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const originalCacheRef = useRef<Record<string, boolean>>({});
   const [upgradedImages, setUpgradedImages] = useState<Record<number, string>>({});
-  const [isEntered, setIsEntered] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
-  const closeTimerRef = useRef<number | null>(null);
-
   const routeBoard = searchParams.get("board");
   const routeCommentId = searchParams.get("commentId");
   const routeSource = searchParams.get("from");
@@ -442,34 +438,41 @@ export function UserContentPage({
   const targetCommentId = routeCommentId && routeCommentId.trim().length > 0 ? routeCommentId : null;
 
   useEffect(() => {
-    const raf = window.requestAnimationFrame(() => {
-      setIsEntered(true);
-    });
-    return () => window.cancelAnimationFrame(raf);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
-    };
-  }, []);
+    try {
+      const stored = localStorage.getItem("user-review-read-ids");
+      const parsed = stored ? (JSON.parse(stored) as string[]) : [];
+      const next = Array.isArray(parsed) ? parsed : [];
+      if (!next.includes(id)) {
+        next.push(id);
+        localStorage.setItem("user-review-read-ids", JSON.stringify(next));
+      }
+    } catch {}
+    void fetch(`/api/main/user-review/${id}/views`, { method: "POST" }).catch(() => {});
+  }, [id]);
 
   const closeWithSlide = useCallback(() => {
-    if (isClosing) return;
-    setIsClosing(true);
-    closeTimerRef.current = window.setTimeout(() => {
-      if (cameFromNotification) {
-        try {
-          sessionStorage.setItem("header-notification-reopen-once", "1");
-        } catch {}
-      }
+    if (cameFromNotification) {
+      try {
+        sessionStorage.setItem("header-notification-reopen-once", "1");
+      } catch {}
+    }
+    const navigate = () => {
       if (onRequestClose) {
         onRequestClose();
         return;
       }
       router.push(boardListPath, { scroll: false });
-    }, 260);
-  }, [isClosing, onRequestClose, router, boardListPath, cameFromNotification]);
+    };
+    if (typeof document !== "undefined" && "startViewTransition" in document) {
+      document.documentElement.dataset.vtDirection = "backward";
+      const vt = document.startViewTransition(navigate);
+      vt.finished.finally(() => {
+        delete document.documentElement.dataset.vtDirection;
+      });
+    } else {
+      navigate();
+    }
+  }, [onRequestClose, router, boardListPath, cameFromNotification]);
 
   // 1단계: 마운트 후 캐시 데이터로 즉시 채우기
   useEffect(() => {
@@ -575,7 +578,7 @@ export function UserContentPage({
   }
 
   return (
-    <main className={`landing-page user-content-page user-content-page-shell${isEntered ? " is-entered" : ""}${isClosing ? " is-closing" : ""}`}>
+    <main className="landing-page user-content-page user-content-page-shell">
       <UserContentHeader reviewId={id} isAuthor={item?.isAuthor ?? false} board={item?.board} onBack={closeWithSlide} />
       <div className="landing-shell">
         {notFound ? (

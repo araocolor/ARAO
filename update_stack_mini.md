@@ -2,6 +2,7 @@
 
 ## Goal
 Keep current project and improve real-time UX + perceived speed with minimal process.
+- Top priority: preserve smooth loading/transition and strong real-time feedback; no new feature should degrade these.
 
 ## As-Is
 - Next.js + React + TypeScript
@@ -39,4 +40,3 @@ Keep current project and improve real-time UX + perceived speed with minimal pro
 | Date | Change | Status | Verification | Note |
 |---|---|---|---|---|
 | YYYY-MM-DD | Example change | applied/partial/hold | pass/fail | short note |
-

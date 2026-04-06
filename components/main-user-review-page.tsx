@@ -211,9 +211,7 @@ export function MainUserReviewPage() {
   const [searchSheetResults, setSearchSheetResults] = useState<UserReviewItem[]>([]);
   const [searchSheetTotal, setSearchSheetTotal] = useState(0);
   const [searchSheetKeyword, setSearchSheetKeyword] = useState("");
-  const [isRouteClosing, setIsRouteClosing] = useState(false);
   const backgroundApplyResumeAtRef = useRef(0);
-  const routeCloseTimerRef = useRef<number | null>(null);
   const didRestoreScrollRef = useRef(false);
   const searchSheetDraggingRef = useRef(false);
   const searchSheetDragStartYRef = useRef(0);
@@ -246,14 +244,6 @@ export function MainUserReviewPage() {
     itemsRef.current = items;
     totalRef.current = total;
   }, [items, total]);
-
-  useEffect(() => {
-    return () => {
-      if (routeCloseTimerRef.current !== null) {
-        window.clearTimeout(routeCloseTimerRef.current);
-      }
-    };
-  }, []);
 
   // 마운트 후 캐시 데이터로 즉시 채우기 + new 파라미터 처리
   useEffect(() => {
@@ -769,7 +759,6 @@ export function MainUserReviewPage() {
     VIEW_OPTIONS.find((opt) => opt.value === viewMode)?.label ?? "목록형";
 
   const openReview = (id: string) => {
-    if (isRouteClosing) return;
     if (!isSignedIn) {
       router.push("/sign-in");
       return;
@@ -780,31 +769,21 @@ export function MainUserReviewPage() {
     try {
       sessionStorage.setItem(
         LIST_STATE_KEY,
-        JSON.stringify({
-          board,
-          page,
-          sortMode,
-          query: query.trim(),
-          viewMode,
-          ts: Date.now(),
-        })
+        JSON.stringify({ board, page, sortMode, query: query.trim(), viewMode, ts: Date.now() })
       );
       sessionStorage.setItem(LIST_RETURN_FLAG_KEY, "1");
     } catch {}
-    setReadIds((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      try {
-        localStorage.setItem("user-review-read-ids", JSON.stringify([...next]));
-      } catch {}
-      return next;
-    });
-    void fetch(`/api/main/user-review/${id}/views`, { method: "POST" }).catch(() => {});
-    setIsRouteClosing(true);
-    routeCloseTimerRef.current = window.setTimeout(() => {
-      const targetPath = `/user_content/${id}?board=${encodeURIComponent(board)}`;
-      router.push(targetPath, { scroll: false });
-    }, 220);
+    const targetPath = `/user_content/${id}?board=${encodeURIComponent(board)}`;
+    const navigate = () => router.push(targetPath, { scroll: false });
+    if (typeof document !== "undefined" && "startViewTransition" in document) {
+      document.documentElement.dataset.vtDirection = "forward";
+      const vt = document.startViewTransition(navigate);
+      vt.finished.finally(() => {
+        delete document.documentElement.dataset.vtDirection;
+      });
+    } else {
+      navigate();
+    }
   };
 
   function closeSearchSheet() {
@@ -882,7 +861,7 @@ export function MainUserReviewPage() {
   };
 
   return (
-    <section className={`user-review-page${isRouteClosing ? " is-route-closing" : ""}`}>
+    <section className="user-review-page">
       <div className="user-review-top-row">
         <div className="user-review-dropdown" ref={boardDropdownRef}>
           <button

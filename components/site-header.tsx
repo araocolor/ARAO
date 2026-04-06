@@ -18,6 +18,8 @@ type SiteHeaderProps = {
   links: Array<{ href: string; label: string; icon?: string; divider?: boolean }>;
   action?: ReactNode;
   fullWidth?: boolean;
+  brandHref?: string;
+  onBrandClick?: () => void;
   leading?: ReactNode;
   mobileLeading?: ReactNode;
   mobileProfile?: ReactNode;
@@ -65,6 +67,8 @@ export function SiteHeader({
   links,
   action,
   fullWidth = false,
+  brandHref = "/",
+  onBrandClick,
   leading,
   mobileLeading,
   mobileProfile,
@@ -125,7 +129,7 @@ export function SiteHeader({
               <span />
             </span>
           </button>
-          <Link className="brand" href="/">
+          <Link className="brand" href={brandHref} onClick={onBrandClick}>
             <Image src="/logo.svg" alt="ARAO logo" width={80} height={28} priority />
           </Link>
           <div className="header-actions">
@@ -160,7 +164,7 @@ export function SiteHeader({
       >
         {/* 드로어 헤더 */}
         <div className="nav-drawer-header">
-          <Link href="/" className="nav-drawer-logo" onClick={closeDrawer}>
+          <Link href={brandHref} className="nav-drawer-logo" onClick={closeDrawer}>
             <Image src="/logo.svg" alt="ARAO" width={72} height={26} />
           </Link>
           <button
