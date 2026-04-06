@@ -774,6 +774,9 @@ export function MainUserReviewPage() {
       sessionStorage.setItem(LIST_RETURN_FLAG_KEY, "1");
     } catch {}
     const targetPath = `/user_content/${id}?board=${encodeURIComponent(board)}`;
+    // 헤더 즉시 숨기기
+    const header = document.querySelector(".site-header") as HTMLElement | null;
+    if (header) header.style.visibility = "hidden";
     router.push(targetPath, { scroll: false });
   };
 

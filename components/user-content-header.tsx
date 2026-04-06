@@ -38,6 +38,12 @@ export function UserContentHeader({ reviewId, isAuthor, board, onBack }: Props) 
     router.prefetch(boardListPath);
   }, [router, boardListPath]);
 
+  // 리스트에서 숨긴 헤더 복원
+  useEffect(() => {
+    const header = document.querySelector(".site-header") as HTMLElement | null;
+    if (header) header.style.visibility = "";
+  }, []);
+
   async function handleDelete() {
     if (!confirm("게시글을 삭제할까요?")) return;
     try {
