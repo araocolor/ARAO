@@ -226,6 +226,7 @@ export function UserContentInteractions({
   const [replyTo, setReplyTo] = useState<ReplyContext | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editInput, setEditInput] = useState("");
+  const commentTextareaElRef = useRef<HTMLTextAreaElement>(null);
   const editTextareaElRef = useRef<HTMLTextAreaElement>(null);
   const [menuComment, setMenuComment] = useState<Comment | null>(null);
   const [menuParentId, setMenuParentId] = useState<string | null>(null);
@@ -377,6 +378,21 @@ export function UserContentInteractions({
 
   function editRows(text: string) {
     return Math.max(text.split("\n").length, 1);
+  }
+
+  function focusCommentTextarea() {
+    const textarea = commentTextareaElRef.current;
+    if (!textarea) return;
+    textarea.focus();
+    const cursor = textarea.value.length;
+    try {
+      textarea.setSelectionRange(cursor, cursor);
+    } catch {}
+  }
+
+  function startReply(target: Comment, parentId: string) {
+    setReplyTo({ target, parentId });
+    focusCommentTextarea();
   }
 
   async function handleSubmitComment() {
@@ -533,7 +549,7 @@ export function UserContentInteractions({
                       <button
                         type="button"
                         className="user-content-comment-action-btn"
-                        onClick={() => setReplyTo({ target: comment, parentId: comment.id })}
+                        onClick={() => startReply(comment, comment.id)}
                       >
                         댓글달기
                       </button>
@@ -609,7 +625,7 @@ export function UserContentInteractions({
                           <button
                             type="button"
                             className="user-content-comment-action-btn"
-                            onClick={() => setReplyTo({ target: reply, parentId: comment.id })}
+                            onClick={() => startReply(reply, comment.id)}
                           >
                             댓글달기
                           </button>
@@ -646,6 +662,7 @@ export function UserContentInteractions({
       {/* 댓글 입력폼 */}
       <div className="user-content-comment-form">
         <textarea
+          ref={commentTextareaElRef}
           className="user-content-comment-input"
           placeholder={replyTo ? "답글을 남겨보세요" : "댓글을 남겨보세요"}
           value={commentInput}
@@ -672,6 +689,16 @@ export function UserContentInteractions({
         <>
           <div className="user-content-comment-sheet-backdrop" onClick={() => setMenuComment(null)} />
           <div className="user-content-comment-sheet">
+            <button
+              type="button"
+              className="user-content-comment-sheet-item"
+              onClick={() => {
+                startReply(menuComment, menuParentId ?? menuComment.id);
+                setMenuComment(null);
+              }}
+            >
+              댓글쓰기
+            </button>
             <button
               type="button"
               className="user-content-comment-sheet-item"
