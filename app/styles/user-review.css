@@ -118,7 +118,7 @@
 }
 
 .user-review-item.mine {
-  background: rgba(17, 17, 17, 0.05);
+  background: rgb(17 17 17 / 3%);
 }
 
 .user-review-item.album.mine {
@@ -712,6 +712,38 @@
 .user-content-page-shell {
   background: #fff;
   min-height: 100dvh;
+}
+
+.user-content-bottom-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  height: calc(52px + env(safe-area-inset-bottom));
+  background: transparent;
+}
+
+.user-content-bottom-home-btn {
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgb(17 17 17 / 12%);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgb(17 17 17 / 12%);
+}
+
+.user-content-bottom-home-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 3px 10px rgb(17 17 17 / 12%);
 }
 
 

@@ -668,6 +668,11 @@ export function UserContentPage({
                 onReviewCountsChange?.({ reviewId: id, commentCount: nextCommentCount });
               }}
             />
+            <div className="user-content-bottom-footer">
+              <button type="button" className="user-content-bottom-home-btn" onClick={closeWithSlide}>
+                커뮤니티 홈
+              </button>
+            </div>
           </>
         )}
       </div>
