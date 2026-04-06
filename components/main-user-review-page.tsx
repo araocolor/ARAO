@@ -774,16 +774,7 @@ export function MainUserReviewPage() {
       sessionStorage.setItem(LIST_RETURN_FLAG_KEY, "1");
     } catch {}
     const targetPath = `/user_content/${id}?board=${encodeURIComponent(board)}`;
-    const navigate = () => router.push(targetPath, { scroll: false });
-    if (typeof document !== "undefined" && "startViewTransition" in document) {
-      document.documentElement.dataset.vtDirection = "forward";
-      const vt = document.startViewTransition(navigate);
-      vt.finished.finally(() => {
-        delete document.documentElement.dataset.vtDirection;
-      });
-    } else {
-      navigate();
-    }
+    router.push(targetPath, { scroll: false });
   };
 
   function closeSearchSheet() {

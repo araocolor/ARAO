@@ -456,22 +456,11 @@ export function UserContentPage({
         sessionStorage.setItem("header-notification-reopen-once", "1");
       } catch {}
     }
-    const navigate = () => {
-      if (onRequestClose) {
-        onRequestClose();
-        return;
-      }
-      router.push(boardListPath, { scroll: false });
-    };
-    if (typeof document !== "undefined" && "startViewTransition" in document) {
-      document.documentElement.dataset.vtDirection = "backward";
-      const vt = document.startViewTransition(navigate);
-      vt.finished.finally(() => {
-        delete document.documentElement.dataset.vtDirection;
-      });
-    } else {
-      navigate();
+    if (onRequestClose) {
+      onRequestClose();
+      return;
     }
+    router.push(boardListPath, { scroll: false });
   }, [onRequestClose, router, boardListPath, cameFromNotification]);
 
   // 1단계: 마운트 후 캐시 데이터로 즉시 채우기
