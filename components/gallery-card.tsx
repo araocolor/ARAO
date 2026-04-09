@@ -204,7 +204,7 @@ export function GalleryCard({
           }
         }
       },
-      { rootMargin: "300px" }
+      { rootMargin: "800px" }
     );
 
     observer.observe(el);
