@@ -17,6 +17,10 @@ type GalleryCardProps = {
   afterImage: string;
   caption?: string;
   aspectRatio?: string;
+  initialLikeCount?: number;
+  initialLiked?: boolean;
+  initialFirstLiker?: string | null;
+  initialCommentCount?: number;
   autoOpenComments?: boolean;
   autoOpenLikes?: boolean;
   highlightCommentId?: string;
@@ -46,6 +50,10 @@ export function GalleryCard({
   afterImage,
   caption,
   aspectRatio,
+  initialLikeCount = 0,
+  initialLiked = false,
+  initialFirstLiker = null,
+  initialCommentCount = 0,
   autoOpenComments = false,
   autoOpenLikes = false,
   highlightCommentId,
@@ -53,11 +61,11 @@ export function GalleryCard({
 }: GalleryCardProps) {
   const { user, isSignedIn } = useUser();
   const router = useRouter();
-  const [likeCount, setLikeCount] = useState(0);
-  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(initialLikeCount);
+  const [liked, setLiked] = useState(initialLiked);
   const [highlight, setHighlight] = useState(false);
-  const [firstLiker, setFirstLiker] = useState<string | null>(null);
-  const [commentCount, setCommentCount] = useState(0);
+  const [firstLiker, setFirstLiker] = useState<string | null>(initialFirstLiker);
+  const [commentCount, setCommentCount] = useState(initialCommentCount);
   const [commentSheetOpen, setCommentSheetOpen] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
   const [likeAnimating, setLikeAnimating] = useState(false);
@@ -159,19 +167,7 @@ export function GalleryCard({
       setCommentCount(data.commentCount ?? 0);
     }
 
-    // 사용자별 캐시 히트 시 즉시 표시 (비로그인이면 liked 무시)
-    const cached = getCached<{ count: number; liked: boolean; firstLiker: string | null; commentCount: number }>(cardCacheKey);
-    if (cached) {
-      applyData(isSignedIn ? cached : { ...cached, liked: false });
-    } else {
-      // 공용 캐시 폴백 (로그인/비로그인 모두, liked=false)
-      const publicCached = getCached<{ count: number; firstLiker: string | null; commentCount: number }>(publicCacheKey);
-      if (publicCached) {
-        applyData({ ...publicCached, liked: false });
-      }
-    }
-
-    // Intersection Observer: 카드가 화면 300px 앞에 오면 fetch
+    // Intersection Observer: 카드가 화면에 가까워지면 최신 데이터로 갱신 + 백그라운드 캐시
     const el = cardRef.current;
     if (!el) return;
 

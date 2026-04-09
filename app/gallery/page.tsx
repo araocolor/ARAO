@@ -1,10 +1,13 @@
 export const revalidate = 0;
 
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { LandingPageFooter } from "@/components/landing-page-footer";
 import { LandingPageHeader } from "@/components/landing-page-header";
 import { GalleryCard } from "@/components/gallery-card";
 import { getLandingContent } from "@/lib/landing-content";
 import { GALLERY_CATEGORIES, GALLERY_CATEGORY_LABELS, GALLERY_CATEGORY_DEFAULTS } from "@/lib/gallery-categories";
+import { syncProfile } from "@/lib/profiles";
+import { getGalleryItemLikeStatus } from "@/lib/gallery-interactions";
 
 function formatGalleryExifCaption(item: { caption?: string; exif?: { camera?: string; lens?: string; iso?: string; aperture?: string; exposureMode?: string } }) {
   if (item.caption) {
@@ -30,6 +33,34 @@ export default async function GalleryPage({
   const { category: openCategory, index: openIndex, commentId: openCommentId, likesSheet, t: openTimestamp } = await searchParams;
   const landingContent = await getLandingContent();
 
+  // 로그인 사용자 프로필 조회 (liked 상태 SSR용)
+  let profileId: string | undefined;
+  try {
+    const { userId } = await auth();
+    if (userId) {
+      const user = await currentUser();
+      if (user?.emailAddresses?.[0]?.emailAddress) {
+        const profile = await syncProfile({
+          email: user.emailAddresses[0].emailAddress,
+          fullName: user.fullName,
+        });
+        profileId = profile?.id;
+      }
+    }
+  } catch {}
+
+  // 모든 카드 likes 병렬 fetch
+  const likeStatuses = await Promise.all(
+    GALLERY_CATEGORIES.map((category, categoryIdx) =>
+      getGalleryItemLikeStatus(category, categoryIdx, profileId).catch(() => ({
+        count: 0,
+        liked: false,
+        firstLiker: null,
+        commentCount: 0,
+      }))
+    )
+  );
+
   return (
     <main className="landing-page">
       <LandingPageHeader />
@@ -52,6 +83,7 @@ export default async function GalleryPage({
           const title = item.title || GALLERY_CATEGORY_LABELS[category];
           const body = item.body || GALLERY_CATEGORY_DEFAULTS[category];
           const caption = formatGalleryExifCaption(item);
+          const likeStatus = likeStatuses[categoryIdx];
           return (
             <GalleryCard
               key={category}
@@ -63,6 +95,10 @@ export default async function GalleryPage({
               afterImage={afterSrc}
               caption={caption || undefined}
               aspectRatio={item.aspectRatio}
+              initialLikeCount={likeStatus.count}
+              initialLiked={likeStatus.liked}
+              initialFirstLiker={likeStatus.firstLiker}
+              initialCommentCount={likeStatus.commentCount}
               autoOpenComments={
                 likesSheet !== "1" &&
                 Boolean(openCommentId) &&
