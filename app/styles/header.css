@@ -30,14 +30,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border: none;
   background: transparent;
   color: var(--text);
   cursor: pointer;
   border-radius: 8px;
   flex-shrink: 0;
+  margin: -8px;
+  padding: 8px;
+}
+
+.board-header-back svg {
+  width: 26px;
+  height: 26px;
+  stroke-width: 2.6;
 }
 
 .board-header-logo {
