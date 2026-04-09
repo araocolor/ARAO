@@ -63,11 +63,18 @@
   align-items: center;
   background: none;
   border: none;
-  padding: 4px;
+  padding: 8px;
+  margin: -8px;
   cursor: pointer;
   color: var(--text);
   -webkit-tap-highlight-color: transparent;
   flex-shrink: 0;
+}
+
+.notif-back-btn svg {
+  width: 26px;
+  height: 26px;
+  stroke-width: 2.6;
 }
 
 .notif-back-btn:active {
