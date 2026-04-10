@@ -74,7 +74,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const { user_id, status, total_amount, currency, payment, created_at, user_email, user_username } = order;
 
   return (
-    <div className="admin-panel-card stack account-section-card page-slide-down">
+    <div className="account-panel-card stack account-section-card page-slide-down">
       {/* 헤더 */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h2>주문 상세</h2>

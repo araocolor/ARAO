@@ -18,7 +18,7 @@ export default async function AccountTestPage() {
   const displayId = user?.username || profile?.username || profile?.email || email || "회원";
 
   return (
-    <div className="admin-panel-card stack account-section-card page-slide-down">
+    <div className="account-panel-card stack account-section-card page-slide-down">
       <h2>account/test</h2>
       <p className="muted">불러온 아이디(또는 이메일):</p>
       <p style={{ margin: 0, fontSize: "18px", fontWeight: 700 }}>{displayId}</p>

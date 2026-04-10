@@ -97,7 +97,7 @@ export default function ReviewWritePage() {
   };
 
   return (
-    <div className="admin-panel-card stack">
+    <div className="account-panel-card stack">
       <p className="muted">Reviews</p>
       <h2>{isEditMode ? "후기 수정" : "후기 작성"}</h2>
 

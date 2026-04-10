@@ -23,7 +23,7 @@ export function OrdersContent({ orders }: { orders: Order[] }) {
     );
   }, [orders]);
   return (
-    <div className="admin-panel-card stack account-section-card" data-testid="account-orders-v2">
+    <div className="account-panel-card stack account-section-card" data-testid="account-orders-v2">
       <h2>주문내역</h2>
 
       <p style={{ margin: 0, fontWeight: 700 }}>

@@ -17,7 +17,7 @@ export default async function MyColorPage() {
   const displayId = user?.username || profile?.username || profile?.email || email || "회원";
 
   return (
-    <div className="admin-panel-card stack account-section-card page-slide-down">
+    <div className="account-panel-card stack account-section-card page-slide-down">
       <h2>{displayId}의 프로파일 입니다.</h2>
       <p className="muted">나의 컬러 프로파일 페이지입니다.</p>
       <p style={{ margin: 0, fontSize: "18px", fontWeight: 700 }}>{displayId}</p>

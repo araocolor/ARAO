@@ -91,9 +91,18 @@ export function AdminDashboard({ email, role, landingContent }: AdminDashboardPr
   const [activeSectionId, setActiveSectionId] = useState(adminSections[0].id);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuMounted, setMenuMounted] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeSection =
     adminSections.find((section) => section.id === activeSectionId) ?? adminSections[0];
+  const isCommitSection = activeSection.id === "commit-list";
+  const panelCardClassName = !hydrated || isCommitSection
+    ? "admin-panel-card stack"
+    : "admin-panel-card stack admin-panel-card-font-reduced";
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -103,7 +112,7 @@ export function AdminDashboard({ email, role, landingContent }: AdminDashboardPr
     };
   }, []);
 
-useEffect(() => {
+  useEffect(() => {
     if (menuOpen) {
       document.body.style.overflow = "hidden";
       return () => {
@@ -233,7 +242,7 @@ useEffect(() => {
       </aside>
 
       <div className="admin-panel stack" onClick={() => (menuOpen ? closeMenu() : null)}>
-        <div className="admin-panel-card stack">
+        <div className={panelCardClassName}>
           <p className="muted">{activeSection.eyebrow}</p>
           <h2>{activeSection.title}</h2>
           <p className="muted">{activeSection.description}</p>

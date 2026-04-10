@@ -4,7 +4,7 @@ import Script from "next/script";
 import { AppQueryProvider } from "@/components/query-provider";
 import "./globals.css";
 import "./styles/header.css";
-import "./styles/landing.css";
+import "./styles/layout.css";
 import "./styles/gallery.css";
 import "./styles/admin-common.css";
 import "./styles/admin-gallery.css";
@@ -19,6 +19,11 @@ import "./styles/user-review.css";
 export const metadata: Metadata = {
   title: "Expansion Architecture",
   description: "Next.js + Supabase + Clerk + PortOne + Stripe scaffold",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({

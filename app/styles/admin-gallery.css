@@ -43,13 +43,13 @@
   border: 1px solid rgba(17, 17, 17, 0.1);
   border-radius: 8px;
   padding: 8px 12px;
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   color: rgba(17, 17, 17, 0.5);
 }
 
 .admin-exif-debug summary {
   cursor: pointer;
-  font-size: 0.78rem;
+  font-size: 0.7175rem;
   color: rgba(17, 17, 17, 0.45);
 }
 
@@ -58,7 +58,7 @@
   white-space: pre-wrap;
   word-break: break-all;
   font-family: monospace;
-  font-size: 0.72rem;
+  font-size: 0.6575rem;
   line-height: 1.6;
 }
 
@@ -75,7 +75,7 @@
 .admin-exif-row {
   display: flex;
   gap: 12px;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.4;
 }
 
@@ -92,7 +92,7 @@
 }
 
 .admin-gallery-status {
-  font-size: 0.8rem;
+  font-size: 0.7375rem;
   color: rgba(17, 17, 17, 0.5);
   margin: 0;
 }

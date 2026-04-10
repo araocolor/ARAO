@@ -116,7 +116,7 @@ export function AccountNavLinks({ mobile, footer }: NavLinksProps) {
   }
 
   return (
-    <div className="admin-menu-list">
+    <div className="account-menu-list">
       {userSections.map((section) => {
         const Icon = SECTION_ICONS[section.icon];
         return (
@@ -124,9 +124,9 @@ export function AccountNavLinks({ mobile, footer }: NavLinksProps) {
             key={section.id}
             href={`/account/${section.id}`}
             prefetch={true}
-            className={`admin-menu-item${isActive(section.id) ? " active" : ""}`}
+            className={`account-menu-item${isActive(section.id) ? " active" : ""}`}
           >
-            <span className="account-menu-item-content">
+            <span className="account-nav-item-content">
               {Icon && <Icon size={20} strokeWidth={1.7} aria-hidden="true" />}
               <span>{section.menu}</span>
             </span>

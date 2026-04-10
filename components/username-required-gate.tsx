@@ -37,7 +37,7 @@ export function UsernameRequiredGate({
   }, [message, redirectTo, router]);
 
   return (
-    <div className="admin-panel-card stack account-section-card page-slide-down">
+    <div className="account-panel-card stack account-section-card page-slide-down">
       <h2>사용자프로파일</h2>
       <p className="muted">아이디 등록 후 이용 가능합니다.</p>
     </div>

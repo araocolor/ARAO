@@ -20,7 +20,7 @@ export default async function AccountUserPage({
 
   if (!userId) {
     return (
-      <div className="admin-panel-card stack account-section-card page-slide-down">
+      <div className="account-panel-card stack account-section-card page-slide-down">
         <h2>사용자프로파일</h2>
         <p className="muted">로그인이 필요합니다.</p>
       </div>
@@ -35,7 +35,7 @@ export default async function AccountUserPage({
   // userpage 접근 조건: 현재 로그인 사용자도 아이디(username)를 등록한 상태여야 함
   if (!myProfile?.username) {
     return (
-      <div className="admin-panel-card stack account-section-card page-slide-down">
+      <div className="account-panel-card stack account-section-card page-slide-down">
         <h2>사용자프로파일</h2>
         <p className="muted">아이디 등록 후 이용 가능합니다.</p>
         <div>
@@ -51,7 +51,7 @@ export default async function AccountUserPage({
 
   if (!profileId) {
     return (
-      <div className="admin-panel-card stack account-section-card page-slide-down">
+      <div className="account-panel-card stack account-section-card page-slide-down">
         <h2>사용자프로파일</h2>
         <p className="muted">사용자 아이디 정보가 없습니다.</p>
       </div>
@@ -67,7 +67,7 @@ export default async function AccountUserPage({
 
   if (!profile) {
     return (
-      <div className="admin-panel-card stack account-section-card page-slide-down">
+      <div className="account-panel-card stack account-section-card page-slide-down">
         <h2>사용자프로파일</h2>
         <p className="muted">해당 사용자를 찾을 수 없습니다.</p>
       </div>
@@ -80,7 +80,7 @@ export default async function AccountUserPage({
     : "가입일 정보 없음";
 
   return (
-    <div className="admin-panel-card stack account-section-card page-slide-down">
+    <div className="account-panel-card stack account-section-card page-slide-down">
       <h2>{displayId}의 사용자프로파일</h2>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

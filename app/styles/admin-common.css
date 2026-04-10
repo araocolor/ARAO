@@ -25,6 +25,7 @@
 
 .landing-manage {
   gap: 16px;
+  font-size: 15px;
 }
 
 .admin-toolbar {
@@ -63,7 +64,7 @@
   min-height: 44px;
   padding: 0 14px;
   font: inherit;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
 }
 
@@ -196,8 +197,8 @@
   border-radius: 0;
   padding: 10px 8px;
   font: inherit;
-  font-size: 14px;
-  font-weight: 400;
+  font-size: 16px;
+  font-weight: 700;
   line-height: 1.4;
   cursor: pointer;
 }
@@ -214,8 +215,8 @@
   border: none;
   border-radius: 0;
   padding: 10px 8px;
-  font-size: 14px;
-  font-weight: 400;
+  font-size: 16px;
+  font-weight: 700;
   line-height: 1.4;
   background: #ffffff;
   cursor: pointer;
@@ -289,6 +290,10 @@
   border: none;
   border-radius: 0;
   padding: 24px 16px;
+}
+
+.admin-panel-card-font-reduced {
+  font-size: 15px;
 }
 
 .admin-checklist {

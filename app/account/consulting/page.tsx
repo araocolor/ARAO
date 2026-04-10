@@ -10,7 +10,7 @@ export default async function AccountConsultingPage() {
   // 디자인 모드: Clerk 로그인 없이 더미 데이터 표시
   if (isDesignMode) {
     return (
-      <div className="admin-panel-card stack account-section-card account-section-card-consulting">
+      <div className="account-panel-card stack account-section-card account-section-card-consulting">
         <div className="account-section-head">
           <h2>상담내역</h2>
           <p className="muted">상담 요청과 답변 이력을 관리하는 자리입니다. 추후 문의 등록과 상태 변경 기능을 연결할 수 있습니다.</p>
@@ -45,7 +45,7 @@ export default async function AccountConsultingPage() {
 
   if (!profile) {
     return (
-      <div className="admin-panel-card stack">
+      <div className="account-panel-card stack">
         <h1>오류</h1>
         <p className="muted">프로필 정보를 불러올 수 없습니다.</p>
       </div>
@@ -53,7 +53,7 @@ export default async function AccountConsultingPage() {
   }
 
   return (
-    <div className="admin-panel-card stack account-section-card account-section-card-consulting page-slide-down">
+    <div className="account-panel-card stack account-section-card account-section-card-consulting page-slide-down">
       <div className="account-section-head">
         <h2>상담내역</h2>
         <p className="muted">상담 요청과 답변 이력을 관리하는 자리입니다. 추후 문의 등록과 상태 변경 기능을 연결할 수 있습니다.</p>

@@ -32,7 +32,7 @@ export default async function UserColorPage({
   return (
     <main className="account-page" style={{ paddingTop: 30, paddingBottom: 40 }}>
       <div className="account-content" style={{ maxWidth: 760 }}>
-        <section className="admin-panel-card stack account-section-card page-slide-down">
+        <section className="account-panel-card stack account-section-card page-slide-down">
           <h2>{displayName}</h2>
 
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

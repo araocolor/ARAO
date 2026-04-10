@@ -68,7 +68,7 @@ export default function AccountGeneralPage() {
 
   if (loading) {
     return (
-      <div className="admin-panel-card stack account-section-card page-slide-down">
+      <div className="account-panel-card stack account-section-card page-slide-down">
         <p className="muted">로딩 중...</p>
       </div>
     );
@@ -76,7 +76,7 @@ export default function AccountGeneralPage() {
 
   if (error || !data) {
     return (
-      <div className="admin-panel-card stack account-section-card page-slide-down">
+      <div className="account-panel-card stack account-section-card page-slide-down">
         <h1>오류</h1>
         <p className="muted">{error || "프로필 정보를 불러올 수 없습니다."}</p>
       </div>

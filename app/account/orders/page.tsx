@@ -14,7 +14,7 @@ export default async function AccountOrdersPage() {
   const { userId } = await auth();
   if (!userId) {
     return (
-      <div className="admin-panel-card stack account-section-card">
+      <div className="account-panel-card stack account-section-card">
         <h2>주문내역</h2>
         <p style={{ margin: 0, color: "#ef4444" }}>로그인이 필요합니다.</p>
       </div>
@@ -24,7 +24,7 @@ export default async function AccountOrdersPage() {
   const user = await currentUser();
   if (!user?.emailAddresses?.[0]) {
     return (
-      <div className="admin-panel-card stack account-section-card">
+      <div className="account-panel-card stack account-section-card">
         <h2>주문내역</h2>
         <p style={{ margin: 0, color: "#ef4444" }}>사용자 정보를 찾을 수 없습니다.</p>
       </div>
@@ -38,7 +38,7 @@ export default async function AccountOrdersPage() {
 
   if (!profile) {
     return (
-      <div className="admin-panel-card stack account-section-card">
+      <div className="account-panel-card stack account-section-card">
         <h2>주문내역</h2>
         <p style={{ margin: 0, color: "#ef4444" }}>프로필을 찾을 수 없습니다.</p>
       </div>

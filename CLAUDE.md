@@ -3,6 +3,14 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. See **frontend.md**, **backend.md**, and **share.md** for detailed specifications.
 Also follow **AGENTS.md** for shared agent workflow and verification rules.
 
+## 토큰 사용량 규칙 (최우선)
+
+토큰 사용량이 90% 이상이면 작업을 중단한다. 또한 작업 시작 전 토큰 여유가 부족해 중간에 끊길 것 같으면 아예 시작하지 말 것.
+
+**Why:** 작업 중간에 토큰 한도 초과로 중단되는 것을 방지하기 위한 사용자 규칙.
+
+**How to apply:** 작업 전 토큰 여유 확인. 90% 이상이거나 작업량 대비 토큰이 부족할 것 같으면 시작하지 말 것. /compact 언급 금지.
+
 > **레이아웃 수정 요청 시 반드시 아래 순서를 따를 것 (생략 금지):**
 > 1. **LAYOUT_MAP.md** 를 먼저 참조하여 해당 구역의 파일과 클래스를 확인
 > 2. **부모 요소부터 자식 요소까지 전체 구조를 파악**하고 이미 적용된 스타일 확인

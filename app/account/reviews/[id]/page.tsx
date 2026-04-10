@@ -88,14 +88,14 @@ export default function ReviewDetailPage({
     }
   };
 
-  if (loading) return <div className="admin-panel-card">로드 중...</div>;
-  if (error) return <div className="admin-panel-card error-message">{error}</div>;
-  if (!review) return <div className="admin-panel-card">후기를 찾을 수 없습니다.</div>;
+  if (loading) return <div className="account-panel-card">로드 중...</div>;
+  if (error) return <div className="account-panel-card error-message">{error}</div>;
+  if (!review) return <div className="account-panel-card">후기를 찾을 수 없습니다.</div>;
 
   const isOwner = user?.emailAddresses[0]?.emailAddress === review.author_email;
 
   return (
-    <div className="admin-panel-card stack">
+    <div className="account-panel-card stack">
       <p className="muted">Reviews</p>
       <h2>{review.title}</h2>
 

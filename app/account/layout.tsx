@@ -2,7 +2,6 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { SimpleHeader } from "@/components/simple-header";
 import { AccountNavLinks } from "@/components/account-nav-links";
-import { AdminSignOut } from "@/components/admin-sign-out";
 import { syncProfile } from "@/lib/profiles";
 import { AccountPrefetchWrapper } from "@/components/account-prefetch-wrapper";
 

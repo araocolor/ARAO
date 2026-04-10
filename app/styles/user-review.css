@@ -756,7 +756,7 @@
 
 @media (min-width: 768px) {
   .user-content-article {
-    max-width: 100%;
+    max-width: var(--tablet-width, 820px);
     margin: 0;
     width: 100%;
   }
@@ -834,7 +834,7 @@
 
 .user-content-thumb {
   width: 100%;
-  max-width: 100%;
+  max-width: var(--tablet-width, 820px);
   border-radius: 0;
   object-fit: cover;
   border: none;
@@ -947,7 +947,7 @@
 }
 
 .user-content-viewer-img {
-  max-width: 100%;
+  max-width: var(--tablet-width, 820px);
   max-height: 100vh;
   object-fit: contain;
   transition: opacity 0.2s;
@@ -1568,7 +1568,7 @@
 
 .write-review-inline-image img {
   width: 100%;
-  max-width: 100%;
+  max-width: var(--tablet-width, 820px);
   border-radius: 8px;
   display: block;
 }
@@ -1704,7 +1704,7 @@
   background: #fef08a;
   border-radius: 10px;
   padding: 8px 12px;
-  max-width: 100%;
+  max-width: var(--tablet-width, 820px);
 }
 
 .write-review-file-zip-icon {
