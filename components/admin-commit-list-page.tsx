@@ -188,7 +188,11 @@ function StatsBadge({ label, count, active, onClick }: { label: string; count: n
   );
 }
 
-export function AdminCommitListPage() {
+type AdminCommitListPageProps = {
+  embedded?: boolean;
+};
+
+export function AdminCommitListPage({ embedded = false }: AdminCommitListPageProps) {
   const router = useRouter();
   const today = new Date();
   const initialYear = today.getFullYear() === 2027 ? "2027" : "2026";
@@ -394,8 +398,12 @@ export function AdminCommitListPage() {
           <div className="admin-commit-report-top">
             <div className="admin-commit-report-head">
               <div className="admin-commit-report-top-actions">
-                <Link href="/" className="admin-commit-report-home-link">홈</Link>
-                <button type="button" className="admin-commit-report-nav-button" onClick={() => router.back()}>이전</button>
+                {!embedded ? (
+                  <>
+                    <Link href="/" className="admin-commit-report-home-link">홈</Link>
+                    <button type="button" className="admin-commit-report-nav-button" onClick={() => router.back()}>이전</button>
+                  </>
+                ) : null}
                 <button
                   type="button"
                   className="admin-commit-report-theme-btn admin-commit-report-theme-btn-compact"
