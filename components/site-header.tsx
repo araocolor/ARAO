@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Sparkles, MousePointerClick, Tag, BookOpen, Settings2, Users } from "lucide-react";
+import { useHeaderSessionStore } from "@/stores/header-session-store";
 import { REVIEW_LIST_CACHE_TTL } from "@/lib/cache-config";
 
 type SiteHeaderProps = {
@@ -16,6 +17,7 @@ type SiteHeaderProps = {
   leading?: ReactNode;
   mobileLeading?: ReactNode;
   mobileProfile?: ReactNode;
+  mobileNotif?: ReactNode;
   mobileLogout?: ReactNode;
   menuHeader?: string;
 };
@@ -64,11 +66,40 @@ export function SiteHeader({
   leading,
   mobileLeading,
   mobileProfile,
+  mobileNotif,
   mobileLogout,
   menuHeader,
 }: SiteHeaderProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [profilePanelOpen, setProfilePanelOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const touchStartY = useRef<number>(0);
+  const touchDeltaY = useRef<number>(0);
+  const email = useHeaderSessionStore((state) => state.email);
+
+  function handlePanelTouchStart(e: React.TouchEvent) {
+    touchStartY.current = e.touches[0].clientY;
+    touchDeltaY.current = 0;
+    if (panelRef.current) panelRef.current.style.transition = "none";
+  }
+
+  function handlePanelTouchMove(e: React.TouchEvent) {
+    const delta = e.touches[0].clientY - touchStartY.current;
+    if (delta < 0) return;
+    touchDeltaY.current = delta;
+    if (panelRef.current) panelRef.current.style.transform = `translateY(${delta}px)`;
+  }
+
+  function handlePanelTouchEnd() {
+    if (panelRef.current) panelRef.current.style.transition = "";
+    if (touchDeltaY.current > 30) {
+      setProfilePanelOpen(false);
+    } else {
+      if (panelRef.current) panelRef.current.style.transform = "";
+    }
+    touchDeltaY.current = 0;
+  }
 
   // 드로어 열릴 때 body 스크롤 잠금 + 커뮤니티 prefetch
   useEffect(() => {
@@ -102,7 +133,7 @@ export function SiteHeader({
     return () => { document.body.style.overflow = ""; };
   }, [drawerOpen]);
 
-  const closeDrawer = () => setDrawerOpen(false);
+  const closeDrawer = () => { setDrawerOpen(false); setProfilePanelOpen(false); };
 
   return (
     <>
@@ -136,7 +167,7 @@ export function SiteHeader({
             {leading}
           </div>
           <div className="header-mobile-actions">
-            {mobileProfile}
+            {mobileNotif}
           </div>
         </div>
       </header>
@@ -195,10 +226,37 @@ export function SiteHeader({
           ))}
         </nav>
 
+        {/* 사용자 서브패널 */}
+        <div
+          ref={panelRef}
+          className={`nav-drawer-profile-panel${profilePanelOpen ? " is-open" : ""}`}
+          onTouchStart={handlePanelTouchStart}
+          onTouchMove={handlePanelTouchMove}
+          onTouchEnd={handlePanelTouchEnd}
+        >
+          <div className="nav-drawer-profile-panel-handle" onClick={() => setProfilePanelOpen(false)}>
+            <span className="nav-drawer-profile-panel-handle-bar" />
+          </div>
+          <div className="nav-drawer-profile-panel-email">{email ?? ""}</div>
+          <div className="nav-drawer-profile-panel-bottom">
+            <hr className="nav-drawer-divider" />
+            {mobileLogout}
+          </div>
+        </div>
+
         {/* 하단 로그인/로그아웃 */}
         <div className="nav-drawer-footer">
-          {mobileLogout}
-          {mobileLeading ?? leading}
+          <div className="nav-drawer-footer-row">
+            <button
+              type="button"
+              className="nav-drawer-avatar-btn"
+              onClick={() => setProfilePanelOpen((v) => !v)}
+              aria-label="사용자 메뉴"
+            >
+              {mobileProfile}
+            </button>
+            {mobileLeading ?? leading}
+          </div>
         </div>
       </div>
     </>

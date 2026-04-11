@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { LandingAuthControls, LandingAuthControlsCompact } from "@/components/landing-auth-controls";
-import { HeaderProfileLink } from "@/components/header-profile-link";
+import { HeaderProfileLink, HeaderDrawerAvatar } from "@/components/header-profile-link";
 import { HeaderLogoutButton } from "@/components/header-logout-button";
 import { SiteHeader } from "@/components/site-header";
 
@@ -66,7 +66,8 @@ export function LandingPageHeader({ brandHref = "/", scrollTopOnLogoClick = fals
       menuHeader="Arao Project"
       leading={<LandingAuthControls />}
       mobileLeading={<LandingAuthControlsCompact />}
-      mobileProfile={<HeaderProfileLink />}
+      mobileNotif={<HeaderProfileLink />}
+      mobileProfile={<HeaderDrawerAvatar />}
       mobileLogout={<HeaderLogoutButton />}
       links={links}
     />

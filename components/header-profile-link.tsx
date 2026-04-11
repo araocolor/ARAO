@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
+import { Heart } from "lucide-react";
 import { useNotificationCount } from "@/hooks/use-notification-count";
 import { useAdminPendingCount } from "@/hooks/use-admin-pending-count";
 import { NotificationDrawer } from "@/components/notification-drawer";
@@ -111,6 +112,7 @@ export function HeaderProfileLink() {
   const hydrateHeaderSession = useHeaderSessionStore((state) => state.hydrateForUser);
   const setHeaderBadgeCount = useHeaderSessionStore((state) => state.setBadgeCount);
   const setHeaderAvatar = useHeaderSessionStore((state) => state.setAvatar);
+  const setHeaderEmail = useHeaderSessionStore((state) => state.setEmail);
   const clearActiveHeaderSession = useHeaderSessionStore((state) => state.clearActiveUserCache);
 
   // 드로어 상태
@@ -148,7 +150,10 @@ export function HeaderProfileLink() {
       setHeaderAvatar(img);
     }
     if (payload.username !== undefined) setUsername(payload.username ?? null);
-    if (payload.email !== undefined) setEmail(payload.email ?? null);
+    if (payload.email !== undefined) {
+      setEmail(payload.email ?? null);
+      setHeaderEmail(payload.email ?? null);
+    }
     setNotificationEnabled(nextNotificationEnabled);
     if (options?.persist !== false) {
       writeNotificationCache(notificationCacheKey, {
@@ -504,19 +509,12 @@ export function HeaderProfileLink() {
           </button>
         )}
         <button
-          className={`header-profile-link ${isSignedIn ? "signed-in" : ""}`}
+          className="header-notif-btn"
           onClick={handleClick}
           aria-label="알림"
           type="button"
         >
-          {iconImage ? (
-            <img src={iconImage} className="header-profile-avatar" alt="avatar" aria-hidden="true" />
-          ) : (
-            <span className="header-profile-icon" aria-hidden="true">
-              <span className="header-profile-head" />
-              <span className="header-profile-body" />
-            </span>
-          )}
+          <Heart width={22} height={22} strokeWidth={1.7} aria-hidden="true" />
           {isSignedIn && notificationEnabled && badgeCount > 0 && (
             <span className="header-profile-badge">{badgeCount}</span>
           )}
@@ -538,5 +536,28 @@ export function HeaderProfileLink() {
         />
       )}
     </>
+  );
+}
+
+export function HeaderDrawerAvatar() {
+  const { isSignedIn } = useUser();
+  const [mounted, setMounted] = useState(false);
+  const iconImage = useHeaderSessionStore((state) => state.avatar);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  if (!mounted || !isSignedIn) return null;
+
+  return (
+    <span className="header-profile-link signed-in" aria-hidden="true">
+      {iconImage ? (
+        <img src={iconImage} className="header-profile-avatar" alt="avatar" />
+      ) : (
+        <span className="header-profile-icon">
+          <span className="header-profile-head" />
+          <span className="header-profile-body" />
+        </span>
+      )}
+    </span>
   );
 }
