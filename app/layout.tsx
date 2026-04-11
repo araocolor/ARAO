@@ -17,8 +17,11 @@ import "./styles/notification.css";
 import "./styles/user-review.css";
 
 export const metadata: Metadata = {
-  title: "Expansion Architecture",
+  title: "제주의 느낌 알아요 ARAO",
   description: "Next.js + Supabase + Clerk + PortOne + Stripe scaffold",
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export const viewport = {
