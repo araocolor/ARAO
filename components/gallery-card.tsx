@@ -92,6 +92,18 @@ export function GalleryCard({
   const likeUsersCacheKey = `gallery_like_users_${category}_${index}`;
   const generalCacheKey = `general_${(user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress ?? "guest").toLowerCase()}`;
 
+  // 프리캐싱된 값으로 초기 상태 즉시 반영
+  useEffect(() => {
+    const cached =
+      getCached<{ count: number; liked?: boolean; firstLiker: string | null; commentCount: number }>(cardCacheKey) ??
+      getCached<{ count: number; firstLiker: string | null; commentCount: number }>(publicCacheKey);
+    if (cached) {
+      setLikeCount(cached.count ?? 0);
+      setFirstLiker(cached.firstLiker ?? null);
+      setCommentCount(cached.commentCount ?? 0);
+    }
+  }, [cardCacheKey, publicCacheKey]);
+
   function lockInteractionSync(ms = 1500) {
     userInteractedRef.current = true;
     if (interactionLockTimerRef.current !== null) {

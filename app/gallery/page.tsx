@@ -1,45 +1,18 @@
+import { Suspense } from "react";
 import { LandingPageFooter } from "@/components/landing-page-footer";
 import { LandingPageHeader } from "@/components/landing-page-header";
-import { GalleryCard } from "@/components/gallery-card";
+import { GalleryCardsClient } from "@/components/gallery-cards-client";
 import { getLandingContent } from "@/lib/landing-content";
-import { GALLERY_CATEGORIES, GALLERY_CATEGORY_LABELS, GALLERY_CATEGORY_DEFAULTS } from "@/lib/gallery-categories";
-import { getGalleryItemLikeStatus } from "@/lib/gallery-interactions";
+import { GALLERY_CATEGORIES } from "@/lib/gallery-categories";
 
-function formatGalleryExifCaption(item: { caption?: string; exif?: { camera?: string; lens?: string; iso?: string; aperture?: string; exposureMode?: string } }) {
-  if (item.caption) {
-    return item.caption;
-  }
+export default async function GalleryPage() {
+  const landingContent = await getLandingContent();
 
-  const parts = [
-    item.exif?.camera,
-    item.exif?.lens,
-    item.exif?.iso ? `ISO ${item.exif.iso}` : "",
-    item.exif?.aperture,
-    item.exif?.exposureMode,
-  ].filter(Boolean);
-
-  return parts.join(" / ");
-}
-
-export default async function GalleryPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ category?: string; index?: string; commentId?: string; likesSheet?: string; t?: string }>;
-}) {
-  const { category: openCategory, index: openIndex, commentId: openCommentId, likesSheet, t: openTimestamp } = await searchParams;
-  const [landingContent, likeStatuses] = await Promise.all([
-    getLandingContent(),
-    Promise.all(
-      GALLERY_CATEGORIES.map((category, categoryIdx) =>
-        getGalleryItemLikeStatus(category, categoryIdx, undefined).catch(() => ({
-          count: 0,
-          liked: false,
-          firstLiker: null,
-          commentCount: 0,
-        }))
-      )
-    ),
-  ]);
+  const items = GALLERY_CATEGORIES.flatMap((category, categoryIdx) => {
+    const item = landingContent.gallery[category];
+    if (!item) return [];
+    return [{ category, categoryIdx, item }];
+  });
 
   return (
     <main className="landing-page">
@@ -54,45 +27,9 @@ export default async function GalleryPage({
           </p>
         </section>
 
-        {GALLERY_CATEGORIES.map((category, categoryIdx) => {
-          const item = landingContent.gallery[category];
-          if (!item) return null;
-          const beforeSrc = item.beforeImage || item.beforeImageFull || "";
-          const afterSrc = item.afterImage || item.afterImageFull || "";
-          if (!beforeSrc || !afterSrc) return null;
-          const title = item.title || GALLERY_CATEGORY_LABELS[category];
-          const body = item.body || GALLERY_CATEGORY_DEFAULTS[category];
-          const caption = formatGalleryExifCaption(item);
-          const likeStatus = likeStatuses[categoryIdx];
-          return (
-            <GalleryCard
-              key={category}
-              category={category}
-              index={categoryIdx}
-              title={title}
-              body={body}
-              beforeImage={beforeSrc}
-              afterImage={afterSrc}
-              beforeImageFull={item.beforeImageFull || undefined}
-              afterImageFull={item.afterImageFull || undefined}
-              caption={caption || undefined}
-              aspectRatio={item.aspectRatio}
-              initialLikeCount={likeStatus.count}
-              initialLiked={likeStatus.liked}
-              initialFirstLiker={likeStatus.firstLiker}
-              initialCommentCount={likeStatus.commentCount}
-              autoOpenComments={
-                likesSheet !== "1" &&
-                Boolean(openCommentId) &&
-                category === openCategory &&
-                String(categoryIdx) === openIndex
-              }
-              autoOpenLikes={likesSheet === "1" && category === openCategory && String(categoryIdx) === openIndex}
-              highlightCommentId={category === openCategory && String(categoryIdx) === openIndex ? openCommentId : undefined}
-              openTimestamp={category === openCategory && String(categoryIdx) === openIndex ? openTimestamp : undefined}
-            />
-          );
-        })}
+        <Suspense>
+          <GalleryCardsClient items={items} />
+        </Suspense>
 
         <LandingPageFooter content={landingContent.footer} />
       </div>
