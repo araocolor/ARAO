@@ -510,6 +510,61 @@ export function MainUserReviewPage() {
       }
     };
     window.addEventListener("mousedown", onClickOutside);
+
+    // 드롭다운 열리는 순간 notice + qna 병렬 캐싱
+    const boardsToPrefetch: Array<{ board: string; cacheKey: string }> = [
+      { board: "notice", cacheKey: `${LIST_CACHE_KEY}-notice` },
+      { board: "qna", cacheKey: `${LIST_CACHE_KEY}-qna` },
+    ];
+    for (const { board: b, cacheKey } of boardsToPrefetch) {
+      try {
+        const raw = sessionStorage.getItem(cacheKey);
+        if (raw) {
+          const { ts } = JSON.parse(raw) as { ts: number };
+          if (Date.now() - ts < CACHE_TTL) continue;
+        }
+      } catch {}
+      fetch(`/api/main/user-review?page=1&limit=20&sort=latest&board=${b}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: { items?: Array<{ id?: string; thumbnailImage?: string | null; thumbnailFirst?: string | null; [key: string]: unknown }>; [key: string]: unknown } | null) => {
+          if (!data || !Array.isArray(data.items)) return;
+          const slim = {
+            ...data,
+            items: data.items.map((item) => {
+              let firstImage: string | null = null;
+              if (item.thumbnailImage) {
+                try {
+                  const parsed = JSON.parse(item.thumbnailImage as string);
+                  firstImage = Array.isArray(parsed) ? (parsed[0] ?? null) : item.thumbnailImage as string;
+                } catch { firstImage = item.thumbnailImage as string; }
+              }
+              return { ...item, thumbnailImage: firstImage, thumbnailFirst: item.thumbnailFirst ?? null };
+            }),
+          };
+          sessionStorage.setItem(cacheKey, JSON.stringify({ data: slim, ts: Date.now() }));
+          // 좋아요/댓글 묶음 캐싱
+          const ids = slim.items.map((item) => item.id).filter((id): id is string => typeof id === "string");
+          if (ids.length > 0) {
+            fetch("/api/main/user-review/batch-interactions", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ids }),
+            })
+              .then((r) => (r.ok ? r.json() : null))
+              .then((res: { results?: Record<string, { likes: unknown; comments: unknown }> } | null) => {
+                if (!res?.results) return;
+                const now = Date.now();
+                for (const [id, d] of Object.entries(res.results)) {
+                  sessionStorage.setItem(`user-review-likes-${id}`, JSON.stringify({ data: d.likes, ts: now }));
+                  sessionStorage.setItem(`user-review-comments-${id}`, JSON.stringify({ data: d.comments, ts: now }));
+                }
+              })
+              .catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }
+
     return () => window.removeEventListener("mousedown", onClickOutside);
   }, [boardDropdownOpen]);
 

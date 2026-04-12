@@ -262,6 +262,54 @@ export function HeaderProfileLink() {
       .catch(() => {});
   }
 
+  function slimItems(items: Array<{ id?: unknown; thumbnailImage?: string | null; thumbnailFirst?: string | null; [key: string]: unknown }>) {
+    return items.map((item) => {
+      let firstImage: string | null = null;
+      if (item.thumbnailImage) {
+        try {
+          const parsed = JSON.parse(item.thumbnailImage as string);
+          firstImage = Array.isArray(parsed) ? (parsed[0] ?? null) : item.thumbnailImage as string;
+        } catch {
+          firstImage = item.thumbnailImage as string;
+        }
+      }
+      return { ...item, thumbnailImage: firstImage, thumbnailFirst: item.thumbnailFirst ?? null };
+    });
+  }
+
+  function prefetchBoardInteractions(items: Array<{ id?: unknown }>) {
+    const ids = items.map((item) => item.id).filter((id): id is string => typeof id === "string");
+    if (ids.length === 0) return;
+    fetch("/api/main/user-review/batch-interactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res: { results?: Record<string, { likes: unknown; comments: unknown }> } | null) => {
+        if (!res?.results) return;
+        const now = Date.now();
+        for (const [id, data] of Object.entries(res.results)) {
+          sessionStorage.setItem(`user-review-likes-${id}`, JSON.stringify({ data: data.likes, ts: now }));
+          sessionStorage.setItem(`user-review-comments-${id}`, JSON.stringify({ data: data.comments, ts: now }));
+        }
+      })
+      .catch(() => {});
+  }
+
+  function prefetchBoardList(board: string, cacheKey: string, onDone?: () => void) {
+    fetch(`/api/main/user-review?page=1&limit=20&sort=latest&board=${board}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { items?: Array<{ thumbnailImage?: string | null; thumbnailFirst?: string | null; [key: string]: unknown }>; [key: string]: unknown } | null) => {
+        if (!data || !Array.isArray(data.items)) return;
+        const slim = { ...data, items: slimItems(data.items) };
+        sessionStorage.setItem(cacheKey, JSON.stringify({ data: slim, ts: Date.now() }));
+        prefetchBoardInteractions(slim.items);
+        onDone?.();
+      })
+      .catch(() => {});
+  }
+
   function prefetchUserReviewList() {
     const cacheKey = "user-review-list-cache";
     if (!canPrefetchReviewList()) return;
@@ -271,26 +319,13 @@ export function HeaderProfileLink() {
 
     fetch("/api/main/user-review?page=1&limit=20&sort=latest")
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { items: Array<{ thumbnailImage?: string | null; thumbnailFirst?: string | null; [key: string]: unknown }>; [key: string]: unknown }) => {
-        if (!data) return;
-        const slim = {
-          ...data,
-          items: Array.isArray(data.items)
-            ? data.items.map((item) => {
-                let firstImage: string | null = null;
-                if (item.thumbnailImage) {
-                  try {
-                    const parsed = JSON.parse(item.thumbnailImage);
-                    firstImage = Array.isArray(parsed) ? (parsed[0] ?? null) : item.thumbnailImage;
-                  } catch {
-                    firstImage = item.thumbnailImage;
-                  }
-                }
-                return { ...item, thumbnailImage: firstImage, thumbnailFirst: item.thumbnailFirst ?? null };
-              })
-            : [],
-        };
+      .then((data: { items?: Array<{ thumbnailImage?: string | null; thumbnailFirst?: string | null; [key: string]: unknown }>; [key: string]: unknown } | null) => {
+        if (!data || !Array.isArray(data.items)) return;
+        const slim = { ...data, items: slimItems(data.items) };
         sessionStorage.setItem(cacheKey, JSON.stringify({ data: slim, ts: Date.now() }));
+        prefetchBoardInteractions(slim.items);
+        // review 캐싱 완료 후 arao 연속 캐싱
+        prefetchBoardList("arao", "user-review-list-cache-arao");
       })
       .catch(() => {})
       .finally(() => {
