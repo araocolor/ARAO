@@ -722,10 +722,10 @@
   transform: translateX(-50%);
   width: min(100%, var(--tablet-width, 820px));
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 8px 0 env(safe-area-inset-bottom);
-  height: calc(52px + env(safe-area-inset-bottom));
+  padding: 4px 0 env(safe-area-inset-bottom);
+  height: calc(65px + env(safe-area-inset-bottom));
   background: var(--surface, #fff);
   box-shadow: 0 -4px 16px rgb(17 17 17 / 10%);
   border-top: 1px solid var(--line);
