@@ -718,8 +718,9 @@
 .user-content-bottom-footer {
   position: fixed;
   bottom: 0;
-  left: 0;
-  right: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, var(--tablet-width, 820px));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -754,6 +755,14 @@
   color: var(--text);
   font-size: 14px;
   font-family: inherit;
+}
+
+.user-content-bottom-back-btn {
+  padding-left: 50px;
+}
+
+.user-content-bottom-more-btn {
+  padding-right: 50px;
 }
 
 .user-content-bottom-like-btn.liked {
