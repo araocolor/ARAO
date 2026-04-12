@@ -543,14 +543,15 @@ export function HeaderDrawerAvatar() {
   const { isSignedIn } = useUser();
   const [mounted, setMounted] = useState(false);
   const iconImage = useHeaderSessionStore((state) => state.avatar);
+  const hasAvatarImage = isSignedIn && Boolean(iconImage);
 
   useEffect(() => { setMounted(true); }, []);
 
   if (!mounted) return null;
 
   return (
-    <span className={`header-profile-link${isSignedIn ? " signed-in" : ""}`} aria-hidden="true">
-      {isSignedIn && iconImage ? (
+    <span className={`header-profile-link${hasAvatarImage ? " signed-in" : ""}`} aria-hidden="true">
+      {hasAvatarImage ? (
         <img src={iconImage} className="header-profile-avatar" alt="avatar" />
       ) : (
         <span className="header-profile-icon">
