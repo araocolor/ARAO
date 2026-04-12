@@ -100,7 +100,7 @@ function getLikesCache(reviewId: string): { liked: boolean; likeCount: number } 
     const cached = sessionStorage.getItem(`user-review-likes-${reviewId}`);
     if (!cached) return null;
     const { data, ts } = JSON.parse(cached) as { data: { liked: boolean; likeCount: number }; ts: number };
-    if (Date.now() - ts < 60000) return data;
+    if (Date.now() - ts < 300000) return data;
   } catch {}
   return null;
 }
@@ -121,7 +121,7 @@ function getCommentsCache(reviewId: string): Comment[] | null {
     const cached = sessionStorage.getItem(`user-review-comments-${reviewId}`);
     if (!cached) return null;
     const { data, ts } = JSON.parse(cached) as { data: { comments: Comment[] }; ts: number };
-    if (Date.now() - ts < 60000) {
+    if (Date.now() - ts < 300000) {
       return (data.comments ?? []).map((comment) => ({ ...comment, parentId: comment.parentId ?? null, likeCount: comment.likeCount ?? 0, liked: comment.liked ?? false }));
     }
   } catch {}
@@ -461,6 +461,33 @@ export function UserContentInteractions({
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
+  }, [reviewId]);
+
+  // visibilitychange: 앱 복귀 시 백그라운드로 캐시 갱신
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState !== "visible") return;
+      fetch(`/api/main/user-review/${reviewId}/comments`)
+        .then((r) => r.json())
+        .then((d) => {
+          const nextComments: Comment[] = Array.isArray(d.comments)
+            ? d.comments.map((comment: Comment) => ({ ...comment, parentId: comment.parentId ?? null, likeCount: comment.likeCount ?? 0, liked: comment.liked ?? false }))
+            : [];
+          setComments(nextComments);
+          setCommentsCache(nextComments);
+        })
+        .catch(() => {});
+      fetch(`/api/main/user-review/${reviewId}/likes`)
+        .then((r) => r.json())
+        .then((d) => {
+          const nextLiked = d.liked ?? false;
+          const nextLikeCount = sanitizeCount(d.likeCount) ?? 0;
+          setLikesCache(reviewId, { liked: nextLiked, likeCount: nextLikeCount });
+        })
+        .catch(() => {});
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => { document.removeEventListener("visibilitychange", handleVisibilityChange); };
   }, [reviewId]);
 
   function editRows(text: string) {
