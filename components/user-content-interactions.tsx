@@ -411,6 +411,15 @@ export function UserContentInteractions({
   useEffect(() => {
     highlightedCommentDoneRef.current = null;
     setMissingTargetNotice(false);
+
+    // 캐시가 있으면 API 호출 생략 — Realtime이 변경사항 처리
+    const cached = getCommentsCache(reviewId);
+    if (cached !== null) {
+      setComments(cached);
+      setCommentsLoaded(true);
+      return;
+    }
+
     setCommentsLoaded(false);
     fetch(`/api/main/user-review/${reviewId}/comments`)
       .then((r) => r.json())
@@ -826,6 +835,20 @@ export function UserContentInteractions({
           </button>
         </div>
       )}
+
+      {/* 이모티콘 행 */}
+      <div className="gallery-sheet-emoji-row">
+        {["❤️","😍","🥰","😊","😂","🔥","✨","👍","🎉","💯"].map((emoji) => (
+          <button
+            key={emoji}
+            className="gallery-sheet-emoji-btn"
+            onClick={() => setCommentInput((prev) => prev + emoji)}
+            type="button"
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
 
       {/* 댓글 입력폼 */}
       <div className="user-content-comment-form">
