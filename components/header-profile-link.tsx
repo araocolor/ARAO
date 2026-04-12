@@ -11,6 +11,7 @@ import type { NotificationItem } from "@/lib/notifications";
 import { getCached, setCached } from "@/hooks/use-prefetch-cache";
 import { useHeaderSessionStore } from "@/stores/header-session-store";
 import { REVIEW_LIST_CACHE_TTL, NOTIFICATION_CACHE_TTL } from "@/lib/cache-config";
+import { GALLERY_CATEGORIES } from "@/lib/gallery-categories";
 
 const REVIEW_PREFETCH_LOCK_KEY = "user-review-list-prefetch-lock";
 const REVIEW_PREFETCH_LOCK_MS = 10000;
@@ -246,18 +247,51 @@ export function HeaderProfileLink() {
   }
 
   function prefetchGalleryFirst() {
-    // 첫 번째 카드(people/0) 공개 데이터 prefetch (로그인 무관)
+    // 1차: 첫 번째 카드(people/0) 즉시 캐싱
     const publicKey = "gallery_public_people_0";
     const commentsKey = "gallery_comments_people_0";
-    if (getCached(publicKey)) return;
+    if (getCached(publicKey)) {
+      // 1차 이미 캐시됨 → 바로 2차 진행
+      prefetchGalleryAll();
+      return;
+    }
     fetch("/api/gallery/people/0/likes")
       .then((r) => r.json())
       .then((d: { count?: number; firstLiker?: string | null; commentCount?: number }) => {
         setCached(publicKey, { count: d.count ?? 0, firstLiker: d.firstLiker ?? null, commentCount: d.commentCount ?? 0 });
         fetch("/api/gallery/people/0/comments")
           .then((r) => r.json())
-          .then((d2) => setCached(commentsKey, d2))
+          .then((d2) => {
+            setCached(commentsKey, d2);
+            // 1차 완료 후 2차: 나머지 전체 묶음 캐싱
+            prefetchGalleryAll();
+          })
           .catch(() => {});
+      })
+      .catch(() => {});
+  }
+
+  function prefetchGalleryAll() {
+    // 2차: 전체 카드 좋아요/댓글 수 묶음 1번 호출
+    const cards = GALLERY_CATEGORIES.map((category, index) => ({ category, index }));
+    const uncached = cards.filter((c) => !getCached(`gallery_public_${c.category}_${c.index}`));
+    if (uncached.length === 0) return;
+
+    fetch("/api/gallery/batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cards: uncached }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res: { results?: Array<{ category: string; index: number; count: number; liked: boolean; firstLiker: string | null; commentCount: number }> } | null) => {
+        if (!res?.results) return;
+        for (const d of res.results) {
+          setCached(`gallery_public_${d.category}_${d.index}`, {
+            count: d.count,
+            firstLiker: d.firstLiker,
+            commentCount: d.commentCount,
+          });
+        }
       })
       .catch(() => {});
   }
