@@ -287,14 +287,20 @@ export function SiteHeader({
             <button
               type="button"
               className="nav-drawer-avatar-btn"
-              onClick={() => setProfilePanelOpen((v) => !v)}
+              onClick={() => {
+                if (isSignedIn) {
+                  setProfilePanelOpen((v) => !v);
+                } else {
+                  window.location.href = "/sign-in";
+                }
+              }}
               aria-label="사용자 메뉴"
             >
               {mobileProfile}
             </button>
             {mobileFooterLogout}
             {mobileLeading ?? leading}
-            {!isSignedIn && version !== undefined && version % 2 !== 0 && (
+            {!isSignedIn && version !== undefined && version % 2 === 0 && (
               <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", marginLeft: "auto" }}>배포완료</span>
             )}
           </div>
