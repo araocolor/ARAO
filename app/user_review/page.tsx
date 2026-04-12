@@ -5,7 +5,7 @@ import { Suspense } from "react";
 export default async function MainUserReviewListPage() {
   return (
     <main className="landing-page">
-      <LandingPageHeader brandHref="/user_review" scrollTopOnLogoClick />
+      <LandingPageHeader brandHref="/" />
 
       <div className="landing-shell">
         <section className="landing-stack-sm">
