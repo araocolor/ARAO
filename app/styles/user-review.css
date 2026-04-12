@@ -712,33 +712,52 @@
 .user-content-page-shell {
   background: #fff;
   min-height: 100dvh;
+  padding-bottom: calc(52px + env(safe-area-inset-bottom));
 }
 
 .user-content-bottom-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 16px;
+  padding: 8px 0 env(safe-area-inset-bottom);
   height: calc(52px + env(safe-area-inset-bottom));
-  background: transparent;
+  background: var(--surface, #fff);
+  box-shadow: 0 -4px 16px rgb(17 17 17 / 10%);
+  border-top: 1px solid var(--line);
+  z-index: 30;
 }
 
-.user-content-bottom-home-btn {
-  width: auto;
+.user-content-bottom-footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(100%, var(--tablet-width, 820px));
+  margin: 0 auto;
+  padding: 0 4px;
+}
+
+.user-content-bottom-back-btn,
+.user-content-bottom-like-btn,
+.user-content-bottom-comment-btn,
+.user-content-bottom-more-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  height: 36px;
-  padding: 0 14px;
-  border: 1px solid rgb(17 17 17 / 12%);
-  border-radius: 999px;
-  background: #fff;
+  gap: 5px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 6px;
   color: var(--text);
   font-size: 14px;
-  font-weight: 600;
   font-family: inherit;
-  cursor: pointer;
-  box-shadow: 0 6px 16px rgb(17 17 17 / 12%);
+}
+
+.user-content-bottom-like-btn.liked {
+  color: #FF2D2D;
 }
 
 .user-content-bottom-home-btn:active {
@@ -1160,7 +1179,7 @@
 }
 
 .user-content-comment-author {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text);
 }
@@ -1179,7 +1198,7 @@
 
 .user-content-comment-text {
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.5;
   color: var(--text);
   word-break: break-word;
@@ -1207,7 +1226,7 @@
   border: none;
   background: transparent;
   padding: 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
   cursor: pointer;
   font-family: inherit;

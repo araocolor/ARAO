@@ -1,0 +1,48 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - button "관리 메뉴 열기" [ref=e4] [cursor=pointer]
+      - generic [ref=e9]:
+        - paragraph [ref=e10]: Gallery
+        - heading "갤러리 관리" [level=2] [ref=e11]
+        - paragraph [ref=e12]: 카테고리별 Before / After 이미지, 제목, 문구, 촬영 정보를 관리합니다.
+        - generic [ref=e14]:
+          - generic [ref=e16]: Gallery
+          - generic [ref=e17]:
+            - generic [ref=e18]:
+              - generic [ref=e19]: 카테고리
+              - combobox [ref=e20]:
+                - option "인물" [selected]
+                - option "환경야외"
+                - option "실내"
+                - option "카페"
+                - option "여름"
+                - option "가을"
+                - option "겨울"
+                - option "봄"
+                - option "음식"
+                - option "거리"
+                - option "일상"
+            - generic [ref=e21]:
+              - generic [ref=e22]: 이미지 비율
+              - combobox [ref=e23]:
+                - option "선택" [selected]
+                - option "9:16"
+                - option "2:3"
+                - option "1:1"
+                - option "4:3"
+                - option "12:9"
+          - textbox "섹션 제목" [ref=e24]: ARAO가 느끼는 피부철학🩸
+          - textbox "섹션 문구" [ref=e25]: 빛이 얼굴에 닿는 순간, 사람은 가장 솔직해진다. 색이 정돈되면 그 감정도 선명하게 남는다.
+          - 'textbox "촬영 정보 (예: Nikon ZF / 40mm f2 / ISO 400 / f/2)" [ref=e26]': < Nikon ZF, 40mm f2 SE, ARAO, Sooc, 무보정Jpg >
+          - generic [ref=e27]:
+            - generic [ref=e28]:
+              - generic [ref=e29]: Before 이미지
+              - img "Before preview" [ref=e30]
+              - button "Before 이미지 Before preview" [ref=e31]
+            - generic [ref=e32]:
+              - generic [ref=e33]: After 이미지
+              - img "After preview" [ref=e34]
+              - button "After 이미지 After preview" [ref=e35]
+          - button "저장" [disabled] [ref=e37]
+  - alert [ref=e38]

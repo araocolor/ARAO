@@ -260,7 +260,7 @@ export function SiteHeader({
             </Link>
             <Link href="/account/orders" className="nav-drawer-link" onClick={closeDrawer}>
               <span className="nav-drawer-icon"><CreditCard width={20} height={20} strokeWidth={1.7} /></span>
-              구매프로파일
+              결제내역
             </Link>
             <Link href="/account/consulting" className="nav-drawer-link" onClick={closeDrawer}>
               <span className="nav-drawer-icon"><MessageCircle width={20} height={20} strokeWidth={1.7} /></span>

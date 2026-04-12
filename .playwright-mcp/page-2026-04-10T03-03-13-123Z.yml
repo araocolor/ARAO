@@ -1,0 +1,62 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - complementary [ref=e4]:
+        - link "Home" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e7]: Home
+        - generic [ref=e8]:
+          - button "갤러리 관리" [ref=e9] [cursor=pointer]
+          - button "랜딩페이지" [ref=e10] [cursor=pointer]
+          - button "상품가격" [ref=e11] [cursor=pointer]
+          - button "상담/문의" [ref=e12] [cursor=pointer]
+          - button "회원 관리" [ref=e13] [cursor=pointer]
+          - button "주문 관리" [ref=e14] [cursor=pointer]
+          - button "매출 관리" [ref=e15] [cursor=pointer]
+          - button "인증 관리" [ref=e16] [cursor=pointer]
+          - button "작업이력" [ref=e17] [cursor=pointer]
+          - button "커밋내역" [ref=e18] [cursor=pointer]
+      - generic [ref=e21]:
+        - paragraph [ref=e22]: Gallery
+        - heading "갤러리 관리" [level=2] [ref=e23]
+        - paragraph [ref=e24]: 카테고리별 Before / After 이미지, 제목, 문구, 촬영 정보를 관리합니다.
+        - generic [ref=e26]:
+          - generic [ref=e28]: Gallery
+          - generic [ref=e29]:
+            - generic:
+              - generic: 카테고리
+              - combobox [ref=e30]:
+                - option "인물" [selected]
+                - option "환경야외"
+                - option "실내"
+                - option "카페"
+                - option "여름"
+                - option "가을"
+                - option "겨울"
+                - option "봄"
+                - option "음식"
+                - option "거리"
+                - option "일상"
+            - generic [ref=e31]:
+              - generic [ref=e32]: 이미지 비율
+              - combobox [ref=e33]:
+                - option "선택" [selected]
+                - option "9:16"
+                - option "2:3"
+                - option "1:1"
+                - option "4:3"
+                - option "12:9"
+          - textbox "섹션 제목" [ref=e34]: ARAO가 느끼는 피부철학🩸
+          - textbox "섹션 문구" [ref=e35]: 빛이 얼굴에 닿는 순간, 사람은 가장 솔직해진다. 색이 정돈되면 그 감정도 선명하게 남는다.
+          - 'textbox "촬영 정보 (예: Nikon ZF / 40mm f2 / ISO 400 / f/2)" [ref=e36]': < Nikon ZF, 40mm f2 SE, ARAO, Sooc, 무보정Jpg >
+          - generic [ref=e37]:
+            - generic [ref=e38]:
+              - generic [ref=e39]: Before 이미지
+              - img "Before preview" [ref=e40]
+              - button "Before 이미지 Before preview" [ref=e41]
+            - generic [ref=e42]:
+              - generic [ref=e43]: After 이미지
+              - img "After preview" [ref=e44]
+              - button "After 이미지 After preview" [ref=e45]
+          - button "저장" [disabled] [ref=e47]
+  - alert [ref=e48]

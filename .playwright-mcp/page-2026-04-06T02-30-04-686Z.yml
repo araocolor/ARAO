@@ -1,0 +1,78 @@
+- main [ref=e2]:
+  - generic [ref=e4]:
+    - link "ARAO logo" [ref=e5] [cursor=pointer]:
+      - /url: /user_review
+      - img "ARAO logo" [ref=e6]
+    - navigation [ref=e8]:
+      - link "ARAO 소개" [ref=e9] [cursor=pointer]:
+        - /url: /arao
+      - link "갤러리" [ref=e10] [cursor=pointer]:
+        - /url: /gallery
+      - link "커뮤니티" [ref=e11] [cursor=pointer]:
+        - /url: /user_review
+      - link "설치방법" [ref=e12] [cursor=pointer]:
+        - /url: /manual
+      - link "구매가이드" [ref=e13] [cursor=pointer]:
+        - /url: /pricing
+      - link "사용자설정" [ref=e14] [cursor=pointer]:
+        - /url: /account/general
+    - button "알림" [ref=e17]
+  - dialog "메뉴" [ref=e21]:
+    - generic [ref=e22]:
+      - link "ARAO" [ref=e23] [cursor=pointer]:
+        - /url: /user_review
+        - img "ARAO" [ref=e24]
+      - button "닫기" [ref=e25] [cursor=pointer]:
+        - img [ref=e26]
+    - navigation [ref=e29]:
+      - link "ARAO 소개" [ref=e31] [cursor=pointer]:
+        - /url: /arao
+        - img [ref=e33]
+        - text: ARAO 소개
+      - link "갤러리" [ref=e36] [cursor=pointer]:
+        - /url: /gallery
+        - img [ref=e38]
+        - text: 갤러리
+      - link "커뮤니티" [ref=e41] [cursor=pointer]:
+        - /url: /user_review
+        - img [ref=e43]
+        - text: 커뮤니티
+      - link "설치방법" [ref=e46] [cursor=pointer]:
+        - /url: /manual
+        - img [ref=e48]
+        - text: 설치방법
+      - link "구매가이드" [ref=e51] [cursor=pointer]:
+        - /url: /pricing
+        - img [ref=e53]
+        - text: 구매가이드
+      - generic [ref=e56]:
+        - separator [ref=e57]
+        - link "사용자설정" [ref=e58] [cursor=pointer]:
+          - /url: /account/general
+          - img [ref=e60]
+          - text: 사용자설정
+    - link "로그인" [ref=e64] [cursor=pointer]:
+      - /url: /sign-in
+  - generic [ref=e67]:
+    - generic [ref=e68]:
+      - button "사용자후기 ▾" [ref=e70] [cursor=pointer]:
+        - text: 사용자후기
+        - generic [ref=e71]: ▾
+      - button "목록형 ▾" [ref=e73] [cursor=pointer]:
+        - text: 목록형
+        - generic [ref=e74]: ▾
+      - generic [ref=e75]:
+        - button "최신순" [ref=e77] [cursor=pointer]
+        - generic [ref=e78]:
+          - generic [ref=e79]: "|"
+          - button "조회수순" [ref=e80] [cursor=pointer]
+        - generic [ref=e81]:
+          - generic [ref=e82]: "|"
+          - button "좋아요순" [ref=e83] [cursor=pointer]
+    - generic [ref=e84]: 표시할 후기가 없습니다.
+    - generic [ref=e86]:
+      - generic [ref=e87]:
+        - button "이전" [disabled] [ref=e88]
+        - button "1" [ref=e89] [cursor=pointer]
+        - button "다음" [disabled] [ref=e90]
+      - button "글작성" [ref=e91] [cursor=pointer]

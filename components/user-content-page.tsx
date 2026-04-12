@@ -671,9 +671,30 @@ export function UserContentPage({
               }}
             />
             <div className="user-content-bottom-footer">
-              <button type="button" className="user-content-bottom-home-btn" onClick={closeWithSlide}>
-                커뮤니티 홈
+              <div className="user-content-bottom-footer-inner">
+              <button type="button" className="user-content-bottom-back-btn" onClick={closeWithSlide} aria-label="목록으로">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
               </button>
+              <UserContentLikeSection
+                reviewId={id}
+                footer
+                onLikeCountChange={(nextLikeCount) => {
+                  onReviewCountsChange?.({ reviewId: id, likeCount: nextLikeCount });
+                }}
+              />
+              <button type="button" className="user-content-bottom-comment-btn" aria-label="댓글">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </button>
+              <button type="button" className="user-content-bottom-more-btn" aria-label="더보기">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" />
+                </svg>
+              </button>
+              </div>
             </div>
           </>
         )}
