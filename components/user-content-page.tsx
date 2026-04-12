@@ -741,7 +741,7 @@ export function UserContentPage({
             <div className="user-content-bottom-footer">
               <div className="user-content-bottom-footer-inner">
               <button type="button" className="user-content-bottom-back-btn" onClick={closeWithSlide} aria-label="목록으로">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="15 18 9 12 15 6" />
                 </svg>
               </button>
