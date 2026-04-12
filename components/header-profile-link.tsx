@@ -257,8 +257,10 @@ export function HeaderProfileLink() {
     }
     fetch("/api/gallery/people/0/likes")
       .then((r) => r.json())
-      .then((d: { count?: number; firstLiker?: string | null; commentCount?: number }) => {
+      .then((d: { count?: number; firstLiker?: string | null; commentCount?: number; beforeImage?: string | null; afterImage?: string | null }) => {
         setCached(publicKey, { count: d.count ?? 0, firstLiker: d.firstLiker ?? null, commentCount: d.commentCount ?? 0 });
+        if (d.beforeImage) { const img = new Image(); img.src = d.beforeImage; }
+        if (d.afterImage) { const img = new Image(); img.src = d.afterImage; }
         fetch("/api/gallery/people/0/comments")
           .then((r) => r.json())
           .then((d2) => {

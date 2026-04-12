@@ -604,7 +604,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
         </div>
 
         <div className="gallery-sheet-emoji-row">
-          {["❤️","😍","🥰","😊","😂","🔥","✨","👍","🎉","💯","🙏","😭","💕","😎","🤩","👏","💪","🌟","😆","🥹","💖","😘","🫶","🤍","😁","🫠","😅","🤗","😇","🥲","😴","🤭","😋","🤔","😬","🥳","😤","😢","🤯","🫡"].map((emoji) => (
+          {["❤️","😍","🥰","😊","😂","🔥","✨","👍","🎉","💯"].map((emoji) => (
             <button
               key={emoji}
               className="gallery-sheet-emoji-btn"
@@ -626,13 +626,17 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
         )}
 
         <div className="gallery-sheet-input-row">
-          <div className="gallery-comment-avatar gallery-comment-avatar-sm" />
-          <input
+          <textarea
             className="gallery-sheet-input"
-            placeholder={replyTo ? "답글 달기..." : "회원님에 댓글을 남겨보세요."}
+            placeholder={replyTo ? "답글을 남겨보세요" : "댓글을 남겨보세요"}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            rows={1}
+            maxLength={300}
+            onChange={(e) => {
+              setInput(e.target.value);
+              e.target.style.height = "auto";
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
             onFocus={(e) => {
               if (!isSignedIn) {
                 e.target.blur();
@@ -645,7 +649,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
             onClick={handleSubmit}
             disabled={!input.trim() || submitting}
           >
-            게시
+            등록
           </button>
         </div>
       </div>

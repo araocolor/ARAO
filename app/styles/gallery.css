@@ -748,12 +748,18 @@
 
 .gallery-sheet-input {
   flex: 1;
-  border: 1px solid #e5e7eb;
-  border-radius: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
   padding: 8px 14px;
   font-size: 16px;
-  background: #f9fafb;
+  background: var(--surface);
   outline: none;
+  resize: none;
+  overflow-y: hidden;
+  min-height: 24px;
+  font-family: inherit;
+  color: var(--text);
+  min-width: 0;
 }
 
 .gallery-sheet-input::placeholder {
@@ -761,7 +767,7 @@
 }
 
 .gallery-sheet-input:focus {
-  border-color: #aaa;
+  border-color: var(--text);
 }
 
 .gallery-sheet-submit {

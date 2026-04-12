@@ -226,8 +226,8 @@ async function uploadLandingImage(pathPrefix: string, imageValue: string) {
   const timestamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   const [thumbBuffer, fullBuffer] = await Promise.all([
-    sharp(buffer).resize({ width: 800, withoutEnlargement: true }).webp({ quality: 80 }).toBuffer(),
-    sharp(buffer).resize({ width: 1600, withoutEnlargement: true }).webp({ quality: 87 }).toBuffer(),
+    sharp(buffer).resize({ width: 480, withoutEnlargement: true }).webp({ quality: 80 }).toBuffer(),
+    sharp(buffer).resize({ width: 1200, withoutEnlargement: true }).webp({ quality: 87 }).toBuffer(),
   ]);
 
   const thumbPath = `landing/${pathPrefix}-thumb-${timestamp}.webp`;

@@ -15,3 +15,11 @@ Arao
 setting으로
 사용자로
 .vercel
+
+# 자동생성 파일
+.playwright-mcp/
+.vscode/
+docs/
+test-results/
+tsconfig.tsbuildinfo
+public/a.png

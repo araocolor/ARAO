@@ -1,6 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { getGalleryItemLikeStatus, toggleGalleryItemLike } from "@/lib/gallery-interactions";
 import { syncProfile } from "@/lib/profiles";
+import { getLandingContent } from "@/lib/landing-content";
 import { NextResponse } from "next/server";
 
 export async function GET(
@@ -29,9 +30,16 @@ export async function GET(
       console.error("GET likes profile sync fallback:", profileSyncError);
     }
 
-    const status = await getGalleryItemLikeStatus(category, parseInt(index), profileId);
+    const [status, landingContent] = await Promise.all([
+      getGalleryItemLikeStatus(category, parseInt(index), profileId),
+      getLandingContent(),
+    ]);
 
-    return NextResponse.json(status);
+    const galleryItem = landingContent.gallery[category as keyof typeof landingContent.gallery];
+    const beforeImage = galleryItem?.beforeImage ?? null;
+    const afterImage = galleryItem?.afterImage ?? null;
+
+    return NextResponse.json({ ...status, beforeImage, afterImage });
   } catch (error) {
     console.error("GET /api/gallery/[category]/[index]/likes error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

@@ -15,6 +15,8 @@ type GalleryCardProps = {
   body: string;
   beforeImage: string;
   afterImage: string;
+  beforeImageFull?: string;
+  afterImageFull?: string;
   caption?: string;
   aspectRatio?: string;
   initialLikeCount?: number;
@@ -48,6 +50,8 @@ export function GalleryCard({
   body,
   beforeImage,
   afterImage,
+  beforeImageFull,
+  afterImageFull,
   caption,
   aspectRatio,
   initialLikeCount = 0,
@@ -464,6 +468,8 @@ export function GalleryCard({
         <GalleryHeroItem
           beforeImage={beforeImage}
           afterImage={afterImage}
+          beforeImageFull={beforeImageFull}
+          afterImageFull={afterImageFull}
           label={title}
           aspectRatio={aspectRatio}
         />
