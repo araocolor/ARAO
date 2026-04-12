@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, type CSSProperties } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
 import { UserContentHeader } from "@/components/user-content-header";
@@ -429,6 +429,12 @@ export function UserContentPage({
   const [item, setItem] = useState<ReviewItem | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [commentSheetOpen, setCommentSheetOpen] = useState(false);
+  const [commentSheetClosing, setCommentSheetClosing] = useState(false);
+  const [commentSheetExpanded, setCommentSheetExpanded] = useState(false);
+  const [commentSheetDragY, setCommentSheetDragY] = useState(0);
+  const commentSheetIsDragging = useRef(false);
+  const commentSheetDragStartY = useRef(0);
   const originalCacheRef = useRef<Record<string, boolean>>({});
   const [upgradedImages, setUpgradedImages] = useState<Record<number, string>>({});
   const routeBoard = searchParams.get("board");
@@ -464,6 +470,68 @@ export function UserContentPage({
     }
     router.push(boardListPath, { scroll: false });
   }, [onRequestClose, router, boardListPath, cameFromNotification]);
+
+  function openCommentSheet() {
+    setCommentSheetOpen(true);
+    setCommentSheetClosing(false);
+    setCommentSheetExpanded(false);
+    setCommentSheetDragY(0);
+  }
+
+  function closeCommentSheet() {
+    setCommentSheetClosing(true);
+    setTimeout(() => {
+      setCommentSheetOpen(false);
+      setCommentSheetClosing(false);
+      setCommentSheetExpanded(false);
+    }, 300);
+  }
+
+  function onSheetDragStart(e: React.TouchEvent) {
+    commentSheetIsDragging.current = true;
+    commentSheetDragStartY.current = e.touches[0].clientY;
+  }
+
+  function onSheetDragMove(e: React.TouchEvent) {
+    if (!commentSheetIsDragging.current) return;
+    const diff = e.touches[0].clientY - commentSheetDragStartY.current;
+    if (commentSheetExpanded) {
+      if (diff > 0) setCommentSheetDragY(diff);
+    } else {
+      setCommentSheetDragY(diff);
+    }
+  }
+
+  function onSheetDragEnd() {
+    commentSheetIsDragging.current = false;
+    if (commentSheetExpanded) {
+      if (commentSheetDragY > 100) setCommentSheetExpanded(false);
+      setCommentSheetDragY(0);
+    } else {
+      if (commentSheetDragY < -60) {
+        setCommentSheetExpanded(true);
+        setCommentSheetDragY(0);
+      } else if (commentSheetDragY > 80) {
+        closeCommentSheet();
+      } else {
+        setCommentSheetDragY(0);
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (commentSheetOpen) {
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, [commentSheetOpen]);
 
   // 1단계: 마운트 후 캐시 데이터로 즉시 채우기
   useEffect(() => {
@@ -684,7 +752,7 @@ export function UserContentPage({
                   onReviewCountsChange?.({ reviewId: id, likeCount: nextLikeCount });
                 }}
               />
-              <button type="button" className="user-content-bottom-comment-btn" aria-label="댓글">
+              <button type="button" className="user-content-bottom-comment-btn" aria-label="댓글" onClick={openCommentSheet}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
@@ -696,6 +764,56 @@ export function UserContentPage({
               </button>
               </div>
             </div>
+
+            {/* 댓글 시트 */}
+            {commentSheetOpen && (() => {
+              const sheetStyle: CSSProperties = {
+                height: commentSheetExpanded ? "100dvh" : "70vh",
+                borderRadius: commentSheetExpanded ? "0" : "20px 20px 0 0",
+                transform: commentSheetClosing
+                  ? "translateY(100%)"
+                  : commentSheetDragY > 0
+                    ? `translateY(${commentSheetDragY}px)`
+                    : undefined,
+                transition: commentSheetIsDragging.current
+                  ? "none"
+                  : commentSheetClosing
+                    ? "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)"
+                    : "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), height 0.3s cubic-bezier(0.32, 0.72, 0, 1), border-radius 0.3s",
+              };
+              return (
+                <div
+                  className={`gallery-sheet-overlay${commentSheetClosing ? " is-closing" : ""}`}
+                  onClick={closeCommentSheet}
+                >
+                  <div
+                    className="gallery-sheet-panel"
+                    style={sheetStyle}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div
+                      className="gallery-sheet-drag-area"
+                      onTouchStart={onSheetDragStart}
+                      onTouchMove={onSheetDragMove}
+                      onTouchEnd={onSheetDragEnd}
+                    >
+                      <div className="gallery-sheet-handle" />
+                      <p className="gallery-sheet-title">댓글</p>
+                    </div>
+                    <div className="gallery-sheet-comments" style={{ overflowY: "auto", flex: 1 }}>
+                      <UserContentInteractions
+                        reviewId={id}
+                        reviewAuthorId={item.authorId}
+                        targetCommentId={targetCommentId}
+                        onCommentCountChange={(nextCommentCount) => {
+                          onReviewCountsChange?.({ reviewId: id, commentCount: nextCommentCount });
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </>
         )}
       </div>
