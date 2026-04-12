@@ -771,6 +771,17 @@
 .nav-drawer-profile-panel .nav-drawer-link {
   font-weight: 400;
   font-size: 14px;
+  padding: 5px 24px;
+}
+
+.nav-drawer-logout-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 5px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .nav-drawer-logout-wrap .header-logout-button,
@@ -778,8 +789,8 @@
   background: none;
   border: none;
   padding: 0;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 400;
   color: var(--text);
   cursor: pointer;
 }

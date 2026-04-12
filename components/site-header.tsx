@@ -266,7 +266,7 @@ export function SiteHeader({
               </Link>
             )}
             <hr className="nav-drawer-divider" />
-            <div className="nav-drawer-link nav-drawer-logout-wrap">
+            <div className="nav-drawer-logout-wrap" onClick={closeDrawer}>
               <span className="nav-drawer-icon"><LogOut width={20} height={20} strokeWidth={1.7} /></span>
               {mobileLogout}
             </div>
