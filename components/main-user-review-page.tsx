@@ -400,22 +400,18 @@ export function MainUserReviewPage() {
     };
   }, [searchSheetOpen]);
 
-  function prefetchContentData(id: string, includeInteractions: boolean) {
+  function isCacheFresh(key: string): boolean {
+    try {
+      const cached = sessionStorage.getItem(key);
+      if (!cached) return false;
+      const { ts } = JSON.parse(cached) as { ts: number };
+      return Date.now() - ts < 60000;
+    } catch { return false; }
+  }
+
+  function prefetchContentOnly(id: string) {
     const contentKey = `user-review-content-${id}`;
-    const likesKey = `user-review-likes-${id}`;
-    const commentsKey = `user-review-comments-${id}`;
-
-    const isFresh = (key: string) => {
-      try {
-        const cached = sessionStorage.getItem(key);
-        if (!cached) return false;
-        const { ts } = JSON.parse(cached) as { ts: number };
-        return Date.now() - ts < 60000;
-      } catch { return false; }
-    };
-
-    // 본문 캐시
-    if (!isFresh(contentKey)) {
+    if (!isCacheFresh(contentKey)) {
       fetch(`/api/main/user-review/${id}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
@@ -423,43 +419,55 @@ export function MainUserReviewPage() {
         })
         .catch(() => {});
     }
-    if (includeInteractions) {
-      // 좋아요 캐시
-      if (!isFresh(likesKey)) {
-        fetch(`/api/main/user-review/${id}/likes`)
-          .then((r) => (r.ok ? r.json() : null))
-          .then((data) => {
-            if (data) sessionStorage.setItem(likesKey, JSON.stringify({ data, ts: Date.now() }));
-          })
-          .catch(() => {});
-      }
-      // 댓글 캐시
-      if (!isFresh(commentsKey)) {
-        fetch(`/api/main/user-review/${id}/comments`)
-          .then((r) => (r.ok ? r.json() : null))
-          .then((data) => {
-            if (data) sessionStorage.setItem(commentsKey, JSON.stringify({ data, ts: Date.now() }));
-          })
-          .catch(() => {});
-      }
-    }
+  }
+
+  // 상위 N개 좋아요/댓글 묶음 호출 후 캐시 저장
+  function prefetchBatchInteractions(ids: string[]) {
+    const uncachedIds = ids.filter(
+      (id) => !isCacheFresh(`user-review-likes-${id}`) || !isCacheFresh(`user-review-comments-${id}`)
+    );
+    if (uncachedIds.length === 0) return;
+
+    fetch("/api/main/user-review/batch-interactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: uncachedIds }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res: { results?: Record<string, { likes: { likeCount: number; liked: boolean }; comments: { comments: unknown[] } }> } | null) => {
+        if (!res?.results) return;
+        const now = Date.now();
+        for (const [id, data] of Object.entries(res.results)) {
+          sessionStorage.setItem(`user-review-likes-${id}`, JSON.stringify({ data: data.likes, ts: now }));
+          sessionStorage.setItem(`user-review-comments-${id}`, JSON.stringify({ data: data.comments, ts: now }));
+        }
+      })
+      .catch(() => {});
   }
 
   // 아이템 로드 후 상위 10개 router.prefetch + API 데이터 캐시 (새글 우선)
+  // readIds는 화면 표시용이므로 의존성에서 제외 — items가 바뀔 때만 실행
   useEffect(() => {
     if (items.length === 0 || !isSignedIn) return;
     const aggressive = canAggressivePrefetch();
     const routePrefetchCount = aggressive ? 10 : 4;
-    const interactionPrefetchCount = aggressive ? 3 : 1;
+    const interactionPrefetchCount = aggressive ? 10 : 3;
+
     const sorted = [
       ...items.filter((item) => !readIds.has(item.id)),
       ...items.filter((item) => readIds.has(item.id)),
     ];
-    sorted.slice(0, routePrefetchCount).forEach((item, index) => {
+    const sliced = sorted.slice(0, routePrefetchCount);
+
+    sliced.forEach((item) => {
       router.prefetch(`/user_content/${item.id}`);
-      prefetchContentData(item.id, index < interactionPrefetchCount);
+      prefetchContentOnly(item.id);
     });
-  }, [items, readIds, isSignedIn]);
+
+    // 좋아요/댓글은 묶음 1회 호출
+    prefetchBatchInteractions(sliced.slice(0, interactionPrefetchCount).map((item) => item.id));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, isSignedIn]);
 
   // 스크롤 하단 도달 시 나머지 10개 동시 prefetch + API 데이터 캐시
   useEffect(() => {
