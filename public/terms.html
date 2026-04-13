@@ -474,6 +474,9 @@
       // 배경 터치 → 닫기
       backdrop.addEventListener('click', closeSheet);
 
+      // 핸들 클릭 → 닫기
+      handle.addEventListener('click', closeSheet);
+
       // 드래그 다운 → 닫기
       var startY = 0;
       handle.addEventListener('touchstart', function (e) {

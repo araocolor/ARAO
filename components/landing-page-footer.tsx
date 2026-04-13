@@ -13,7 +13,7 @@ export function LandingPageFooter({ content }: LandingPageFooterProps) {
         <div className="landing-footer-socials">
           <a
             className="landing-footer-social"
-            href="https://www.instagram.com"
+            href="https://www.instagram.com/arao.color/"
             target="_blank"
             rel="noreferrer"
             aria-label="Instagram"
@@ -26,7 +26,7 @@ export function LandingPageFooter({ content }: LandingPageFooterProps) {
           </a>
           <a
             className="landing-footer-social"
-            href="https://www.youtube.com"
+            href="https://www.youtube.com/@Araocolor"
             target="_blank"
             rel="noreferrer"
             aria-label="YouTube"

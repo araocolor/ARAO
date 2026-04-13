@@ -359,6 +359,11 @@
 .landing-footer-company,
 .landing-footer-text {
   margin: 0;
+  font-size: 14px;
+}
+
+.landing-footer-text {
+  font-size: 12px;
 }
 
 .landing-footer-company {
