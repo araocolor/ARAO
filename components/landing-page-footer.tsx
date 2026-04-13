@@ -39,11 +39,16 @@ export function LandingPageFooter({ content }: LandingPageFooterProps) {
         </div>
       </div>
       <nav className="landing-footer-links">
-        {content.links.map((link) => (
-          <a key={link.label} className="landing-footer-link" href={link.href}>
-            {link.label}
-          </a>
-        ))}
+        {content.links.map((link) => {
+          const href =
+            link.label === "개인정보처리방침" ? "/privacy.html" :
+            link.label === "이용약관" ? "/terms.html" : link.href;
+          return (
+            <a key={link.label} className="landing-footer-link" href={href}>
+              {link.label}
+            </a>
+          );
+        })}
       </nav>
     </footer>
   );

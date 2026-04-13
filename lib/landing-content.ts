@@ -180,7 +180,7 @@ export const defaultLandingContent: LandingContent = {
     address: "서울특별시 성동구 성수이로 00",
     links: [
       { label: "이용약관", href: "#" },
-      { label: "개인정보처리방침", href: "#" },
+      { label: "개인정보처리방침", href: "/privacy.html" },
       { label: "고객지원", href: "#" },
     ],
   },
