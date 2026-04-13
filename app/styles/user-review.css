@@ -1608,8 +1608,9 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 17px;
+  font-weight: 700 !important;
+  font-family: inherit;
   color: var(--text);
   line-height: 1.35;
   overflow: hidden;
