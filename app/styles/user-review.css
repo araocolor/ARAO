@@ -1590,6 +1590,12 @@
   width: 100%;
   text-align: left;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.user-review-item.is-pinned:hover,
+.user-review-item.is-pinned:active {
+  background: transparent;
 }
 
 .user-review-list .user-review-item.is-pinned + .user-review-item.is-pinned,

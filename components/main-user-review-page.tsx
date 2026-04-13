@@ -40,7 +40,7 @@ type BoardType = "notice" | "review" | "qna" | "arao";
 
 const BOARD_OPTIONS: Array<{ value: BoardType; label: string }> = [
   { value: "notice", label: "공지사항" },
-  { value: "review", label: "사용자후기" },
+  { value: "review", label: "일반게시판" },
   { value: "qna", label: "Q&A" },
   { value: "arao", label: "ARAO" },
 ];
@@ -53,8 +53,8 @@ const VIEW_OPTIONS: Array<{ value: ViewMode; label: string }> = [
 
 const SORT_OPTIONS: Array<{ value: SortMode; label: string; icon: string }> = [
   { value: "latest", label: "최신순", icon: "●" },
-  { value: "views", label: "조회수순", icon: "◐" },
-  { value: "likes", label: "좋아요순", icon: "♥" },
+  { value: "views", label: "조회순", icon: "◐" },
+  { value: "likes", label: "좋아순", icon: "♥" },
 ];
 
 function getFirstImage(thumbnailImage: string | null): string | null {

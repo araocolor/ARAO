@@ -21,7 +21,7 @@ const PAGE_CACHE_PREFIX = "user-review-page-cache-v1:";
 const BOARD_VALUES = new Set<BoardType>(["notice", "review", "qna", "arao"]);
 const BOARD_OPTIONS: Array<{ value: BoardType; label: string }> = [
   { value: "notice", label: "공지사항" },
-  { value: "review", label: "사용자후기" },
+  { value: "review", label: "일반게시판" },
   { value: "qna", label: "Q&A" },
   { value: "arao", label: "ARAO" },
 ];
