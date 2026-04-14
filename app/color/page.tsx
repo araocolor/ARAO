@@ -8,6 +8,7 @@ import Image from "next/image";
 type ColorItem = {
   id: string;
   title: string;
+  content: string | null;
   price: number | null;
   file_link: string | null;
   img_arao_full: string | null;
@@ -35,7 +36,14 @@ function ColorCard({ item }: { item: ColorItem }) {
 
   return (
     <article className="color-card">
-      <p className="color-card-title">{item.title}</p>
+      <div className="color-card-price-row">
+        <p className="color-card-title">{item.title}</p>
+        {item.price != null ? (
+          <span className="color-card-price">{item.price.toLocaleString()}원</span>
+        ) : (
+          <span />
+        )}
+      </div>
       <div className="color-card-image-wrap">
         {src ? (
           <Image
@@ -47,6 +55,17 @@ function ColorCard({ item }: { item: ColorItem }) {
           />
         ) : (
           <div className="color-card-image-placeholder">이미지 없음</div>
+        )}
+        <div className="color-card-heart">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+          <span>{item.like_count}</span>
+        </div>
+        {item.content && (
+          <div className="color-card-overlay-title">
+            <span className="color-card-overlay-content-text">{item.content}</span>
+          </div>
         )}
       </div>
     </article>
