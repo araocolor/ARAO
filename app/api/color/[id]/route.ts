@@ -1,6 +1,28 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getColorById } from "@/lib/colors";
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  void request;
+
+  try {
+    const { id } = await params;
+    const item = await getColorById(id);
+
+    if (!item) {
+      return NextResponse.json({ message: "컬러를 찾을 수 없습니다." }, { status: 404 });
+    }
+
+    return NextResponse.json(item);
+  } catch (error) {
+    console.error("GET /api/color/[id] error:", error);
+    return NextResponse.json({ message: "컬러 정보를 불러오지 못했습니다." }, { status: 500 });
+  }
+}
 
 export async function PUT(
   request: Request,
