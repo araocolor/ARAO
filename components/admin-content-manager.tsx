@@ -855,44 +855,7 @@ export function AdminContentManager({ initialContent, view }: AdminContentManage
             </div>
           </div>
         )}
-        <div className="admin-form-grid">
-          <div className="admin-upload stack">
-            <span className="muted">Before 이미지</span>
-            <select
-              className="admin-input"
-              value={content.gallery[selectedGalleryCategory]?.beforeLabel ?? ""}
-              onChange={(event) => {
-                setPendingGalleryText(true);
-                updateSelectedGalleryItem((existing) => ({
-                  ...existing,
-                  beforeLabel: event.target.value,
-                }));
-              }}
-            >
-              <option value="">선택 안 함</option>
-              <option value="[SD]표준">[SD]표준</option>
-              <option value="[NT]자연스럽게">[NT]자연스럽게</option>
-              <option value="[VI]선명하게">[VI]선명하게</option>
-              <option value="[PT]인물">[PT]인물</option>
-              <option value="[LS]풍경">[LS]풍경</option>
-            </select>
-            {content.gallery[selectedGalleryCategory]?.beforeImage ? (
-              <img
-                className="admin-image-preview"
-                src={content.gallery[selectedGalleryCategory]!.beforeImage}
-                alt="Before preview"
-              />
-            ) : (
-              <div className="admin-image-preview admin-image-empty">미등록</div>
-            )}
-            <label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(event) => void onGalleryImageChange("beforeImage", event.target.files?.[0])}
-              />
-            </label>
-          </div>
+        <div className="admin-gallery-upload-grid">
           <label className="admin-upload stack">
             <span className="muted">[ARAO]아라오</span>
             {content.gallery[selectedGalleryCategory]?.afterImage ? (
@@ -910,54 +873,54 @@ export function AdminContentManager({ initialContent, view }: AdminContentManage
               onChange={(event) => void onGalleryImageChange("afterImage", event.target.files?.[0])}
             />
           </label>
-        </div>
 
-        <div className="admin-upload stack" style={{ marginTop: "12px" }}>
-          <span className="muted">비교 이미지 추가</span>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-            <select
-              className="admin-input admin-input-compact"
-              value={pendingExtraLabel}
-              onChange={(e) => setPendingExtraLabel(e.target.value)}
-            >
-              <option value="">레이블 선택</option>
-              <option value="[SD]표준">[SD]표준</option>
-              <option value="[NT]자연스럽게">[NT]자연스럽게</option>
-              <option value="[VI]선명하게">[VI]선명하게</option>
-              <option value="[PT]인물">[PT]인물</option>
-              <option value="[LS]풍경">[LS]풍경</option>
-            </select>
-            <label className="admin-save-button" style={{ cursor: "pointer", fontSize: "13px", padding: "6px 12px" }}>
-              사진 추가
-              <input
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={(e) => void onExtraImageAdd(e.target.files?.[0])}
-              />
-            </label>
-          </div>
-          {(content.gallery[selectedGalleryCategory]?.extraImages ?? []).length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px" }}>
-              {(content.gallery[selectedGalleryCategory]?.extraImages ?? []).map((extra, i) => (
-                <div key={i} style={{ position: "relative", width: "80px" }}>
-                  <img src={extra.thumb} alt="" style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "6px" }} />
-                  {extra.label && (
-                    <span style={{ position: "absolute", bottom: "2px", left: "2px", background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: "9px", padding: "1px 3px", borderRadius: "3px" }}>
-                      {extra.label}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => onExtraImageRemove(i)}
-                    style={{ position: "absolute", top: "2px", right: "2px", background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: "50%", width: "18px", height: "18px", fontSize: "11px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+          <div className="admin-upload stack">
+            <span className="muted">비교 이미지 추가</span>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+              <select
+                className="admin-input admin-input-compact"
+                value={pendingExtraLabel}
+                onChange={(e) => setPendingExtraLabel(e.target.value)}
+              >
+                <option value="">레이블 선택</option>
+                <option value="[SD]표준">[SD]표준</option>
+                <option value="[NT]자연스럽게">[NT]자연스럽게</option>
+                <option value="[VI]선명하게">[VI]선명하게</option>
+                <option value="[PT]인물">[PT]인물</option>
+                <option value="[LS]풍경">[LS]풍경</option>
+              </select>
+              <label className="admin-save-button" style={{ cursor: "pointer", fontSize: "13px", padding: "6px 12px" }}>
+                사진 추가
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={(e) => void onExtraImageAdd(e.target.files?.[0])}
+                />
+              </label>
             </div>
-          )}
+            {(content.gallery[selectedGalleryCategory]?.extraImages ?? []).length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px" }}>
+                {(content.gallery[selectedGalleryCategory]?.extraImages ?? []).map((extra, i) => (
+                  <div key={i} style={{ position: "relative", width: "80px" }}>
+                    <img src={extra.thumb} alt="" style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "6px" }} />
+                    {extra.label && (
+                      <span style={{ position: "absolute", bottom: "2px", left: "2px", background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: "9px", padding: "1px 3px", borderRadius: "3px" }}>
+                        {extra.label}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => onExtraImageRemove(i)}
+                      style={{ position: "absolute", top: "2px", right: "2px", background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: "50%", width: "18px", height: "18px", fontSize: "11px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="admin-section-actions">

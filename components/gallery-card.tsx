@@ -502,6 +502,8 @@ export function GalleryCard({
           extraImages={extraImages}
         />
 
+        {caption && <p className="gallery-caption">{caption}</p>}
+
         {/* 인터랙션 바 */}
         <div className="gallery-action-bar">
           <button
@@ -571,8 +573,6 @@ export function GalleryCard({
             ))}
           </p>
         )}
-
-        {caption && <p className="gallery-caption">{caption}</p>}
       </div>
 
       {commentSheetOpen && (
