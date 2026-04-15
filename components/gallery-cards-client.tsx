@@ -50,6 +50,8 @@ export function GalleryCardsClient({ items }: GalleryCardsClientProps) {
             afterImage={afterSrc}
             beforeImageFull={item.beforeImageFull || undefined}
             afterImageFull={item.afterImageFull || undefined}
+            beforeLabel={item.beforeLabel || undefined}
+            extraImages={item.extraImages?.length ? item.extraImages : undefined}
             caption={caption || undefined}
             aspectRatio={item.aspectRatio}
             autoOpenComments={

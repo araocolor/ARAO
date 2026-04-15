@@ -192,6 +192,7 @@ export function AdminContentManager({ initialContent, view }: AdminContentManage
   const [pendingGalleryFiles, setPendingGalleryFiles] = useState({
     beforeImage: false,
     afterImage: false,
+    extraImages: false,
   });
   const [pendingGalleryText, setPendingGalleryText] = useState(false);
   const [galleryStatus, setGalleryStatus] = useState<string>("");
@@ -317,10 +318,37 @@ export function AdminContentManager({ initialContent, view }: AdminContentManage
     }
   };
 
+  const [pendingExtraLabel, setPendingExtraLabel] = useState("");
+
+  const onExtraImageAdd = async (file?: File) => {
+    if (!file) return;
+    try {
+      const dataUrl = await loadImageAsDataUrl(file);
+      updateSelectedGalleryItem((existing) => ({
+        ...existing,
+        extraImages: [
+          ...(existing.extraImages ?? []),
+          { thumb: dataUrl, full: dataUrl, label: pendingExtraLabel || undefined },
+        ],
+      }));
+      setPendingGalleryFiles((current) => ({ ...current, extraImages: true }));
+    } catch {
+      setStatus("이미지를 불러오지 못했습니다.");
+    }
+  };
+
+  const onExtraImageRemove = (index: number) => {
+    updateSelectedGalleryItem((existing) => ({
+      ...existing,
+      extraImages: (existing.extraImages ?? []).filter((_, i) => i !== index),
+    }));
+    setPendingGalleryFiles((current) => ({ ...current, extraImages: true }));
+  };
+
   const save = async (key: string) => {
     const requiresComparisonFileCheck = key === "comparison";
     const requiresGalleryFileCheck = key === "gallery";
-    const hasPendingGalleryFile = pendingGalleryFiles.beforeImage || pendingGalleryFiles.afterImage;
+    const hasPendingGalleryFile = pendingGalleryFiles.beforeImage || pendingGalleryFiles.afterImage || pendingGalleryFiles.extraImages;
 
     if (requiresComparisonFileCheck && !hasPendingComparisonFile) {
       setStatus("먼저 Before 또는 After 이미지를 첨부해주세요.");
@@ -373,7 +401,7 @@ export function AdminContentManager({ initialContent, view }: AdminContentManage
 
       if (isComparisonSave) {
         setPendingComparisonFiles({ beforeImage: false, afterImage: false });
-        setPendingGalleryFiles({ beforeImage: false, afterImage: false });
+        setPendingGalleryFiles({ beforeImage: false, afterImage: false, extraImages: false });
         setPendingGalleryText(false);
 
         if (key === "gallery") {
@@ -521,17 +549,6 @@ export function AdminContentManager({ initialContent, view }: AdminContentManage
         <div className="admin-section-heading">
           <span className="muted">Before / After</span>
         </div>
-        <input
-          className="admin-input"
-          value={content.comparison.sectionTitle}
-          onChange={(event) =>
-            setContent((current) => ({
-              ...current,
-              comparison: { ...current.comparison, sectionTitle: event.target.value },
-            }))
-          }
-          placeholder="섹션 제목"
-        />
         <div className="admin-form-grid">
           <input
             className="admin-input"
@@ -742,7 +759,7 @@ export function AdminContentManager({ initialContent, view }: AdminContentManage
               value={selectedGalleryCategory}
               onChange={(event) => {
                 setSelectedGalleryCategory(event.target.value as GalleryCategory);
-                setPendingGalleryFiles({ beforeImage: false, afterImage: false });
+                setPendingGalleryFiles({ beforeImage: false, afterImage: false, extraImages: false });
                 setPendingGalleryText(false);
               }}
             >
@@ -839,8 +856,26 @@ export function AdminContentManager({ initialContent, view }: AdminContentManage
           </div>
         )}
         <div className="admin-form-grid">
-          <label className="admin-upload stack">
+          <div className="admin-upload stack">
             <span className="muted">Before 이미지</span>
+            <select
+              className="admin-input"
+              value={content.gallery[selectedGalleryCategory]?.beforeLabel ?? ""}
+              onChange={(event) => {
+                setPendingGalleryText(true);
+                updateSelectedGalleryItem((existing) => ({
+                  ...existing,
+                  beforeLabel: event.target.value,
+                }));
+              }}
+            >
+              <option value="">선택 안 함</option>
+              <option value="[SD]표준">[SD]표준</option>
+              <option value="[NT]자연스럽게">[NT]자연스럽게</option>
+              <option value="[VI]선명하게">[VI]선명하게</option>
+              <option value="[PT]인물">[PT]인물</option>
+              <option value="[LS]풍경">[LS]풍경</option>
+            </select>
             {content.gallery[selectedGalleryCategory]?.beforeImage ? (
               <img
                 className="admin-image-preview"
@@ -850,14 +885,16 @@ export function AdminContentManager({ initialContent, view }: AdminContentManage
             ) : (
               <div className="admin-image-preview admin-image-empty">미등록</div>
             )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(event) => void onGalleryImageChange("beforeImage", event.target.files?.[0])}
-            />
-          </label>
+            <label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) => void onGalleryImageChange("beforeImage", event.target.files?.[0])}
+              />
+            </label>
+          </div>
           <label className="admin-upload stack">
-            <span className="muted">After 이미지</span>
+            <span className="muted">[ARAO]아라오</span>
             {content.gallery[selectedGalleryCategory]?.afterImage ? (
               <img
                 className="admin-image-preview"
@@ -875,17 +912,65 @@ export function AdminContentManager({ initialContent, view }: AdminContentManage
           </label>
         </div>
 
+        <div className="admin-upload stack" style={{ marginTop: "12px" }}>
+          <span className="muted">비교 이미지 추가</span>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+            <select
+              className="admin-input admin-input-compact"
+              value={pendingExtraLabel}
+              onChange={(e) => setPendingExtraLabel(e.target.value)}
+            >
+              <option value="">레이블 선택</option>
+              <option value="[SD]표준">[SD]표준</option>
+              <option value="[NT]자연스럽게">[NT]자연스럽게</option>
+              <option value="[VI]선명하게">[VI]선명하게</option>
+              <option value="[PT]인물">[PT]인물</option>
+              <option value="[LS]풍경">[LS]풍경</option>
+            </select>
+            <label className="admin-save-button" style={{ cursor: "pointer", fontSize: "13px", padding: "6px 12px" }}>
+              사진 추가
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={(e) => void onExtraImageAdd(e.target.files?.[0])}
+              />
+            </label>
+          </div>
+          {(content.gallery[selectedGalleryCategory]?.extraImages ?? []).length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px" }}>
+              {(content.gallery[selectedGalleryCategory]?.extraImages ?? []).map((extra, i) => (
+                <div key={i} style={{ position: "relative", width: "80px" }}>
+                  <img src={extra.thumb} alt="" style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "6px" }} />
+                  {extra.label && (
+                    <span style={{ position: "absolute", bottom: "2px", left: "2px", background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: "9px", padding: "1px 3px", borderRadius: "3px" }}>
+                      {extra.label}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onExtraImageRemove(i)}
+                    style={{ position: "absolute", top: "2px", right: "2px", background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: "50%", width: "18px", height: "18px", fontSize: "11px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="admin-section-actions">
           {galleryStatus ? <p className="admin-gallery-status">{galleryStatus}</p> : null}
           <button
             className={
-              (pendingGalleryFiles.beforeImage || pendingGalleryFiles.afterImage || pendingGalleryText)
+              (pendingGalleryFiles.beforeImage || pendingGalleryFiles.afterImage || pendingGalleryFiles.extraImages || pendingGalleryText)
                 ? "admin-save-button"
                 : "admin-save-button admin-save-button-disabled"
             }
             type="button"
             onClick={() => void save("gallery")}
-            disabled={savingKey !== null || (!pendingGalleryFiles.beforeImage && !pendingGalleryFiles.afterImage && !pendingGalleryText)}
+            disabled={savingKey !== null || (!pendingGalleryFiles.beforeImage && !pendingGalleryFiles.afterImage && !pendingGalleryFiles.extraImages && !pendingGalleryText)}
           >
             {savingKey === "gallery" ? "저장 중..." : "저장"}
           </button>

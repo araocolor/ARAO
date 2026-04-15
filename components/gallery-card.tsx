@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, type CSSProperties, type TouchEvent } from
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { GalleryHeroItem } from "@/components/gallery-hero-item";
+import type { GalleryExtraImage } from "@/lib/landing-content";
 import { GalleryCommentSheet } from "@/components/gallery-comment-sheet";
 import { getCached, setCached } from "@/hooks/use-prefetch-cache";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -17,6 +18,8 @@ type GalleryCardProps = {
   afterImage: string;
   beforeImageFull?: string;
   afterImageFull?: string;
+  beforeLabel?: string;
+  extraImages?: GalleryExtraImage[];
   caption?: string;
   aspectRatio?: string;
   initialLikeCount?: number;
@@ -52,6 +55,8 @@ export function GalleryCard({
   afterImage,
   beforeImageFull,
   afterImageFull,
+  beforeLabel,
+  extraImages,
   caption,
   aspectRatio,
   initialLikeCount = 0,
@@ -476,7 +481,15 @@ export function GalleryCard({
 
   return (
     <section className="gallery-section" ref={cardRef}>
-      <h2 className="gallery-section-title">{title}</h2>
+      <div className="gallery-section-title-row">
+        <h2 className="gallery-section-title">{title}</h2>
+        <a className="gallery-section-detail-link" href={`/gallery/${category}`}>
+          상세보기
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </a>
+      </div>
       <div className="gallery-image-block">
         <GalleryHeroItem
           beforeImage={beforeImage}
@@ -485,6 +498,8 @@ export function GalleryCard({
           afterImageFull={afterImageFull}
           label={title}
           aspectRatio={aspectRatio}
+          beforeLabel={beforeLabel}
+          extraImages={extraImages}
         />
 
         {/* 인터랙션 바 */}

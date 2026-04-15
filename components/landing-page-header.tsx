@@ -8,7 +8,7 @@ import { HeaderLogoutButton } from "@/components/header-logout-button";
 import { SiteHeader } from "@/components/site-header";
 
 const BASE_LINKS = [
-  { href: "/arao", label: "ARAO 소개" },
+  { href: "/about", label: "ARAO 소개" },
   { href: "/gallery", label: "갤러리" },
   { href: "/user_review", label: "커뮤니티" },
   { href: "/manual", label: "설치방법" },

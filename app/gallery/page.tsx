@@ -19,14 +19,6 @@ export default async function GalleryPage() {
       <LandingPageHeader />
 
       <div className="landing-shell">
-        <section className="landing-hero landing-stack-sm">
-          <span className="landing-section-label">Gallery</span>
-          <h1 className="landing-hero-title">{landingContent.comparison.sectionTitle}</h1>
-          <p className="landing-hero-body">
-            버튼을 누르고 있는 동안 Before 사진을 확인할 수 있습니다.
-          </p>
-        </section>
-
         <Suspense>
           <GalleryCardsClient items={items} />
         </Suspense>

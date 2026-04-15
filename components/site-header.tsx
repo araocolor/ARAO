@@ -53,7 +53,7 @@ function isReviewPrefetchLocked(): boolean {
 
 // 메뉴 항목별 아이콘
 const MENU_ICONS: Record<string, ReactNode> = {
-  "/arao": <Sparkles width={20} height={20} strokeWidth={1.7} />,
+  "/about": <Sparkles width={20} height={20} strokeWidth={1.7} />,
   "/gallery": <MousePointerClick width={20} height={20} strokeWidth={1.7} />,
   "/pricing": <Tag width={20} height={20} strokeWidth={1.7} />,
   "/manual": <BookOpen width={20} height={20} strokeWidth={1.7} />,

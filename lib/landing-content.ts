@@ -14,11 +14,19 @@ export type GalleryExif = {
   whiteBalance?: string;
 };
 
+export type GalleryExtraImage = {
+  thumb: string;
+  full: string;
+  label?: string;
+};
+
 export type GalleryItem = {
   beforeImage: string;
   beforeImageFull: string;
   afterImage: string;
   afterImageFull: string;
+  beforeLabel?: string;
+  extraImages?: GalleryExtraImage[];
   title?: string;
   body?: string;
   caption?: string;
@@ -343,11 +351,22 @@ export async function saveLandingContent(content: LandingContent, options?: { sk
           uploadLandingImage(`gallery-${category}-before`, item.beforeImage),
           uploadLandingImage(`gallery-${category}-after`, item.afterImage),
         ]);
+        const extraResults = await Promise.all(
+          (item.extraImages ?? []).map((extra, i) =>
+            uploadLandingImage(`gallery-${category}-extra-${i}`, extra.thumb).then((res) => ({
+              thumb: res.thumb,
+              full: res.full,
+              label: extra.label,
+            }))
+          )
+        );
         return [category, {
           beforeImage: beforeRes.thumb,
           beforeImageFull: beforeRes.full,
           afterImage: afterRes.thumb,
           afterImageFull: afterRes.full,
+          beforeLabel: item.beforeLabel,
+          extraImages: extraResults.length > 0 ? extraResults : undefined,
           title: item.title,
           body: item.body,
           caption: item.caption,

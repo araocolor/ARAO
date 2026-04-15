@@ -80,6 +80,9 @@ type AttachedFileMeta = {
   data?: string;
 };
 
+type ImageKind = "existing" | "new";
+type RepresentativeTarget = { kind: ImageKind; index: number } | null;
+
 function toSafeFileName(value: string): string {
   const cleaned = value.trim().replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "_");
   return cleaned.length > 0 ? cleaned : "file";
@@ -176,6 +179,7 @@ function WriteReviewContent() {
   const [initialImageUrls, setInitialImageUrls] = useState<string[]>([]);
   const [initialMediumImages, setInitialMediumImages] = useState<Array<string | null>>([]);
   const [initialThumbFirst, setInitialThumbFirst] = useState<string | null>(null);
+  const [representativeTarget, setRepresentativeTarget] = useState<RepresentativeTarget>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [attachedFile, setAttachedFile] = useState<AttachedFileMeta | null>(null);
   const [attachedFileRaw, setAttachedFileRaw] = useState<File | null>(null);
@@ -183,6 +187,125 @@ function WriteReviewContent() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+
+  function getRepresentativeTargetFromWrapper(wrapper: HTMLElement): RepresentativeTarget {
+    const kindAttr = wrapper.dataset.imageKind;
+    const indexAttr = wrapper.dataset.imageIndex;
+    if ((kindAttr !== "existing" && kindAttr !== "new") || indexAttr == null) return null;
+    const parsedIndex = Number(indexAttr);
+    if (!Number.isInteger(parsedIndex) || parsedIndex < 0) return null;
+    return { kind: kindAttr, index: parsedIndex };
+  }
+
+  function syncRepresentativeButtonUI(selectedWrapper: HTMLElement | null) {
+    if (!editorRef.current) return;
+    const wrappers = Array.from(editorRef.current.querySelectorAll(".write-review-inline-image"));
+    wrappers.forEach((el) => {
+      const wrapper = el as HTMLElement;
+      const button = wrapper.querySelector(".write-review-image-representative") as HTMLButtonElement | null;
+      const isActive = selectedWrapper === wrapper;
+      wrapper.classList.toggle("is-representative", isActive);
+      if (button) {
+        button.classList.toggle("is-active", isActive);
+        button.setAttribute("aria-pressed", isActive ? "true" : "false");
+      }
+    });
+  }
+
+  function selectRepresentative(wrapper: HTMLElement | null) {
+    if (!wrapper) return;
+    const target = getRepresentativeTargetFromWrapper(wrapper);
+    if (!target) return;
+    setRepresentativeTarget(target);
+    syncRepresentativeButtonUI(wrapper);
+  }
+
+  function getRepresentativeWrapperByTarget(target: RepresentativeTarget): HTMLElement | null {
+    if (!editorRef.current || !target) return null;
+    return editorRef.current.querySelector(
+      `.write-review-inline-image[data-image-kind="${target.kind}"][data-image-index="${target.index}"]`
+    ) as HTMLElement | null;
+  }
+
+  function selectFirstRepresentative() {
+    if (!editorRef.current) return;
+    const firstWrapper = editorRef.current.querySelector(".write-review-inline-image") as HTMLElement | null;
+    if (firstWrapper) {
+      selectRepresentative(firstWrapper);
+    } else {
+      setRepresentativeTarget(null);
+    }
+  }
+
+  function reindexImageWrappers(kind: ImageKind) {
+    if (!editorRef.current) return;
+    const wrappers = Array.from(editorRef.current.querySelectorAll(`.write-review-inline-image[data-image-kind="${kind}"]`));
+    wrappers.forEach((el, index) => {
+      (el as HTMLElement).dataset.imageIndex = String(index);
+    });
+  }
+
+  function createInlineImageWrapper(
+    src: string,
+    kind: ImageKind,
+    index: number,
+    onRemove: (index: number) => void
+  ): HTMLDivElement {
+    const wrapper = document.createElement("div");
+    wrapper.className = "write-review-inline-image";
+    wrapper.contentEditable = "false";
+    wrapper.dataset.imageKind = kind;
+    wrapper.dataset.imageIndex = String(index);
+
+    const img = document.createElement("img");
+    img.src = src;
+    img.alt = "첨부 이미지";
+
+    const representativeBtn = document.createElement("button");
+    representativeBtn.type = "button";
+    representativeBtn.className = "write-review-image-representative";
+    representativeBtn.textContent = "대표";
+    representativeBtn.setAttribute("aria-label", "대표 이미지 선택");
+    representativeBtn.setAttribute("aria-pressed", "false");
+    representativeBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      selectRepresentative(wrapper);
+    });
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "write-review-image-remove";
+    removeBtn.textContent = "\u2715";
+    removeBtn.setAttribute("aria-label", "이미지 제거");
+    removeBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const target = getRepresentativeTargetFromWrapper(wrapper);
+      if (!target) return;
+      const currentRepresentativeBefore = editorRef.current?.querySelector(
+        ".write-review-inline-image.is-representative"
+      ) as HTMLElement | null;
+      wrapper.remove();
+      onRemove(target.index);
+      reindexImageWrappers(target.kind);
+      const currentRepresentative =
+        currentRepresentativeBefore && currentRepresentativeBefore.isConnected
+          ? currentRepresentativeBefore
+          : null;
+      if (currentRepresentative) {
+        selectRepresentative(currentRepresentative);
+      } else {
+        selectFirstRepresentative();
+      }
+      syncEditorContent();
+    });
+
+    wrapper.appendChild(img);
+    wrapper.appendChild(representativeBtn);
+    wrapper.appendChild(removeBtn);
+    return wrapper;
+  }
 
   // 수정 모드: 기존 데이터 로드
   useEffect(() => {
@@ -213,26 +336,19 @@ function WriteReviewContent() {
           setInitialImageUrls(urls);
           // 에디터에 기존 이미지 표시
           if (editorRef.current) {
-            for (const src of urls) {
-              const wrapper = document.createElement("div");
-              wrapper.className = "write-review-inline-image";
-              wrapper.contentEditable = "false";
-              const img = document.createElement("img");
-              img.src = src;
-              img.alt = "첨부 이미지";
-              const removeBtn = document.createElement("button");
-              removeBtn.type = "button";
-              removeBtn.className = "write-review-image-remove";
-              removeBtn.textContent = "\u2715";
-              removeBtn.setAttribute("aria-label", "이미지 제거");
-              removeBtn.addEventListener("click", () => {
-                wrapper.remove();
-                const remaining = editorRef.current?.querySelectorAll(".write-review-inline-image img") ?? [];
-                setExistingImageUrls(Array.from(remaining).map((el) => (el as HTMLImageElement).src));
+            urls.forEach((src, index) => {
+              const wrapper = createInlineImageWrapper(src, "existing", index, (removedIndex) => {
+                setExistingImageUrls((prev) => prev.filter((_, i) => i !== removedIndex));
               });
-              wrapper.appendChild(img);
-              wrapper.appendChild(removeBtn);
-              editorRef.current.appendChild(wrapper);
+              editorRef.current?.appendChild(wrapper);
+            });
+            const preferredIndex = typeof d.thumbnailFirst === "string" ? urls.findIndex((src) => src === d.thumbnailFirst) : -1;
+            const wrapperToSelect =
+              preferredIndex >= 0
+                ? getRepresentativeWrapperByTarget({ kind: "existing", index: preferredIndex })
+                : getRepresentativeWrapperByTarget({ kind: "existing", index: 0 });
+            if (wrapperToSelect) {
+              selectRepresentative(wrapperToSelect);
             }
             const newLine = document.createElement("div");
             newLine.appendChild(document.createElement("br"));
@@ -327,24 +443,14 @@ function WriteReviewContent() {
         const editor = editorRef.current;
         editor.focus();
         const sel = window.getSelection();
-        for (const r of results) {
-          const wrapper = document.createElement("div");
-          wrapper.className = "write-review-inline-image";
-          wrapper.contentEditable = "false";
-          const img = document.createElement("img");
-          img.src = r.dataUrl;
-          img.alt = "첨부 이미지";
-          const removeBtn = document.createElement("button");
-          removeBtn.type = "button";
-          removeBtn.className = "write-review-image-remove";
-          removeBtn.textContent = "\u2715";
-          removeBtn.setAttribute("aria-label", "이미지 제거");
-          removeBtn.addEventListener("click", () => {
-            wrapper.remove();
-            syncEditorContent();
+        const newStartIndex = imageFiles.length;
+        for (let i = 0; i < results.length; i++) {
+          const r = results[i];
+          const wrapper = createInlineImageWrapper(r.dataUrl, "new", newStartIndex + i, (removedIndex) => {
+            setImages((prev) => prev.filter((_, idx) => idx !== removedIndex));
+            setImageFiles((prev) => prev.filter((_, idx) => idx !== removedIndex));
+            setImageError(null);
           });
-          wrapper.appendChild(img);
-          wrapper.appendChild(removeBtn);
 
           // 커서 위치에 삽입
           if (sel && sel.rangeCount > 0) {
@@ -367,6 +473,11 @@ function WriteReviewContent() {
             editor.appendChild(newLine);
           }
         }
+        const currentRepresentative = editor.querySelector(
+          ".write-review-inline-image.is-representative"
+        ) as HTMLElement | null;
+        if (currentRepresentative) selectRepresentative(currentRepresentative);
+        else selectFirstRepresentative();
         syncEditorContent();
       }
     }
@@ -442,6 +553,11 @@ function WriteReviewContent() {
         existingImageUrls.length === initialImageUrls.length &&
         existingImageUrls.every((url, idx) => url === initialImageUrls[idx]);
 
+      const toValidCombinedIndex = (index: number, totalLength: number) => {
+        if (totalLength <= 0) return -1;
+        return Math.min(Math.max(index, 0), totalLength - 1);
+      };
+
       if (imageFiles.length > 0) {
         setSavingMsg("이미지 업로드 중...");
         const originalUrls: string[] = [];
@@ -480,13 +596,23 @@ function WriteReviewContent() {
 
         // 기존 URL + 새 URL 합치기
         const allOriginals = [...existingImageUrls, ...originalUrls.filter(Boolean)];
+        const combinedOriginalSlots = [...existingImageUrls, ...originalUrls.map((url) => (url || null))];
         const existingMediumSlots = imageOrderUnchanged
           ? initialMediumImages.slice(0, existingImageUrls.length)
           : Array.from({ length: existingImageUrls.length }, () => null as string | null);
         const uploadedMediumSlots = mediumUrls.map((url) => (url || null));
         const allMediums = [...existingMediumSlots, ...uploadedMediumSlots];
-        const firstThumb = allMediums[0] ?? allOriginals[0] ?? null;
-        savedThumbFirst = firstThumb;
+        const requestedIndex = representativeTarget
+          ? representativeTarget.kind === "existing"
+            ? representativeTarget.index
+            : existingImageUrls.length + representativeTarget.index
+          : 0;
+        const representativeIndex = toValidCombinedIndex(requestedIndex, combinedOriginalSlots.length);
+        const selectedThumb = representativeIndex >= 0 ? allMediums[representativeIndex] ?? null : null;
+        const selectedOriginal = representativeIndex >= 0 ? combinedOriginalSlots[representativeIndex] ?? null : null;
+        const fallbackThumb = allMediums[0] ?? null;
+        const fallbackOriginal = combinedOriginalSlots.find((url) => !!url) ?? null;
+        savedThumbFirst = selectedThumb ?? selectedOriginal ?? fallbackThumb ?? fallbackOriginal;
         savedOriginalImage = allOriginals.length === 1 ? allOriginals[0] : JSON.stringify(allOriginals);
         savedThumbnailSmall = allMediums.some((img) => !!img) ? JSON.stringify(allMediums) : null;
 
@@ -504,8 +630,25 @@ function WriteReviewContent() {
           ? (initialMediumImages.some((img) => !!img) ? JSON.stringify(initialMediumImages) : null)
           : null;
         const nextThumbFirst = imageOrderUnchanged
-          ? (initialThumbFirst ?? initialMediumImages[0] ?? existingImageUrls[0] ?? null)
-          : (existingImageUrls[0] ?? null);
+          ? (() => {
+              const requestedIndex = representativeTarget
+                ? representativeTarget.kind === "existing"
+                  ? representativeTarget.index
+                  : existingImageUrls.length + representativeTarget.index
+                : 0;
+              const representativeIndex = toValidCombinedIndex(requestedIndex, existingImageUrls.length);
+              if (representativeIndex < 0) return null;
+              return initialMediumImages[representativeIndex] ?? existingImageUrls[representativeIndex] ?? null;
+            })()
+          : (() => {
+              const requestedIndex = representativeTarget
+                ? representativeTarget.kind === "existing"
+                  ? representativeTarget.index
+                  : existingImageUrls.length + representativeTarget.index
+                : 0;
+              const representativeIndex = toValidCombinedIndex(requestedIndex, existingImageUrls.length);
+              return representativeIndex >= 0 ? existingImageUrls[representativeIndex] ?? null : null;
+            })();
 
         savedOriginalImage = nextThumbnailImage;
         savedThumbnailSmall = nextThumbnailSmall;

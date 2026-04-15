@@ -682,6 +682,22 @@ export function UserContentPage({
                 </div>
               </div>
               <div className="user-content-body-divider" aria-hidden="true" />
+              {normalizedBoard === "arao" && displayImages.length > 0 && (
+                <div className="user-content-arao-meta">
+                  <span>카메라 : Nikon ZF</span>
+                  <span className="user-content-arao-meta-sep">/</span>
+                  <a href="/gallery" className="user-content-arao-meta-badge">
+                    프로파일 : ARAO
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                      <polyline points="15 3 21 3 21 9" />
+                      <line x1="10" y1="14" x2="21" y2="3" />
+                    </svg>
+                  </a>
+                  <span className="user-content-arao-meta-sep">/</span>
+                  <span>수정편집 : JPEG 원본</span>
+                </div>
+              )}
               {displayImages.map((src, i) => (
                 <ContentImage
                   key={i}
