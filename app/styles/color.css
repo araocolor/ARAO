@@ -307,7 +307,7 @@
   left: 0;
   right: 0;
   z-index: 40;
-  height: 56px;
+  height: 70px;
   background: var(--surface-soft);
   backdrop-filter: blur(12px);
   border-top: 1px solid var(--line);
