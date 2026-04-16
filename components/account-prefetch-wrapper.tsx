@@ -7,9 +7,11 @@ import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 import { useGalleryPrefetch } from "@/hooks/use-gallery-prefetch";
 import { setCached } from "@/hooks/use-prefetch-cache";
 import { GALLERY_CATEGORIES } from "@/lib/gallery-categories";
-import { REVIEW_LIST_CACHE_TTL } from "@/lib/cache-config";
+import { REVIEW_LIST_CACHE_TTL, COLOR_LIST_CACHE_TTL } from "@/lib/cache-config";
 const REVIEW_PREFETCH_LOCK_KEY = "user-review-list-prefetch-lock";
 const REVIEW_PREFETCH_LOCK_MS = 10000;
+const COLOR_PREFETCH_LOCK_KEY = "color-list-prefetch-lock";
+const COLOR_PREFETCH_LOCK_MS = 10000;
 
 function canPrefetchReviewList(): boolean {
   const connection = (navigator as Navigator & {
@@ -83,6 +85,41 @@ function refreshGalleryCache() {
   });
 }
 
+function isColorPrefetchLocked(): boolean {
+  try {
+    const raw = sessionStorage.getItem(COLOR_PREFETCH_LOCK_KEY);
+    if (!raw) return false;
+    const ts = Number(raw);
+    return Number.isFinite(ts) && Date.now() - ts < COLOR_PREFETCH_LOCK_MS;
+  } catch {
+    return false;
+  }
+}
+
+/** 컬러 리스트 캐시 갱신 */
+function refreshColorListCache() {
+  if (!canPrefetchReviewList()) return;
+  if (isColorPrefetchLocked()) return;
+  sessionStorage.setItem(COLOR_PREFETCH_LOCK_KEY, String(Date.now()));
+  fetch("/api/color?page=1&limit=20")
+    .then((r) => (r.ok ? r.json() : null))
+    .then((json: { items?: Array<{ id: string; title: string; like_count: number; img_arao_mid: string | null }> } | null) => {
+      if (!json?.items) return;
+      const items = json.items.map(({ id, title, like_count, img_arao_mid }) => ({ id, title, like_count, img_arao_mid }));
+      sessionStorage.setItem("color-list-cache", JSON.stringify({ data: items, ts: Date.now() }));
+      items.forEach((item) => {
+        if (item.img_arao_mid) {
+          const img = document.createElement("img");
+          img.src = item.img_arao_mid;
+        }
+      });
+    })
+    .catch(() => {})
+    .finally(() => {
+      sessionStorage.removeItem(COLOR_PREFETCH_LOCK_KEY);
+    });
+}
+
 /** 캐시 타임스탬프가 만료됐는지 확인 */
 function isStale(key: string, maxAge = REVIEW_LIST_CACHE_TTL): boolean {
   try {
@@ -108,6 +145,9 @@ export function AccountPrefetchWrapper({ children }: { children: ReactNode }) {
     }
     if (isStale(`arao_prefetch_gallery_public_${GALLERY_CATEGORIES[0]}_0`)) {
       refreshGalleryCache();
+    }
+    if (isStale("color-list-cache", COLOR_LIST_CACHE_TTL)) {
+      refreshColorListCache();
     }
   }, []);
 

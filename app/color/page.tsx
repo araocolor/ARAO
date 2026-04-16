@@ -6,6 +6,7 @@ import { LandingPageHeader } from "@/components/landing-page-header";
 import Image from "next/image";
 
 const COLOR_CACHE_KEY = "color-items";
+const COLOR_PREFETCH_CACHE_KEY = "color-list-cache";
 
 type ColorItem = {
   id: string;
@@ -21,20 +22,38 @@ type ColorItem = {
   is_admin: boolean;
 };
 
-// thumb으로 먼저 표시 후, 페이지 로드 완료 시 mid로 백그라운드 교체
+type PrefetchItem = {
+  id: string;
+  title: string;
+  like_count: number;
+  img_arao_mid: string | null;
+};
+
+function getPrefetchItems(): PrefetchItem[] {
+  try {
+    const raw = sessionStorage.getItem(COLOR_PREFETCH_CACHE_KEY);
+    if (!raw) return [];
+    const { data } = JSON.parse(raw) as { data: PrefetchItem[] };
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+// mid(480)로 먼저 표시 후, full 로드 완료 시 교체
 function ColorCard({ item, onClick }: { item: ColorItem; onClick: () => void }) {
-  const thumb = item.img_arao_thumb ?? item.img_arao_mid ?? item.img_arao_full;
-  const mid = item.img_arao_full ?? item.img_arao_mid;
-  const [src, setSrc] = useState(thumb);
+  const mid = item.img_arao_mid ?? item.img_arao_thumb ?? null;
+  const full = item.img_arao_full ?? null;
+  const [src, setSrc] = useState(mid ?? full);
   const upgradedRef = useRef(false);
 
   useEffect(() => {
-    if (upgradedRef.current || !mid || mid === thumb) return;
+    if (upgradedRef.current || !full || full === mid) return;
     upgradedRef.current = true;
     const img = new window.Image();
-    img.onload = () => setSrc(mid);
-    img.src = mid;
-  }, [mid, thumb]);
+    img.onload = () => setSrc(full);
+    img.src = full;
+  }, [full, mid]);
 
   return (
     <article className="color-card" onClick={onClick} style={{ cursor: "pointer" }}>
@@ -74,10 +93,51 @@ function ColorCard({ item, onClick }: { item: ColorItem; onClick: () => void }) 
   );
 }
 
+function getInitialItems(): { items: ColorItem[]; hasCache: boolean } {
+  try {
+    // 1순위: 이전 방문 full 캐시
+    const raw = sessionStorage.getItem(COLOR_CACHE_KEY);
+    if (raw) {
+      const items = JSON.parse(raw) as ColorItem[];
+      if (Array.isArray(items) && items.length > 0) return { items, hasCache: true };
+    }
+    // 2순위: 햄버거 프리캐시 (mid)
+    const prefetched = getPrefetchItems();
+    if (prefetched.length > 0) {
+      return {
+        items: prefetched.map((p) => ({
+          id: p.id,
+          title: p.title,
+          like_count: p.like_count,
+          img_arao_mid: p.img_arao_mid,
+          img_arao_full: null,
+          img_arao_thumb: null,
+          content: null,
+          price: null,
+          file_link: null,
+          created_at: "",
+          is_admin: false,
+        })),
+        hasCache: true,
+      };
+    }
+  } catch {}
+  return { items: [], hasCache: false };
+}
+
 export default function ColorPage() {
   const router = useRouter();
   const [items, setItems] = useState<ColorItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // 마운트 직후 캐시 즉시 반영
+  useEffect(() => {
+    const { items: cached, hasCache } = getInitialItems();
+    if (hasCache) {
+      setItems(cached);
+      setLoading(false);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     try {

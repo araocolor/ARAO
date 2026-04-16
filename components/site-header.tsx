@@ -135,6 +135,7 @@ export function SiteHeader({
         .finally(() => {
           sessionStorage.removeItem(REVIEW_PREFETCH_LOCK_KEY);
         });
+
     } else {
       document.body.style.overflow = "";
     }

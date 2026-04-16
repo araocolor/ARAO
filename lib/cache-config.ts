@@ -9,6 +9,9 @@ export const PREFETCH_CACHE_TTL = 60 * 1000;
 /** 커뮤니티 리스트 캐시 TTL (10분) */
 export const REVIEW_LIST_CACHE_TTL = 10 * 60 * 1000;
 
+/** 컬러 리스트 캐시 TTL (10분) */
+export const COLOR_LIST_CACHE_TTL = 10 * 60 * 1000;
+
 /** 알림 캐시 TTL (1분) */
 export const NOTIFICATION_CACHE_TTL = 60 * 1000;
 
