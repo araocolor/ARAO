@@ -26,10 +26,14 @@ export default function ColorOrderSuccessPage() {
     router.replace(`/color/${id}`);
   }
 
+  function getOrderDetailHref() {
+    if (!orderId) return "/account/orders";
+    return `/account/orders/${orderId}?fromColorId=${id}`;
+  }
+
   function moveToOrderDetail() {
-    if (!orderId) return;
     clearRedirectTimer();
-    router.push(`/account/orders?open=${orderId}`);
+    router.push(getOrderDetailHref());
   }
 
   useEffect(() => {
@@ -65,13 +69,13 @@ export default function ColorOrderSuccessPage() {
     if (!approved || error) return;
     clearRedirectTimer();
     redirectTimerRef.current = setTimeout(() => {
-      router.replace(`/color/${id}`);
+      router.replace(getOrderDetailHref());
     }, 1500);
 
     return () => {
       clearRedirectTimer();
     };
-  }, [approved, error, id, router]);
+  }, [approved, error, id, orderId, router]);
 
   useEffect(() => {
     if (!error) return;

@@ -84,12 +84,12 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       {/* 헤더 */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>주문 상세</h2>
-        <button
-          onClick={() => router.back()}
-          style={{ padding: "8px 16px", background: "#3b82f6", color: "white", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 14 }}
+        <a
+          href="#"
+          style={{ padding: "8px 16px", background: "#3b82f6", color: "white", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 14, textDecoration: "none" }}
         >
-          돌아가기
-        </button>
+          다운로드
+        </a>
       </div>
 
       {/* 상품정보 */}
