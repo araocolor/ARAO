@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { ColorOrderHeader } from "@/components/order-header";
@@ -8,6 +9,7 @@ import { OrderFooter } from "@/components/order-footer";
 import type { ColorItem } from "@/lib/color-types";
 
 export default function ColorOrderPage() {
+  const { user } = useUser();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [item, setItem] = useState<ColorItem | null>(null);
@@ -76,6 +78,7 @@ export default function ColorOrderPage() {
   const basePrice = (item?.price ?? 0) * qty;
   const discountAmount = Math.round(basePrice * DISCOUNT_RATE);
   const finalPrice = basePrice - discountAmount;
+  const userEmail = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress ?? "로그인 후 결제 가능합니다.";
 
   function saveAgree(terms: boolean, privacy: boolean, purchase: boolean) {
     try {
@@ -345,7 +348,7 @@ export default function ColorOrderPage() {
                   <label htmlFor={allAgreeInputId}>필수항목 전체동의</label>
                 </div>
                 <hr className="color-order-agree-divider" />
-                <div className="color-order-agree-row">
+                <div className="color-order-agree-row color-order-agree-row--required">
                   <input
                     type="checkbox"
                     checked={agreedTerms}
@@ -353,7 +356,7 @@ export default function ColorOrderPage() {
                   />
                   <button type="button" className="color-order-agree-link" onClick={openTermsSheet}>이용약관 동의 (필수)</button>
                 </div>
-                <div className="color-order-agree-row">
+                <div className="color-order-agree-row color-order-agree-row--required">
                   <input
                     type="checkbox"
                     checked={agreedPrivacy}
@@ -361,7 +364,7 @@ export default function ColorOrderPage() {
                   />
                   <button type="button" className="color-order-agree-link" onClick={openPrivacySheet}>개인정보 수집·이용 동의 (필수)</button>
                 </div>
-                <div className="color-order-agree-row">
+                <div className="color-order-agree-row color-order-agree-row--required">
                   <input
                     type="checkbox"
                     checked={agreedPurchase}
@@ -450,6 +453,11 @@ export default function ColorOrderPage() {
         {/* 상단: 옵션 */}
         <div className="pay-sheet-option">
           <p className="pay-sheet-product-name">{item?.title ?? ""}</p>
+          <hr className="pay-sheet-option-divider" />
+          <div className="pay-sheet-email">
+            <span className="pay-sheet-email-label">해당 이메일로 상품발송 합니다.</span>
+            <strong className="pay-sheet-email-value">{userEmail}</strong>
+          </div>
           <div className="pay-sheet-qty-row">
             <span className="pay-sheet-qty-label">수량</span>
             <div className="pay-sheet-qty-ctrl">

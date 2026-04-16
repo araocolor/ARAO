@@ -74,6 +74,22 @@ export default function ColorOrderSuccessPage() {
   }, [approved, error, id, router]);
 
   useEffect(() => {
+    if (!error) return;
+    clearRedirectTimer();
+    redirectTimerRef.current = setTimeout(() => {
+      if (orderId) {
+        router.replace(`/account/orders?open=${orderId}`);
+        return;
+      }
+      router.replace("/account/orders");
+    }, 1500);
+
+    return () => {
+      clearRedirectTimer();
+    };
+  }, [error, orderId, router]);
+
+  useEffect(() => {
     return () => {
       clearRedirectTimer();
     };
@@ -120,28 +136,22 @@ export default function ColorOrderSuccessPage() {
           </section>
         ) : (
           error && (
-            <>
-            <h1 className="color-detail-title">결제 확인에 실패했습니다</h1>
-            <p className="color-order-error">{error}</p>
-            <div className="color-order-actions">
-              <button
-                type="button"
-                className="color-order-secondary-btn"
-                onClick={() => router.push(`/color/${id}/order`)}
-              >
-                다시 시도
-              </button>
-              {orderId && (
-                <button
-                  type="button"
-                  className="landing-button landing-button-primary color-order-pay-btn"
-                  onClick={() => router.push(`/account/orders/${orderId}`)}
-                >
-                  주문 확인
-                </button>
-              )}
-            </div>
-            </>
+            <section className="color-order-success-card color-order-fail-card">
+              <div className="color-order-fail-check" aria-hidden="true">!</div>
+              <h1 className="color-order-success-title color-order-fail-title">결제 확인에 실패했습니다</h1>
+              <p className="color-order-error">{error}</p>
+              <div className="color-order-actions">
+                {orderId && (
+                  <button
+                    type="button"
+                    className="landing-button landing-button-primary color-order-pay-btn"
+                    onClick={() => router.push(`/account/orders/${orderId}`)}
+                  >
+                    결제상태보기
+                  </button>
+                )}
+              </div>
+            </section>
           )
         )}
       </div>
