@@ -811,7 +811,6 @@
   flex-direction: column;
   gap: 20px;
   padding: 14px;
-  border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
 }
@@ -848,7 +847,6 @@
   margin: 0;
   white-space: pre-wrap;
   padding: 12px 14px;
-  border: 1px solid var(--line);
   border-radius: 10px;
 }
 
@@ -1220,7 +1218,15 @@
   /* 모바일: 이미지 위, 정보 아래 */
   .color-detail-grid {
     display: flex;
-    flex-direction: column-reverse;
+    flex-direction: column;
+  }
+
+  .color-detail-grid > .color-detail-image-wrap {
+    order: 1;
+  }
+
+  .color-detail-grid > .color-detail-info {
+    order: 2;
   }
 
   .color-detail-image-wrap {
