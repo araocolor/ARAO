@@ -2,25 +2,31 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 export function SimpleHeader() {
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const fromColorId = searchParams.get("fromColorId");
+  const fromColorId = searchParams.get("fromColorId")?.trim() ?? "";
   const isOrderDetailPage = /^\/account\/orders\/[^/]+$/.test(pathname);
-  const backHref = isOrderDetailPage
-    ? (fromColorId ? `/color/${fromColorId}` : "/")
-    : "/";
+
+  function handleBack() {
+    if (isOrderDetailPage && fromColorId) {
+      router.push(`/color/${fromColorId}`);
+      return;
+    }
+    router.back();
+  }
 
   return (
     <div className="header header-full">
       <div className="simple-header-inner">
-        <Link href={backHref} className="simple-header-back" aria-label="뒤로가기">
+        <button type="button" className="simple-header-back" aria-label="뒤로가기" onClick={handleBack}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
           </svg>
-        </Link>
+        </button>
         <Link href="/" className="simple-header-logo">
           <Image src="/logo.svg" alt="ARAO logo" width={80} height={28} priority />
         </Link>
