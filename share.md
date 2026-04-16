@@ -6,7 +6,7 @@ Shared information: routing, authentication, development workflow, deployment, a
 
 ### Public Routes (No auth required)
 - `/` — Home page (hero, before/after, reviews, pricing)
-- `/arao` — About/introduction page
+- `/about` — About/introduction page
 - `/gallery` — Image gallery (read-only, no EXIF editor)
 - `/pricing` — Pricing table
 - `/manual` — User guide

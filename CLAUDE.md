@@ -35,7 +35,7 @@ npm run start                  # Start production server
 
 ## Project Overview
 
-**Arao** — Next.js 16 (App Router) + TypeScript + Clerk + Supabase (PostgreSQL + Realtime + Storage) + Vercel 배포
+**Arao** — Next.js 15.5.15 (App Router) + TypeScript + Clerk + Supabase (PostgreSQL + Realtime + Storage) + Vercel 배포
 
 Import alias: `@/` → project root
 
@@ -44,7 +44,7 @@ Import alias: `@/` → project root
 - Clerk 로그인 → `syncProfile()`로 Supabase profiles 자동 생성
 - **보호 경로:** `/admin/*` (role=admin), `/account/*` (인증), `/article/*` (admin), 나머지 공개
 
-## Critical: Next.js 16 Dynamic Routes
+## Critical: Next.js 15.5.15 Dynamic Routes
 
 `params`는 반드시 `await` 필요. TypeScript가 잡지 못함:
 ```typescript
@@ -107,7 +107,7 @@ after(() => { void incrementUserReviewViewCount(id); });
 
 ## Pre-Push Checklist
 
-1. `npm run build` — 최소 게이트 (`npm run lint`는 현재 Next.js 16 환경에서 실패함)
+1. `npm run build` — 최소 게이트 (`npm run lint`는 현재 Next.js 15.5.15 환경에서 실패함)
 2. Dev 서버에서 수동 확인 사용자에게 물어볼것.
 
 

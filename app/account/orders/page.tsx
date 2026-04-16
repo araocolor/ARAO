@@ -5,10 +5,23 @@ import { OrdersContent } from "@/components/orders-content";
 import { isDesignMode, mockOrders } from "@/lib/design-mock";
 import type { Order } from "@/lib/orders";
 
-export default async function AccountOrdersPage() {
+type SearchParams =
+  | Promise<{ open?: string | string[] }>
+  | undefined;
+
+function resolveOpenOrderId(raw: string | string[] | undefined): string | undefined {
+  if (typeof raw === "string") return raw.trim() || undefined;
+  if (Array.isArray(raw) && typeof raw[0] === "string") return raw[0].trim() || undefined;
+  return undefined;
+}
+
+export default async function AccountOrdersPage({ searchParams }: { searchParams?: SearchParams }) {
+  const resolvedSearch = searchParams ? await searchParams : undefined;
+  const openOrderId = resolveOpenOrderId(resolvedSearch?.open);
+
   // 디자인 모드: Clerk 로그인 없이 더미 데이터 표시
   if (isDesignMode) {
-    return <OrdersContent orders={mockOrders} />;
+    return <OrdersContent orders={mockOrders} openOrderId={openOrderId} />;
   }
 
   const { userId } = await auth();
@@ -54,6 +67,6 @@ export default async function AccountOrdersPage() {
   }
 
   return (
-    <OrdersContent orders={orders} />
+    <OrdersContent orders={orders} openOrderId={openOrderId} />
   );
 }

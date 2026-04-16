@@ -165,3 +165,11 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY
 | `components/admin-dashboard.tsx` | 관리자 대시보드 |
 | `components/consulting-section.tsx` | 사용자 상담 |
 | `components/admin-consulting-manager.tsx` | 관리자 상담관리 |
+
+---
+
+## 사용자 커뮤니케이션 주의사항 (2026-04-16)
+
+- 질문에는 핵심만 짧게 답변한다.
+- 사용자가 요청하지 않은 설명은 붙이지 않는다.
+- 잘못했을 때는 사과 한 줄만 쓴다.

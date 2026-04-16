@@ -803,9 +803,10 @@
   transform: translateX(-50%);
   width: min(100%, var(--tablet-width, 820px));
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding: 4px 0 env(safe-area-inset-bottom);
+  box-sizing: border-box;
+  padding: 0 0 env(safe-area-inset-bottom);
   height: calc(55px + env(safe-area-inset-bottom));
   background: var(--surface, #fff);
   box-shadow: 0 -4px 16px rgb(17 17 17 / 10%);
