@@ -69,6 +69,12 @@
   }
 }
 
+@media (min-width: 820px) {
+  .gallery-hero-image-wrap {
+    aspect-ratio: 3 / 2 !important;
+  }
+}
+
 .gallery-section {
   display: flex;
   flex-direction: column;
