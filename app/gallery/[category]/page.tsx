@@ -36,30 +36,32 @@ export default async function GalleryDetailPage({
       <LandingPageHeader hideOnScrollMode="terms" />
 
       <div className="gallery-detail-shell">
-        <div className="gallery-detail-image-wrap">
-          <Image
-            src={imageSrc}
-            alt={title}
-            fill
-            sizes="100vw"
-            className="gallery-detail-image"
-            priority
-          />
-        </div>
-
-        <div className="gallery-detail-body">
-          <h1 className="gallery-detail-title">{title}</h1>
-
-          <div className="gallery-detail-meta">
-            <span>프로파일 : ARAO</span>
-            <span className="gallery-detail-meta-sep">/</span>
-            <span>카테고리 : {label}</span>
+        <section className="gallery-content-width-760">
+          <div className="gallery-detail-image-wrap">
+            <Image
+              src={imageSrc}
+              alt={title}
+              fill
+              sizes="100vw"
+              className="gallery-detail-image"
+              priority
+            />
           </div>
 
-          <Link href="/color" className="gallery-detail-buy-button">
-            구매하기
-          </Link>
-        </div>
+          <div className="gallery-detail-body">
+            <h1 className="gallery-detail-title">{title}</h1>
+
+            <div className="gallery-detail-meta">
+              <span>프로파일 : ARAO</span>
+              <span className="gallery-detail-meta-sep">/</span>
+              <span>카테고리 : {label}</span>
+            </div>
+
+            <Link href="/color" className="gallery-detail-buy-button">
+              구매하기
+            </Link>
+          </div>
+        </section>
 
         <LandingPageFooter content={landingContent.footer} />
       </div>

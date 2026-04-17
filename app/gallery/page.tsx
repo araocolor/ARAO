@@ -22,9 +22,11 @@ export default async function GalleryPage() {
       <LandingPageHeader hideOnScrollMode="terms" />
 
       <div className="landing-shell">
-        <Suspense>
-          <GalleryCardsClient items={items} />
-        </Suspense>
+        <section className="gallery-content-width-760">
+          <Suspense>
+            <GalleryCardsClient items={items} />
+          </Suspense>
+        </section>
 
         <LandingPageFooter content={landingContent.footer} />
       </div>

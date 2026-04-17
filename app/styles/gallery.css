@@ -27,6 +27,11 @@
   text-size-adjust: 100%;
 }
 
+.gallery-content-width-760 {
+  width: min(100%, 760px);
+  margin: 0 auto;
+}
+
 
 .gallery-hero-image-wrap {
   position: relative;
