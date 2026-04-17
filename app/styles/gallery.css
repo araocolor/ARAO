@@ -21,6 +21,12 @@
   text-size-adjust: 100%;
 }
 
+.gallery-page,
+.gallery-page * {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 
 .gallery-hero-image-wrap {
   position: relative;
@@ -182,7 +188,6 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  width: 100%;
 }
 
 .gallery-caption {
