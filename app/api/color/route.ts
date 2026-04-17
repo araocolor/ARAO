@@ -3,6 +3,21 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { syncProfile } from "@/lib/profiles";
 
+function normalizeProductCode(input?: string | null): string | null {
+  const raw = (input ?? "").trim().toLowerCase();
+  if (!raw) return null;
+
+  const normalized = raw.replace(/\s+/g, "-");
+  if (!/^[a-z0-9][a-z0-9_-]{1,48}[a-z0-9]$/.test(normalized)) {
+    throw new Error("상품코드는 영문 소문자, 숫자, -, _ 만 사용할 수 있습니다. (3~50자)");
+  }
+  return normalized;
+}
+
+function isMissingProductCodeColumn(error: { code?: string; message?: string } | null): boolean {
+  return error?.code === "42703" && (error.message ?? "").includes("product_code");
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
@@ -14,13 +29,28 @@ export async function GET(request: Request) {
     const { data, count, error } = await supabase
       .from("colors")
       .select(
-        "id, title, content, price, file_link, img_arao_full, img_arao_mid, img_arao_thumb, img_standard_full, img_portrait_full, like_count, created_at, profile_id, is_admin",
+        "id, product_code, title, content, price, file_link, img_arao_full, img_arao_mid, img_arao_thumb, img_standard_full, img_portrait_full, like_count, created_at, profile_id, is_admin",
         { count: "exact" }
       )
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
-    if (error) throw error;
+    if (error) {
+      if (isMissingProductCodeColumn(error)) {
+        const { data: legacyData, count: legacyCount, error: legacyError } = await supabase
+          .from("colors")
+          .select(
+            "id, title, content, price, file_link, img_arao_full, img_arao_mid, img_arao_thumb, img_standard_full, img_portrait_full, like_count, created_at, profile_id, is_admin",
+            { count: "exact" }
+          )
+          .order("created_at", { ascending: false })
+          .range(offset, offset + limit - 1);
+
+        if (legacyError) throw legacyError;
+        return NextResponse.json({ items: legacyData ?? [], total: legacyCount ?? 0, page, limit });
+      }
+      throw error;
+    }
     return NextResponse.json({ items: data ?? [], total: count ?? 0, page, limit });
   } catch (error) {
     console.error("GET /api/color error:", error);
@@ -41,6 +71,7 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       title?: string;
+      product_code?: string | null;
       content?: string;
       price?: number | null;
       file_link?: string | null;
@@ -57,6 +88,13 @@ export async function POST(request: Request) {
 
     const title = (body.title ?? "").trim();
     if (!title) return NextResponse.json({ message: "제목을 입력해주세요." }, { status: 400 });
+    let productCode: string | null = null;
+    try {
+      productCode = normalizeProductCode(body.product_code);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "상품코드 형식이 올바르지 않습니다.";
+      return NextResponse.json({ message }, { status: 400 });
+    }
 
     const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
@@ -65,6 +103,7 @@ export async function POST(request: Request) {
         profile_id: profile.id,
         is_admin: profile.role === "admin",
         title,
+        ...(productCode !== null ? { product_code: productCode } : {}),
         content: (body.content ?? "").trim() || null,
         price: body.price ?? null,
         file_link: body.file_link?.trim() || null,
@@ -82,7 +121,19 @@ export async function POST(request: Request) {
       .select("id")
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (isMissingProductCodeColumn(error)) {
+        return NextResponse.json(
+          { message: "DB에 product_code 컬럼이 아직 없습니다. SQL 반영 후 다시 저장해주세요." },
+          { status: 400 }
+        );
+      }
+      const duplicateKeyText = `${error.message} ${error.details ?? ""} ${error.hint ?? ""}`;
+      if (error.code === "23505" && duplicateKeyText.includes("colors_product_code_key")) {
+        return NextResponse.json({ message: "이미 사용 중인 상품코드입니다." }, { status: 409 });
+      }
+      throw error;
+    }
     return NextResponse.json({ id: data.id });
   } catch (error) {
     console.error("POST /api/color error:", error);

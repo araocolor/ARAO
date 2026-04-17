@@ -1,10 +1,13 @@
-import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { LandingPageFooter } from "@/components/landing-page-footer";
-import { LandingPageHeader } from "@/components/landing-page-header";
+import { ColorOrderHeader } from "@/components/order-header";
+import { GalleryDetailOrderFooter } from "@/components/gallery-detail-order-footer";
+import { getColorIdByProductCode } from "@/lib/colors";
 import { getLandingContent } from "@/lib/landing-content";
 import { GALLERY_CATEGORIES, GALLERY_CATEGORY_LABELS, type GalleryCategory } from "@/lib/gallery-categories";
+
+const GALLERY_ORDER_PRODUCT_CODE = "arao";
 
 function isGalleryCategory(value: string): value is GalleryCategory {
   return (GALLERY_CATEGORIES as readonly string[]).includes(value);
@@ -27,13 +30,15 @@ export default async function GalleryDetailPage({
 
   const label = GALLERY_CATEGORY_LABELS[category];
   const title = item.title || label;
+  const linkedColorId = await getColorIdByProductCode(GALLERY_ORDER_PRODUCT_CODE);
+  const orderHref = linkedColorId ? `/color/${linkedColorId}/order` : null;
 
   return (
     <main
       className="landing-page gallery-page"
       style={{ WebkitTextSizeAdjust: "100%", textSizeAdjust: "100%" }}
     >
-      <LandingPageHeader hideOnScrollMode="terms" />
+      <ColorOrderHeader />
 
       <div className="gallery-detail-shell">
         <section className="gallery-content-width-760">
@@ -56,15 +61,12 @@ export default async function GalleryDetailPage({
               <span className="gallery-detail-meta-sep">/</span>
               <span>카테고리 : {label}</span>
             </div>
-
-            <Link href="/color" className="gallery-detail-buy-button">
-              구매하기
-            </Link>
           </div>
         </section>
 
         <LandingPageFooter content={landingContent.footer} />
       </div>
+      <GalleryDetailOrderFooter orderHref={orderHref} />
     </main>
   );
 }

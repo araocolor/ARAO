@@ -74,6 +74,8 @@ type SlotState = {
 
 const emptySlot = (): SlotState => ({ file: null, preview: null });
 
+type ProductCodeStatus = "idle" | "checking" | "available" | "unavailable" | "error";
+
 function ColorWritePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -87,12 +89,21 @@ function ColorWritePageContent() {
     arao: emptySlot(),
   });
   const [title, setTitle] = useState("");
+  const [productCode, setProductCode] = useState("");
+  const [productCodeStatus, setProductCodeStatus] = useState<ProductCodeStatus>("idle");
+  const [productCodeMessage, setProductCodeMessage] = useState("");
   const [content, setContent] = useState("");
   const [price, setPrice] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [existingFileLink, setExistingFileLink] = useState<string | null>(null);
-  const initialValues = useRef<{ title: string; content: string; price: string; fileLink: string | null } | null>(null);
+  const initialValues = useRef<{
+    title: string;
+    productCode: string;
+    content: string;
+    price: string;
+    fileLink: string | null;
+  } | null>(null);
   const existingImgUrls = useRef<Record<string, string | null>>({});
   const [fileError, setFileError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -113,6 +124,7 @@ function ColorWritePageContent() {
         if (!res.ok) return;
         const data = (await res.json()) as ColorItem;
         setTitle(data.title);
+        setProductCode(data.product_code ?? "");
         setContent(data.content ?? "");
         setPrice(data.price != null ? String(data.price) : "");
         setExistingFileLink(data.file_link ?? null);
@@ -134,6 +146,7 @@ function ColorWritePageContent() {
         };
         initialValues.current = {
           title: data.title,
+          productCode: data.product_code ?? "",
           content: data.content ?? "",
           price: data.price != null ? String(data.price) : "",
           fileLink: data.file_link ?? null,
@@ -172,6 +185,56 @@ function ColorWritePageContent() {
     setSlots((prev) => ({ ...prev, [slot]: emptySlot() }));
   }
 
+  async function handleCheckProductCode() {
+    const code = productCode.trim();
+    if (!code) {
+      setProductCodeStatus("error");
+      setProductCodeMessage("상품코드를 입력해주세요.");
+      return;
+    }
+
+    setProductCodeStatus("checking");
+    setProductCodeMessage("조회 중...");
+
+    try {
+      const params = new URLSearchParams();
+      params.set("code", code);
+      if (editId) {
+        params.set("excludeId", editId);
+      }
+
+      const res = await fetch(`/api/color/product-code-check?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const data = (await res.json().catch(() => null)) as {
+        available?: boolean;
+        normalizedCode?: string;
+        message?: string;
+      } | null;
+
+      if (!res.ok || !data) {
+        setProductCodeStatus("error");
+        setProductCodeMessage(data?.message ?? "상품코드 조회에 실패했습니다.");
+        return;
+      }
+
+      if (data.normalizedCode && data.normalizedCode !== productCode) {
+        setProductCode(data.normalizedCode);
+      }
+
+      if (data.available) {
+        setProductCodeStatus("available");
+        setProductCodeMessage(data.message ?? "사용 가능한 상품코드입니다.");
+      } else {
+        setProductCodeStatus("unavailable");
+        setProductCodeMessage(data.message ?? "이미 사용 중인 상품코드입니다.");
+      }
+    } catch {
+      setProductCodeStatus("error");
+      setProductCodeMessage("상품코드 조회 중 오류가 발생했습니다.");
+    }
+  }
+
   async function handleSave() {
     if (!title.trim() || saving) return;
     if (!isSignedIn) { router.push("/sign-in"); return; }
@@ -189,6 +252,7 @@ function ColorWritePageContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: title.trim(),
+            product_code: productCode.trim() || undefined,
             content: content.trim() || null,
             price: price ? Number(price.replace(/,/g, "")) : null,
           }),
@@ -205,6 +269,7 @@ function ColorWritePageContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: title.trim(),
+            product_code: productCode.trim() || undefined,
             content: content.trim() || null,
             price: price ? Number(price.replace(/,/g, "")) : null,
           }),
@@ -302,6 +367,7 @@ function ColorWritePageContent() {
   const isDirty = isEditMode
     ? (initialValues.current !== null && (
         title !== initialValues.current.title ||
+        productCode !== initialValues.current.productCode ||
         content !== initialValues.current.content ||
         price !== initialValues.current.price ||
         attachedFile !== null ||
@@ -309,7 +375,12 @@ function ColorWritePageContent() {
       ))
     : true;
 
-  const canSave = title.trim().length > 0 && !saving && isAdmin && isDirty;
+  const canSave =
+    title.trim().length > 0 &&
+    !saving &&
+    isAdmin &&
+    isDirty &&
+    productCodeStatus !== "unavailable";
 
   return (
     <main className="color-write-shell">
@@ -372,6 +443,43 @@ function ColorWritePageContent() {
           />
         </div>
 
+        {/* 상품코드 */}
+        <div className="color-write-field">
+          <label className="color-write-label">상품코드</label>
+          <div className="color-write-code-row">
+            <input
+              type="text"
+              className="color-write-input"
+              placeholder="예: arao-main-01"
+              value={productCode}
+              onChange={(e) => {
+                setProductCode(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""));
+                if (productCodeStatus !== "idle") {
+                  setProductCodeStatus("idle");
+                  setProductCodeMessage("");
+                }
+              }}
+              maxLength={50}
+            />
+            <button
+              type="button"
+              className="color-write-code-check-btn"
+              onClick={() => void handleCheckProductCode()}
+              disabled={productCodeStatus === "checking"}
+            >
+              {productCodeStatus === "checking" ? "조회중" : "조회"}
+            </button>
+          </div>
+          {productCodeMessage && (
+            <p
+              className={`color-write-code-status color-write-code-status--${productCodeStatus}`}
+              role="status"
+            >
+              {productCodeMessage}
+            </p>
+          )}
+        </div>
+
         {/* 가격 + 파일첨부 */}
         <div className="color-write-row">
           <div className="color-write-field">
@@ -386,39 +494,39 @@ function ColorWritePageContent() {
             />
           </div>
           <div className="color-write-field">
-          <label className="color-write-label">파일 첨부 (5MB 이하)</label>
-          <button
-            type="button"
-            className="color-write-attach-btn"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="12" y1="18" x2="12" y2="12" />
-              <line x1="9" y1="15" x2="15" y2="15" />
-            </svg>
-            파일 선택
-          </button>
-          {attachedFile && (
-            <div className="color-write-file-info">
-              <span className="color-write-file-name">{attachedFile.name}</span>
-              <span className="color-write-file-size">{(attachedFile.size / 1024).toFixed(1)}KB</span>
-              <button
-                type="button"
-                className="color-write-file-remove"
-                onClick={() => { setAttachedFile(null); setFileError(null); }}
-                aria-label="파일 제거"
-              >✕</button>
-            </div>
-          )}
-          {!attachedFile && existingFileLink && (
-            <div className="color-write-file-info color-write-file-info--existing">
-              <strong className="color-write-file-name">{(existingFileLink.split("/").pop() ?? "").replace(/^\d+_/, "")}</strong>
-            </div>
-          )}
-          {fileError && <p className="color-write-error">{fileError}</p>}
-          <input ref={fileInputRef} type="file" style={{ display: "none" }} onChange={handleFileChange} />
+            <label className="color-write-label">파일 첨부 (5MB 이하)</label>
+            <button
+              type="button"
+              className="color-write-attach-btn"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="12" y1="18" x2="12" y2="12" />
+                <line x1="9" y1="15" x2="15" y2="15" />
+              </svg>
+              파일 선택
+            </button>
+            {attachedFile && (
+              <div className="color-write-file-info">
+                <span className="color-write-file-name">{attachedFile.name}</span>
+                <span className="color-write-file-size">{(attachedFile.size / 1024).toFixed(1)}KB</span>
+                <button
+                  type="button"
+                  className="color-write-file-remove"
+                  onClick={() => { setAttachedFile(null); setFileError(null); }}
+                  aria-label="파일 제거"
+                >✕</button>
+              </div>
+            )}
+            {!attachedFile && existingFileLink && (
+              <div className="color-write-file-info color-write-file-info--existing">
+                <strong className="color-write-file-name">{(existingFileLink.split("/").pop() ?? "").replace(/^\d+_/, "")}</strong>
+              </div>
+            )}
+            {fileError && <p className="color-write-error">{fileError}</p>}
+            <input ref={fileInputRef} type="file" style={{ display: "none" }} onChange={handleFileChange} />
           </div>
         </div>
 

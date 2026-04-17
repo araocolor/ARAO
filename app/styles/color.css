@@ -673,6 +673,54 @@
   color: var(--muted);
 }
 
+.color-write-code-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.color-write-code-row .color-write-input {
+  flex: 1;
+}
+
+.color-write-code-check-btn {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.color-write-code-check-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.color-write-code-status {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.color-write-code-status--available {
+  color: #16a34a;
+}
+
+.color-write-code-status--unavailable,
+.color-write-code-status--error {
+  color: #ef4444;
+}
+
+.color-write-code-status--checking,
+.color-write-code-status--idle {
+  color: var(--muted);
+}
+
 .color-write-textarea {
   font-size: 15px;
   font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;

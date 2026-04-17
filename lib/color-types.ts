@@ -1,5 +1,6 @@
 export type ColorItem = {
   id: string;
+  product_code?: string | null;
   title: string;
   content: string | null;
   price: number | null;

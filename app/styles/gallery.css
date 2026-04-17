@@ -127,6 +127,7 @@
 .gallery-detail-shell {
   display: flex;
   flex-direction: column;
+  padding-bottom: 86px;
 }
 
 .gallery-detail-image-wrap {
@@ -164,20 +165,6 @@
 
 .gallery-detail-meta-sep {
   color: #d1d5db;
-}
-
-.gallery-detail-buy-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px 20px;
-  border-radius: 12px;
-  background: #111;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 600;
-  text-decoration: none;
-  margin-top: 8px;
 }
 
 .gallery-section-body {
