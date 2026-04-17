@@ -276,6 +276,11 @@
   background: rgba(0, 0, 0, 0.75);
 }
 
+.gallery-page .gallery-before-btn {
+  top: 30px;
+  font-size: calc(11px + 2pt);
+}
+
 .gallery-slide-dots {
   position: absolute;
   bottom: 10px;
