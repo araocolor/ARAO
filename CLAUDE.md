@@ -83,8 +83,11 @@ after(() => { void incrementUserReviewViewCount(id); });
 ## Styling & Layout
 
 - **CSS-first:** 도메인별 파일 분리 (`app/styles/`), `app/layout.tsx`에서 순서대로 임포트
-- **Mobile-first:** 모바일 480px, 태블릿 `--tablet-width` 820px, 미디어 쿼리 1024px
-- **데스크톱 없음:** 태블릿과 동일한 반응형
+- **Mobile-first:** 기본값(쿼리 없음)이 모바일, `@media (min-width: 820px)` 단일 분기로 태블릿+데스크탑 공통 적용
+- **브레이크포인트 단일:** `820px` 하나만 사용. 480/600/768/1024px 등 다른 값 추가 금지
+- **컨테이너:** 태블릿+ 구간에서 `max-width: 820px`, `margin: 0 auto` 고정폭. 데스크탑도 동일
+- **데스크톱 없음:** 1024px 이상도 820px 고정폭 안에서 표시, 별도 분기 없음
+- **헤더/푸터/댓글시트:** 위 정책 동일하게 상속, 별도 분기점 사용 금지
 - **Layout reference:** See **LAYOUT_MAP.md**
 
 ## Documentation
