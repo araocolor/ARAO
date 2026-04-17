@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Bookmark, Grid, List } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import type { ColorItem } from "@/lib/color-types";
 
 type ColorSortMode = "bookmark" | "download" | "purchase";
@@ -158,51 +158,42 @@ export function ColorGrid({ items }: { items: ColorItem[] }) {
 
   return (
     <>
-      <section className="color-search-card" aria-label="컬러 검색 및 정렬">
-        <div className="color-search-head">
-          <p className="color-search-title">컬러 검색</p>
-          <span className="color-search-count">{visibleItems.length}개</span>
-        </div>
-        <div className="color-search-controls">
-          <input
-            type="search"
-            className="color-search-input"
-            placeholder="제목, 내용, 상품코드 검색"
-            value={searchKeyword}
-            onChange={(event) => setSearchKeyword(event.target.value)}
-            aria-label="컬러 검색"
-          />
-          <select
-            className="color-sort-select"
-            value={sortMode}
-            onChange={(event) => setSortMode(event.target.value as ColorSortMode)}
-            aria-label="정렬 방식"
-          >
-            <option value="bookmark">북마크순</option>
-            <option value="download">다운로드순</option>
-            <option value="purchase">구매순</option>
-          </select>
-          <div className="color-view-toggle" role="group" aria-label="보기 방식">
-            <button
-              type="button"
-              className={`color-view-btn${viewMode === "album" ? " is-active" : ""}`}
-              onClick={() => setViewMode("album")}
-              aria-label="앨범형 보기"
-              title="앨범형"
-            >
-              <Grid size={16} strokeWidth={1.8} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className={`color-view-btn${viewMode === "card" ? " is-active" : ""}`}
-              onClick={() => setViewMode("card")}
-              aria-label="카드형 보기"
-              title="카드형"
-            >
-              <List size={16} strokeWidth={1.8} aria-hidden="true" />
-            </button>
-          </div>
-        </div>
+      <section className="color-filter-toolbar" aria-label="정렬 및 보기 방식">
+        <button
+          type="button"
+          className={`color-filter-chip${sortMode === "bookmark" ? " is-active" : ""}`}
+          onClick={() => setSortMode("bookmark")}
+        >
+          북마크순
+        </button>
+        <button
+          type="button"
+          className={`color-filter-chip${sortMode === "download" ? " is-active" : ""}`}
+          onClick={() => setSortMode("download")}
+        >
+          다운로드순
+        </button>
+        <button
+          type="button"
+          className={`color-filter-chip${sortMode === "purchase" ? " is-active" : ""}`}
+          onClick={() => setSortMode("purchase")}
+        >
+          구매순
+        </button>
+        <button
+          type="button"
+          className={`color-filter-chip${viewMode === "album" ? " is-active" : ""}`}
+          onClick={() => setViewMode("album")}
+        >
+          앨범형
+        </button>
+        <button
+          type="button"
+          className={`color-filter-chip${viewMode === "card" ? " is-active" : ""}`}
+          onClick={() => setViewMode("card")}
+        >
+          목록형
+        </button>
       </section>
 
       {visibleItems.length === 0 ? (
@@ -214,6 +205,28 @@ export function ColorGrid({ items }: { items: ColorItem[] }) {
           ))}
         </div>
       )}
+
+      <footer className="color-filter-footer" aria-label="컬러 검색">
+        <div className="color-filter-footer-inner">
+          <form
+            className="color-filter-search-row"
+            onSubmit={(event) => event.preventDefault()}
+          >
+            <input
+              type="search"
+              className="color-filter-search-input"
+              placeholder="제목, 내용, 상품코드 검색"
+              value={searchKeyword}
+              onChange={(event) => setSearchKeyword(event.target.value)}
+              aria-label="컬러 검색"
+            />
+            <button type="submit" className="color-filter-search-btn">
+              찾아보기
+            </button>
+          </form>
+        </div>
+      </footer>
+
       <button
         type="button"
         className="color-fab"
