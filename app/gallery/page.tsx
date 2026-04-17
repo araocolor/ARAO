@@ -15,7 +15,7 @@ export default async function GalleryPage() {
   });
 
   return (
-    <main className="landing-page">
+    <main className="landing-page gallery-page">
       <LandingPageHeader />
 
       <div className="landing-shell">

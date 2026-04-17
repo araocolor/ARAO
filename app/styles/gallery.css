@@ -16,6 +16,11 @@
   100% { background-color: transparent; }
 }
 
+.gallery-page {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 
 .gallery-hero-image-wrap {
   position: relative;

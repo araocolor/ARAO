@@ -81,10 +81,13 @@ export function SiteHeader({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [profilePanelOpen, setProfilePanelOpen] = useState(false);
   const [panelDragY, setPanelDragY] = useState(0);
+  const [hideOnScroll, setHideOnScroll] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef<number>(0);
   const isDragging = useRef<boolean>(false);
+  const lastScrollYRef = useRef(0);
+  const scrollRafRef = useRef<number | null>(null);
   const email = useHeaderSessionStore((state) => state.email);
   const role = useHeaderSessionStore((state) => state.role);
 
@@ -142,11 +145,64 @@ export function SiteHeader({
     return () => { document.body.style.overflow = ""; };
   }, [drawerOpen]);
 
+  // 태블릿 이상에서만: 아래로 스크롤 시 헤더 숨김, 위로 스크롤 시 다시 표시
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia("(min-width: 820px)");
+    const minDelta = 6;
+    const minScrollTop = 72;
+
+    const applyByScroll = () => {
+      const currentY = window.scrollY;
+      if (!fullWidth || !mediaQuery.matches || drawerOpen || profilePanelOpen) {
+        setHideOnScroll(false);
+        lastScrollYRef.current = currentY;
+        return;
+      }
+
+      const delta = currentY - lastScrollYRef.current;
+      if (currentY <= minScrollTop || delta < -minDelta) {
+        setHideOnScroll(false);
+      } else if (delta > minDelta) {
+        setHideOnScroll(true);
+      }
+      lastScrollYRef.current = currentY;
+    };
+
+    const onScroll = () => {
+      if (scrollRafRef.current !== null) return;
+      scrollRafRef.current = window.requestAnimationFrame(() => {
+        scrollRafRef.current = null;
+        applyByScroll();
+      });
+    };
+
+    const onResize = () => {
+      applyByScroll();
+    };
+
+    lastScrollYRef.current = window.scrollY;
+    applyByScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      if (scrollRafRef.current !== null) {
+        window.cancelAnimationFrame(scrollRafRef.current);
+        scrollRafRef.current = null;
+      }
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [drawerOpen, fullWidth, profilePanelOpen]);
+
   const closeDrawer = () => { setDrawerOpen(false); setProfilePanelOpen(false); };
+  const shouldHideHeader = fullWidth && hideOnScroll;
 
   return (
     <>
-      <header className={fullWidth ? "header header-full" : "header"}>
+      <header className={shouldHideHeader ? "header header-full header-scroll-hidden" : (fullWidth ? "header header-full" : "header")}>
         <div className={fullWidth ? "header-inner" : "header-inner-inline"}>
           <button
             aria-expanded={drawerOpen}

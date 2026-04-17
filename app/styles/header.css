@@ -12,6 +12,13 @@
   margin-right: calc(50% - 50vw);
   background: rgba(245, 245, 247, 0.96);
   backdrop-filter: blur(14px);
+  transition: top 220ms ease;
+}
+
+@media (min-width: 820px) {
+  .header-full.header-scroll-hidden {
+    top: -96px;
+  }
 }
 
 /* ── Board Header ── */
