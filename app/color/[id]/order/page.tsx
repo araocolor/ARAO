@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { ColorOrderHeader } from "@/components/order-header";
 import { OrderFooter } from "@/components/order-footer";
+import { clearPendingColorOrder, hasPendingColorOrder, markPendingColorOrder } from "@/lib/color-order-session";
 import type { ColorItem } from "@/lib/color-types";
 
 export default function ColorOrderPage() {
@@ -16,6 +17,7 @@ export default function ColorOrderPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
   const sessionKey = `order-agree-${id}`;
   const allAgreeInputId = `order-agree-all-${id}`;
   const [agreedTerms, setAgreedTerms] = useState(false);
@@ -94,8 +96,20 @@ export default function ColorOrderPage() {
     } catch {}
   }
 
+  function clearPaymentAttempt() {
+    clearPendingColorOrder(id);
+  }
+
+  function restorePaymentUi(message: string) {
+    clearPaymentAttempt();
+    setSubmitting(false);
+    setPaySheetOpen(false);
+    setPaymentNotice(message);
+  }
+
   function handleBackWithCacheClear() {
     clearAgreeCache();
+    clearPaymentAttempt();
     router.back();
   }
 
@@ -228,6 +242,28 @@ export default function ColorOrderPage() {
     };
   }, [id]);
 
+  useEffect(() => {
+    function handleResume() {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+
+      if (!hasPendingColorOrder(id)) {
+        return;
+      }
+
+      restorePaymentUi("결제가 중단되었습니다. 다시 구매하기를 눌러 주세요.");
+    }
+
+    window.addEventListener("pageshow", handleResume);
+    document.addEventListener("visibilitychange", handleResume);
+
+    return () => {
+      window.removeEventListener("pageshow", handleResume);
+      document.removeEventListener("visibilitychange", handleResume);
+    };
+  }, [id]);
+
   const imageSrc = useMemo(
     () => item?.img_arao_full ?? item?.img_arao_mid ?? item?.img_arao_thumb ?? null,
     [item]
@@ -240,6 +276,8 @@ export default function ColorOrderPage() {
 
     setSubmitting(true);
     setError(null);
+    setPaymentNotice(null);
+    markPendingColorOrder(id);
 
     try {
       const response = await fetch(`/api/color/${id}/order/ready`, {
@@ -252,6 +290,8 @@ export default function ColorOrderPage() {
       };
 
       if (response.status === 401) {
+        clearPaymentAttempt();
+        setSubmitting(false);
         router.push("/sign-in");
         return;
       }
@@ -262,6 +302,7 @@ export default function ColorOrderPage() {
 
       window.location.href = data.redirectUrl;
     } catch (err) {
+      clearPaymentAttempt();
       setError(err instanceof Error ? err.message : "결제 준비에 실패했습니다.");
       setSubmitting(false);
     }
@@ -308,6 +349,7 @@ export default function ColorOrderPage() {
               <p className="color-order-copy">
                 상품과 금액을 확인한 뒤 카카오페이 테스트 결제로 이동합니다.
               </p>
+              {paymentNotice && <p className="color-order-copy">{paymentNotice}</p>}
 
               <div className="color-order-card">
                 <div className="color-order-card-row">
@@ -380,7 +422,7 @@ export default function ColorOrderPage() {
         )}
       </div>
       <OrderFooter
-        buyDisabled={!item || item.price == null || item.price <= 0 || !allAgreed}
+        buyDisabled={!item || item.price == null || item.price <= 0 || !allAgreed || submitting}
         buyLabel="구매하기"
         onBuy={openPaySheet}
       />

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { LandingPageHeader } from "@/components/landing-page-header";
+import { clearPendingColorOrder } from "@/lib/color-order-session";
 
 export default function ColorOrderFailPage() {
   const { id } = useParams<{ id: string }>();
@@ -12,6 +13,8 @@ export default function ColorOrderFailPage() {
   const reportedRef = useRef(false);
 
   useEffect(() => {
+    clearPendingColorOrder(id);
+
     if (reportedRef.current || !orderId) {
       return;
     }
