@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import type { OrderDetail } from "@/lib/orders";
 import { getCached, setCached } from "@/hooks/use-prefetch-cache";
@@ -25,14 +25,39 @@ function formatDateTime(iso: string) {
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [id, setId] = useState<string>("");
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showPaymentSuccessNotice, setShowPaymentSuccessNotice] = useState(false);
+  const paymentSuccessHandledRef = useRef(false);
 
   useEffect(() => {
     params.then((p) => setId(p.id));
   }, [params]);
+
+  useEffect(() => {
+    paymentSuccessHandledRef.current = false;
+    setShowPaymentSuccessNotice(false);
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const paymentSuccess = searchParams.get("paymentSuccess") === "1";
+    if (!paymentSuccess || paymentSuccessHandledRef.current) return;
+
+    paymentSuccessHandledRef.current = true;
+    setShowPaymentSuccessNotice(true);
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("paymentSuccess");
+    const query = nextParams.toString();
+    const href = query ? `${pathname}?${query}` : pathname;
+    router.replace(href, { scroll: false });
+  }, [id, pathname, router, searchParams]);
 
   useEffect(() => {
     if (!id) return;
@@ -80,6 +105,22 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="account-panel-card stack account-section-card page-slide-down">
+      {showPaymentSuccessNotice && (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: "10px 12px",
+            borderRadius: 6,
+            background: "#eff6ff",
+            color: "#1d4ed8",
+            fontSize: 14,
+            fontWeight: 600,
+          }}
+          aria-live="polite"
+        >
+          결제가 완료되었습니다.
+        </div>
+      )}
 
       {/* 헤더 */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
