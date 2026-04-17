@@ -14,8 +14,17 @@ function normalizeProductCode(input?: string | null): string | null {
   return normalized;
 }
 
-function isMissingProductCodeColumn(error: { code?: string; message?: string } | null): boolean {
-  return error?.code === "42703" && (error.message ?? "").includes("product_code");
+type MissingOptionalColumn = "product_code" | "creator" | "creator_icon";
+
+function getMissingOptionalColorColumn(
+  error: { code?: string; message?: string } | null
+): MissingOptionalColumn | null {
+  if (error?.code !== "42703") return null;
+  const message = error.message ?? "";
+  if (message.includes("creator_icon")) return "creator_icon";
+  if (message.includes("creator")) return "creator";
+  if (message.includes("product_code")) return "product_code";
+  return null;
 }
 
 export async function GET(
@@ -52,6 +61,8 @@ export async function PUT(
     const body = (await request.json()) as {
       title?: string;
       product_code?: string | null;
+      creator?: string | null;
+      creator_icon?: string | null;
       content?: string | null;
       price?: number | null;
       img_standard_full?: string | null;
@@ -65,6 +76,8 @@ export async function PUT(
       img_arao_thumb?: string | null;
       file_link?: string | null;
     };
+    const creator = body.creator?.trim() || null;
+    const creatorIcon = body.creator_icon?.trim() || null;
     let productCode: string | null;
     try {
       productCode = normalizeProductCode(body.product_code);
@@ -79,6 +92,8 @@ export async function PUT(
       .update({
         ...(body.title !== undefined ? { title: body.title } : {}),
         ...(body.product_code !== undefined ? { product_code: productCode } : {}),
+        ...(body.creator !== undefined ? { creator } : {}),
+        ...(body.creator_icon !== undefined ? { creator_icon: creatorIcon } : {}),
         ...(body.content !== undefined ? { content: body.content } : {}),
         ...(body.price !== undefined ? { price: body.price } : {}),
         img_standard_full: body.img_standard_full ?? null,
@@ -95,7 +110,20 @@ export async function PUT(
       .eq("id", id);
 
     if (error) {
-      if (isMissingProductCodeColumn(error)) {
+      const missingColumn = getMissingOptionalColorColumn(error);
+      if (missingColumn === "creator_icon") {
+        return NextResponse.json(
+          { message: "DB에 creator_icon 컬럼이 아직 없습니다. SQL 반영 후 다시 시도해주세요." },
+          { status: 400 }
+        );
+      }
+      if (missingColumn === "creator") {
+        return NextResponse.json(
+          { message: "DB에 creator 컬럼이 아직 없습니다. SQL 반영 후 다시 시도해주세요." },
+          { status: 400 }
+        );
+      }
+      if (missingColumn === "product_code") {
         return NextResponse.json(
           { message: "DB에 product_code 컬럼이 아직 없습니다. SQL 반영 후 다시 시도해주세요." },
           { status: 400 }

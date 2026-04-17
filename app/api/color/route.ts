@@ -3,6 +3,20 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { syncProfile } from "@/lib/profiles";
 
+const COLOR_LIST_SELECT_CANDIDATES: string[] = [
+  "id, product_code, creator, creator_icon, title, content, price, file_link, img_arao_full, img_arao_mid, img_arao_thumb, img_standard_full, img_portrait_full, like_count, created_at, profile_id, is_admin",
+  "id, product_code, creator, title, content, price, file_link, img_arao_full, img_arao_mid, img_arao_thumb, img_standard_full, img_portrait_full, like_count, created_at, profile_id, is_admin",
+  "id, product_code, creator_icon, title, content, price, file_link, img_arao_full, img_arao_mid, img_arao_thumb, img_standard_full, img_portrait_full, like_count, created_at, profile_id, is_admin",
+  "id, creator, creator_icon, title, content, price, file_link, img_arao_full, img_arao_mid, img_arao_thumb, img_standard_full, img_portrait_full, like_count, created_at, profile_id, is_admin",
+  "id, product_code, title, content, price, file_link, img_arao_full, img_arao_mid, img_arao_thumb, img_standard_full, img_portrait_full, like_count, created_at, profile_id, is_admin",
+  "id, creator, title, content, price, file_link, img_arao_full, img_arao_mid, img_arao_thumb, img_standard_full, img_portrait_full, like_count, created_at, profile_id, is_admin",
+  "id, creator_icon, title, content, price, file_link, img_arao_full, img_arao_mid, img_arao_thumb, img_standard_full, img_portrait_full, like_count, created_at, profile_id, is_admin",
+  "id, title, content, price, file_link, img_arao_full, img_arao_mid, img_arao_thumb, img_standard_full, img_portrait_full, like_count, created_at, profile_id, is_admin",
+];
+
+type MissingOptionalColumn = "product_code" | "creator" | "creator_icon";
+type SelectError = { code?: string; message?: string } | null;
+
 function normalizeProductCode(input?: string | null): string | null {
   const raw = (input ?? "").trim().toLowerCase();
   if (!raw) return null;
@@ -14,8 +28,13 @@ function normalizeProductCode(input?: string | null): string | null {
   return normalized;
 }
 
-function isMissingProductCodeColumn(error: { code?: string; message?: string } | null): boolean {
-  return error?.code === "42703" && (error.message ?? "").includes("product_code");
+function getMissingOptionalColorColumn(error: SelectError): MissingOptionalColumn | null {
+  if (error?.code !== "42703") return null;
+  const message = error.message ?? "";
+  if (message.includes("creator_icon")) return "creator_icon";
+  if (message.includes("creator")) return "creator";
+  if (message.includes("product_code")) return "product_code";
+  return null;
 }
 
 export async function GET(request: Request) {
@@ -26,32 +45,28 @@ export async function GET(request: Request) {
     const offset = (page - 1) * limit;
 
     const supabase = createSupabaseAdminClient();
-    const { data, count, error } = await supabase
-      .from("colors")
-      .select(
-        "id, product_code, title, content, price, file_link, img_arao_full, img_arao_mid, img_arao_thumb, img_standard_full, img_portrait_full, like_count, created_at, profile_id, is_admin",
-        { count: "exact" }
-      )
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+    let lastMissingError: SelectError = null;
 
-    if (error) {
-      if (isMissingProductCodeColumn(error)) {
-        const { data: legacyData, count: legacyCount, error: legacyError } = await supabase
-          .from("colors")
-          .select(
-            "id, title, content, price, file_link, img_arao_full, img_arao_mid, img_arao_thumb, img_standard_full, img_portrait_full, like_count, created_at, profile_id, is_admin",
-            { count: "exact" }
-          )
-          .order("created_at", { ascending: false })
-          .range(offset, offset + limit - 1);
+    for (const columns of COLOR_LIST_SELECT_CANDIDATES) {
+      const { data, count, error } = await supabase
+        .from("colors")
+        .select(columns, { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limit - 1);
 
-        if (legacyError) throw legacyError;
-        return NextResponse.json({ items: legacyData ?? [], total: legacyCount ?? 0, page, limit });
+      if (!error) {
+        return NextResponse.json({ items: data ?? [], total: count ?? 0, page, limit });
       }
+
+      if (getMissingOptionalColorColumn(error)) {
+        lastMissingError = error;
+        continue;
+      }
+
       throw error;
     }
-    return NextResponse.json({ items: data ?? [], total: count ?? 0, page, limit });
+
+    throw lastMissingError ?? new Error("colors 조회에 실패했습니다.");
   } catch (error) {
     console.error("GET /api/color error:", error);
     return NextResponse.json({ items: [], total: 0, page: 1, limit: 20 }, { status: 500 });
@@ -72,6 +87,8 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       title?: string;
       product_code?: string | null;
+      creator?: string | null;
+      creator_icon?: string | null;
       content?: string;
       price?: number | null;
       file_link?: string | null;
@@ -88,6 +105,10 @@ export async function POST(request: Request) {
 
     const title = (body.title ?? "").trim();
     if (!title) return NextResponse.json({ message: "제목을 입력해주세요." }, { status: 400 });
+
+    const creator = (body.creator ?? "").trim() || null;
+    const creatorIcon = body.creator_icon?.trim() || null;
+
     let productCode: string | null = null;
     try {
       productCode = normalizeProductCode(body.product_code);
@@ -104,6 +125,8 @@ export async function POST(request: Request) {
         is_admin: profile.role === "admin",
         title,
         ...(productCode !== null ? { product_code: productCode } : {}),
+        creator,
+        creator_icon: creatorIcon,
         content: (body.content ?? "").trim() || null,
         price: body.price ?? null,
         file_link: body.file_link?.trim() || null,
@@ -122,7 +145,20 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      if (isMissingProductCodeColumn(error)) {
+      const missingColumn = getMissingOptionalColorColumn(error);
+      if (missingColumn === "creator_icon") {
+        return NextResponse.json(
+          { message: "DB에 creator_icon 컬럼이 아직 없습니다. SQL 반영 후 다시 저장해주세요." },
+          { status: 400 }
+        );
+      }
+      if (missingColumn === "creator") {
+        return NextResponse.json(
+          { message: "DB에 creator 컬럼이 아직 없습니다. SQL 반영 후 다시 저장해주세요." },
+          { status: 400 }
+        );
+      }
+      if (missingColumn === "product_code") {
         return NextResponse.json(
           { message: "DB에 product_code 컬럼이 아직 없습니다. SQL 반영 후 다시 저장해주세요." },
           { status: 400 }

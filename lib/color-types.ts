@@ -1,6 +1,8 @@
 export type ColorItem = {
   id: string;
   product_code?: string | null;
+  creator?: string | null;
+  creator_icon?: string | null;
   title: string;
   content: string | null;
   price: number | null;

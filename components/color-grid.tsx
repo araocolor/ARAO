@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Bookmark } from "lucide-react";
+import { Bookmark, Grid, List } from "lucide-react";
 import type { ColorItem } from "@/lib/color-types";
 
 type ColorSortMode = "bookmark" | "download" | "purchase";
@@ -34,14 +34,6 @@ function ColorCard({ item, onClick }: { item: ColorItem; onClick: () => void }) 
 
   return (
     <article className="color-card" onClick={onClick} style={{ cursor: "pointer" }}>
-      <div className="color-card-price-row">
-        <p className="color-card-title">{item.title}</p>
-        {item.price != null ? (
-          <span className="color-card-price">{item.price.toLocaleString()}원</span>
-        ) : (
-          <span />
-        )}
-      </div>
       <div className="color-card-image-wrap">
         {src ? (
           <Image
@@ -54,15 +46,13 @@ function ColorCard({ item, onClick }: { item: ColorItem; onClick: () => void }) 
         ) : (
           <div className="color-card-image-placeholder">이미지 없음</div>
         )}
+        <div className="color-card-title-badge">
+          <span className="color-card-title-badge-text">{item.title}</span>
+        </div>
         <div className="color-card-heart">
           <Bookmark size={16} strokeWidth={2} fill="currentColor" />
           <span>{item.like_count}</span>
         </div>
-        {item.content && (
-          <div className="color-card-overlay-title">
-            <span className="color-card-overlay-content-text">{item.content}</span>
-          </div>
-        )}
       </div>
     </article>
   );
@@ -182,35 +172,6 @@ export function ColorGrid({ items }: { items: ColorItem[] }) {
             onChange={(event) => setSearchKeyword(event.target.value)}
             aria-label="컬러 검색"
           />
-          <div className="color-view-toggle" role="group" aria-label="보기 방식">
-            <button
-              type="button"
-              className={`color-view-btn${viewMode === "album" ? " is-active" : ""}`}
-              onClick={() => setViewMode("album")}
-              aria-label="앨범형 보기"
-              title="앨범형"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect x="3" y="3" width="7" height="7" rx="1.2" />
-                <rect x="14" y="3" width="7" height="7" rx="1.2" />
-                <rect x="3" y="14" width="7" height="7" rx="1.2" />
-                <rect x="14" y="14" width="7" height="7" rx="1.2" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              className={`color-view-btn${viewMode === "card" ? " is-active" : ""}`}
-              onClick={() => setViewMode("card")}
-              aria-label="카드형 보기"
-              title="카드형"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect x="3" y="4" width="18" height="16" rx="2" />
-                <line x1="7" y1="9" x2="17" y2="9" />
-                <line x1="7" y1="13" x2="14" y2="13" />
-              </svg>
-            </button>
-          </div>
           <select
             className="color-sort-select"
             value={sortMode}
@@ -221,6 +182,26 @@ export function ColorGrid({ items }: { items: ColorItem[] }) {
             <option value="download">다운로드순</option>
             <option value="purchase">구매순</option>
           </select>
+          <div className="color-view-toggle" role="group" aria-label="보기 방식">
+            <button
+              type="button"
+              className={`color-view-btn${viewMode === "album" ? " is-active" : ""}`}
+              onClick={() => setViewMode("album")}
+              aria-label="앨범형 보기"
+              title="앨범형"
+            >
+              <Grid size={16} strokeWidth={1.8} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className={`color-view-btn${viewMode === "card" ? " is-active" : ""}`}
+              onClick={() => setViewMode("card")}
+              aria-label="카드형 보기"
+              title="카드형"
+            >
+              <List size={16} strokeWidth={1.8} aria-hidden="true" />
+            </button>
+          </div>
         </div>
       </section>
 

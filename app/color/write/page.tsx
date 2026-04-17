@@ -41,6 +41,34 @@ function compressToDataUrl(file: File, maxWidth: number, quality: number): Promi
   });
 }
 
+function compressToSquareDataUrl(file: File, size: number, quality: number): Promise<string | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const src = e.target?.result as string;
+      const img = new window.Image();
+      img.onload = () => {
+        const cropSize = Math.min(img.width, img.height);
+        const sx = Math.floor((img.width - cropSize) / 2);
+        const sy = Math.floor((img.height - cropSize) / 2);
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
+        ctx.drawImage(img, sx, sy, cropSize, cropSize, 0, 0, size, size);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => resolve(null);
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function dataUrlToBlob(dataUrl: string): Blob {
   const [header, data] = dataUrl.split(",");
   const mime = header.match(/:(.*?);/)?.[1] ?? "image/jpeg";
@@ -89,6 +117,11 @@ function ColorWritePageContent() {
     arao: emptySlot(),
   });
   const [title, setTitle] = useState("");
+  const [creator, setCreator] = useState("");
+  const [creatorIconFile, setCreatorIconFile] = useState<File | null>(null);
+  const [creatorIconPreview, setCreatorIconPreview] = useState<string | null>(null);
+  const [existingCreatorIconLink, setExistingCreatorIconLink] = useState<string | null>(null);
+  const [creatorIconError, setCreatorIconError] = useState<string | null>(null);
   const [productCode, setProductCode] = useState("");
   const [productCodeStatus, setProductCodeStatus] = useState<ProductCodeStatus>("idle");
   const [productCodeMessage, setProductCodeMessage] = useState("");
@@ -99,6 +132,8 @@ function ColorWritePageContent() {
   const [existingFileLink, setExistingFileLink] = useState<string | null>(null);
   const initialValues = useRef<{
     title: string;
+    creator: string;
+    creatorIcon: string | null;
     productCode: string;
     content: string;
     price: string;
@@ -124,6 +159,9 @@ function ColorWritePageContent() {
         if (!res.ok) return;
         const data = (await res.json()) as ColorItem;
         setTitle(data.title);
+        setCreator(data.creator ?? "");
+        setExistingCreatorIconLink(data.creator_icon ?? null);
+        setCreatorIconPreview(data.creator_icon ?? null);
         setProductCode(data.product_code ?? "");
         setContent(data.content ?? "");
         setPrice(data.price != null ? String(data.price) : "");
@@ -146,6 +184,8 @@ function ColorWritePageContent() {
         };
         initialValues.current = {
           title: data.title,
+          creator: data.creator ?? "",
+          creatorIcon: data.creator_icon ?? null,
           productCode: data.product_code ?? "",
           content: data.content ?? "",
           price: data.price != null ? String(data.price) : "",
@@ -161,6 +201,7 @@ function ColorWritePageContent() {
     arao: null,
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const creatorIconInputRef = useRef<HTMLInputElement>(null);
 
   const FILE_MAX = 5 * 1024 * 1024;
 
@@ -171,6 +212,31 @@ function ColorWritePageContent() {
     if (file.size > FILE_MAX) { setFileError("파일은 5MB 이하만 첨부 가능합니다."); return; }
     setFileError(null);
     setAttachedFile(file);
+  }
+
+  async function handleCreatorIconChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (creatorIconInputRef.current) creatorIconInputRef.current.value = "";
+    if (!file) return;
+    if (file.size > FILE_MAX) {
+      setCreatorIconError("작가 사진은 5MB 이하만 업로드 가능합니다.");
+      return;
+    }
+    const preview = await compressToSquareDataUrl(file, 200, 0.85);
+    if (!preview) {
+      setCreatorIconError("이미지 처리에 실패했습니다.");
+      return;
+    }
+    setCreatorIconError(null);
+    setCreatorIconFile(file);
+    setCreatorIconPreview(preview);
+  }
+
+  function removeCreatorIcon() {
+    setCreatorIconFile(null);
+    setCreatorIconPreview(existingCreatorIconLink);
+    setCreatorIconError(null);
+    if (creatorIconInputRef.current) creatorIconInputRef.current.value = "";
   }
 
   async function handleImageSelect(slot: SlotKey, e: React.ChangeEvent<HTMLInputElement>) {
@@ -252,6 +318,7 @@ function ColorWritePageContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: title.trim(),
+            creator: creator.trim() || null,
             product_code: productCode.trim() || undefined,
             content: content.trim() || null,
             price: price ? Number(price.replace(/,/g, "")) : null,
@@ -269,6 +336,7 @@ function ColorWritePageContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: title.trim(),
+            creator: creator.trim() || null,
             product_code: productCode.trim() || undefined,
             content: content.trim() || null,
             price: price ? Number(price.replace(/,/g, "")) : null,
@@ -302,12 +370,37 @@ function ColorWritePageContent() {
         })
       );
 
+      let creatorIcon500: string | null = null;
+      let creatorIcon200: string | null = null;
+      if (creatorIconFile) {
+        const [full500, thumb200] = await Promise.all([
+          compressToSquareDataUrl(creatorIconFile, 500, 0.9),
+          compressToSquareDataUrl(creatorIconFile, 200, 0.85),
+        ]);
+        creatorIcon500 = full500;
+        creatorIcon200 = thumb200;
+      }
+
       setSavingMsg("이미지 업로드 중...");
       for (const { slot, full, mid, thumb } of compressed) {
         const base = `colors/${postId}/${idPrefix}_${version}_${slot}`;
         if (full) batch.push({ blob: dataUrlToBlob(full), path: `${base}_full.jpg`, key: `${slot}_full` });
         if (mid) batch.push({ blob: dataUrlToBlob(mid), path: `${base}_mid.jpg`, key: `${slot}_mid` });
         if (thumb) batch.push({ blob: dataUrlToBlob(thumb), path: `${base}_thumb.jpg`, key: `${slot}_thumb` });
+      }
+      if (creatorIcon500) {
+        batch.push({
+          blob: dataUrlToBlob(creatorIcon500),
+          path: `colors/${postId}/${idPrefix}_${version}_creator_icon_500.jpg`,
+          key: "creator_icon_500",
+        });
+      }
+      if (creatorIcon200) {
+        batch.push({
+          blob: dataUrlToBlob(creatorIcon200),
+          path: `colors/${postId}/${idPrefix}_${version}_creator_icon_200.jpg`,
+          key: "creator_icon_200",
+        });
       }
 
       // 첨부파일 업로드
@@ -326,6 +419,7 @@ function ColorWritePageContent() {
       }
 
       const urls = batch.length > 0 ? await uploadBatch(batch) : {};
+      const creatorIconUrl = urls["creator_icon_500"] ?? null;
 
       // 3단계: 이미지 + 파일 URL 업데이트
       const ex = existingImgUrls.current;
@@ -348,6 +442,7 @@ function ColorWritePageContent() {
             img_arao_mid: urls["arao_mid"] ?? ex["arao_mid"] ?? null,
             img_arao_thumb: urls["arao_thumb"] ?? ex["arao_thumb"] ?? null,
             file_link: fileLinkUrl ?? existingFileLink,
+            creator_icon: creatorIconUrl ?? existingCreatorIconLink,
           }),
         });
         if (!updateRes.ok) throw new Error("이미지 저장에 실패했습니다.");
@@ -367,6 +462,8 @@ function ColorWritePageContent() {
   const isDirty = isEditMode
     ? (initialValues.current !== null && (
         title !== initialValues.current.title ||
+        creator !== initialValues.current.creator ||
+        (creatorIconFile !== null || initialValues.current.creatorIcon !== existingCreatorIconLink) ||
         productCode !== initialValues.current.productCode ||
         content !== initialValues.current.content ||
         price !== initialValues.current.price ||
@@ -440,6 +537,58 @@ function ColorWritePageContent() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={80}
+          />
+        </div>
+
+        {/* 제작자 */}
+        <div className="color-write-field">
+          <label className="color-write-label">제작자</label>
+          <input
+            type="text"
+            className="color-write-input"
+            placeholder="예: Arao Team"
+            value={creator}
+            onChange={(e) => setCreator(e.target.value)}
+            maxLength={80}
+          />
+        </div>
+
+        {/* 작가 사진 */}
+        <div className="color-write-field">
+          <label className="color-write-label">작가 사진 (500x500, 200x200 생성)</label>
+          <div className="color-write-creator-icon-row">
+            <button
+              type="button"
+              className="color-write-attach-btn"
+              onClick={() => creatorIconInputRef.current?.click()}
+            >
+              작가 사진 선택
+            </button>
+            {(creatorIconPreview || existingCreatorIconLink) && (
+              <div className="color-write-creator-icon-preview">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={creatorIconPreview ?? existingCreatorIconLink ?? ""}
+                  alt="작가 사진 미리보기"
+                />
+                <button
+                  type="button"
+                  className="color-write-img-remove"
+                  onClick={removeCreatorIcon}
+                  aria-label="작가 사진 제거"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+          </div>
+          {creatorIconError && <p className="color-write-error">{creatorIconError}</p>}
+          <input
+            ref={creatorIconInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={handleCreatorIconChange}
           />
         </div>
 
