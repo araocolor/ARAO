@@ -8,6 +8,7 @@ import type { ColorItem } from "@/lib/color-types";
 
 type ColorSortMode = "bookmark" | "download" | "purchase";
 type ColorViewMode = "col3" | "feed";
+const COLOR_VIEW_MODE_STORAGE_KEY = "color-view-mode";
 
 const VIEW_OPTIONS: Array<{ value: ColorViewMode; label: string }> = [
   { value: "col3", label: "앨범형" },
@@ -115,9 +116,25 @@ export function ColorGrid({ items }: { items: ColorItem[] }) {
   const viewDropdownRef = useRef<HTMLDivElement>(null);
   const viewDropdownBtnRef = useRef<HTMLButtonElement>(null);
 
+  const setViewModeWithSave = (mode: ColorViewMode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem(COLOR_VIEW_MODE_STORAGE_KEY, mode);
+    } catch {}
+  };
+
   useEffect(() => {
     const role = sessionStorage.getItem("user-role");
     setIsAdmin(role === "admin");
+  }, []);
+
+  useEffect(() => {
+    try {
+      const savedMode = localStorage.getItem(COLOR_VIEW_MODE_STORAGE_KEY);
+      if (savedMode === "col3" || savedMode === "feed") {
+        setViewMode(savedMode);
+      }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -243,7 +260,7 @@ export function ColorGrid({ items }: { items: ColorItem[] }) {
                   type="button"
                   className={`color-view-dropdown-option${viewMode === opt.value ? " active" : ""}`}
                   onClick={() => {
-                    setViewMode(opt.value);
+                    setViewModeWithSave(opt.value);
                     setViewDropdownOpen(false);
                   }}
                 >
