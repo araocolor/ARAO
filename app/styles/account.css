@@ -1017,6 +1017,23 @@
   cursor: pointer;
 }
 
+.account-avatar-cropper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-width: 240px;
+  margin: 0 auto 12px;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.account-avatar-zoom-slider {
+  width: 100%;
+  margin: 0 0 12px;
+  accent-color: #111;
+}
+
 .account-avatar-default {
   position: relative;
   display: flex;

@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useState, useRef, useEffect } from "react";
+import { FormEvent, useState, useRef, useEffect, useCallback } from "react";
 import { UserRound } from "lucide-react";
+import Cropper, { Area } from "react-easy-crop";
 import { clearCached } from "@/hooks/use-prefetch-cache";
 import { useHeaderSessionStore } from "@/stores/header-session-store";
 
@@ -64,6 +65,10 @@ export function GeneralSettingsForm({
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
   const [iconImage, setIconImage] = useState(initialIconImage ?? "");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [cropSource, setCropSource] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const avatarPopoverRef = useRef<HTMLDivElement>(null);
   const avatarButtonRef = useRef<HTMLButtonElement>(null);
@@ -186,17 +191,21 @@ export function GeneralSettingsForm({
     setSavingKey("avatar");
     setAvatarMessage(null);
 
-    if (!previewImage) {
+    let dataUrl = previewImage;
+    if (!dataUrl && cropSource) {
+      dataUrl = await buildCroppedPreview();
+    }
+
+    if (!dataUrl) {
       setAvatarMessage("프로필 사진을 등록하세요");
       setSavingKey(null);
       return;
     }
 
-    // canvas에서 압축된 base64 dataURL을 JSON으로 전송
     const response = await fetch("/api/account/avatar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ dataUrl: previewImage }),
+      body: JSON.stringify({ dataUrl }),
     });
     const data = (await response.json()) as { message?: string };
 
@@ -206,15 +215,14 @@ export function GeneralSettingsForm({
       return;
     }
 
-    // 팝오버 닫고 아이콘을 미리보기 이미지로 즉시 반영
-    if (previewImage) {
-      setIconImage(previewImage);
-      clearCached(getGeneralCacheKey(email));
-      window.dispatchEvent(new CustomEvent("avatar-updated", { detail: { iconImage: previewImage } }));
-    }
+    setIconImage(dataUrl);
+    clearCached(getGeneralCacheKey(email));
+    window.dispatchEvent(new CustomEvent("avatar-updated", { detail: { iconImage: dataUrl } }));
 
     setIsEditingAvatar(false);
     setPreviewImage(null);
+    setCropSource(null);
+    setCroppedAreaPixels(null);
     setSavingKey(null);
     setAvatarMessage("업로드 완료");
   }
@@ -319,29 +327,46 @@ export function GeneralSettingsForm({
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const maxSize = 256;
-
-        canvas.width = maxSize;
-        canvas.height = maxSize;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          // cover 방식: 이미지를 원 안에 꽉 채우도록 크롭
-          const scale = Math.max(maxSize / img.width, maxSize / img.height);
-          const scaledW = img.width * scale;
-          const scaledH = img.height * scale;
-          const offsetX = (maxSize - scaledW) / 2;
-          const offsetY = (maxSize - scaledH) / 2;
-          ctx.drawImage(img, offsetX, offsetY, scaledW, scaledH);
-        }
-
-        setPreviewImage(canvas.toDataURL("image/jpeg", 0.8));
-      };
-      img.src = e.target?.result as string;
+      const src = e.target?.result as string;
+      setCropSource(src);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setCroppedAreaPixels(null);
+      setPreviewImage(null);
     };
     reader.readAsDataURL(file);
+  }
+
+  const onCropComplete = useCallback((_area: Area, areaPixels: Area) => {
+    setCroppedAreaPixels(areaPixels);
+  }, []);
+
+  async function buildCroppedPreview(): Promise<string | null> {
+    if (!cropSource || !croppedAreaPixels) return null;
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = cropSource;
+    });
+    const canvas = document.createElement("canvas");
+    const maxSize = 256;
+    canvas.width = maxSize;
+    canvas.height = maxSize;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(
+      image,
+      croppedAreaPixels.x,
+      croppedAreaPixels.y,
+      croppedAreaPixels.width,
+      croppedAreaPixels.height,
+      0,
+      0,
+      maxSize,
+      maxSize
+    );
+    return canvas.toDataURL("image/jpeg", 0.8);
   }
 
   const hasUsernameInput = usernameInput.trim().length > 0;
@@ -393,10 +418,32 @@ export function GeneralSettingsForm({
             {isEditingAvatar && (
               <div className="account-avatar-popover" ref={avatarPopoverRef}>
                 <form onSubmit={submitAvatar}>
-                  {previewImage && (
-                    <div className="account-avatar-preview-container">
-                      <img src={previewImage} alt="미리보기" className="account-avatar-preview" />
-                    </div>
+                  {cropSource && (
+                    <>
+                      <div className="account-avatar-cropper">
+                        <Cropper
+                          image={cropSource}
+                          crop={crop}
+                          zoom={zoom}
+                          aspect={1}
+                          cropShape="round"
+                          showGrid={false}
+                          onCropChange={setCrop}
+                          onZoomChange={setZoom}
+                          onCropComplete={onCropComplete}
+                        />
+                      </div>
+                      <input
+                        type="range"
+                        min={1}
+                        max={3}
+                        step={0.01}
+                        value={zoom}
+                        onChange={(e) => setZoom(Number(e.target.value))}
+                        className="account-avatar-zoom-slider"
+                        aria-label="줌"
+                      />
+                    </>
                   )}
                   <input
                     ref={fileInputRef}
@@ -407,7 +454,7 @@ export function GeneralSettingsForm({
                     onChange={handleAvatarFileChange}
                   />
                   <div className="muted account-avatar-message">{avatarNotice}</div>
-                  {!previewImage && (
+                  {!cropSource && (
                     <>
                       <button
                         type="button"
@@ -419,15 +466,15 @@ export function GeneralSettingsForm({
                       <div className="account-avatar-help">jpg, png, gif 파일을 업로드 하세요</div>
                     </>
                   )}
-                  <div className={`account-avatar-actions${previewImage ? " is-compact" : ""}`}>
+                  <div className={`account-avatar-actions${cropSource ? " is-compact" : ""}`}>
                     <button
                       type="submit"
                       className="account-avatar-upload-button"
-                      disabled={savingKey === "avatar" || !previewImage}
+                      disabled={savingKey === "avatar" || !cropSource}
                     >
                       {savingKey === "avatar"
-                        ? (previewImage ? "확인 중..." : "업로드 중...")
-                        : (previewImage ? "확인" : "업로드")}
+                        ? (cropSource ? "확인 중..." : "업로드 중...")
+                        : (cropSource ? "확인" : "업로드")}
                     </button>
                     <button
                       type="button"
@@ -435,6 +482,8 @@ export function GeneralSettingsForm({
                       onClick={() => {
                         setIsEditingAvatar(false);
                         setPreviewImage(null);
+                        setCropSource(null);
+                        setCroppedAreaPixels(null);
                       }}
                     >
                       취소
