@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, type TouchEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { ColorOrderHeader } from "@/components/order-header";
 import { OrderFooter } from "@/components/order-footer";
 import type { ColorItem } from "@/lib/color-types";
@@ -247,6 +248,7 @@ function ColorImageSlider({ item, isAdmin }: { item: ColorItem; isAdmin: boolean
 export default function ColorDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { isLoaded, isSignedIn } = useUser();
   const [item, setItem] = useState<ColorItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -319,6 +321,12 @@ export default function ColorDetailPage() {
       return;
     }
     if (hasPurchase) {
+      if (!isLoaded) return;
+      if (!isSignedIn) {
+        const redirectPath = `${window.location.pathname}${window.location.search}`;
+        router.push(`/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`);
+        return;
+      }
       router.push(`/color/${item.id}/order`);
     }
   };
