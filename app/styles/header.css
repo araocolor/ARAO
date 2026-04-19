@@ -717,6 +717,10 @@
   text-align: left;
 }
 
+.nav-drawer-footer a.header-menu-label {
+  font-weight: 700;
+}
+
 .nav-drawer-footer .header-menu-label {
   margin-left: auto;
 }
