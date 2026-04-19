@@ -88,10 +88,11 @@
 }
 
 .account-phone-input {
-  padding-left: 48px;
+  padding: 0 12px 0 48px;
   border-radius: 999px;
-  height: 42px;
+  height: 38px;
   box-sizing: border-box;
+  font-family: "Courier New", "SF Mono", Menlo, Consolas, monospace;
 }
 
 .account-phone-input[readonly] {
@@ -970,16 +971,18 @@
   margin-left: auto;
   align-self: center;
   border-radius: 999px;
-  height: 42px;
+  height: 38px;
   box-sizing: border-box;
   padding: 0 16px;
+  font-size: 15px;
 }
 
 .account-phone-pill-btn {
   border-radius: 999px;
-  height: 42px;
+  height: 38px;
   box-sizing: border-box;
   padding: 0 16px;
+  font-size: 15px;
 }
 
 .account-avatar-column {
