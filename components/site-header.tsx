@@ -549,10 +549,13 @@ export function SiteHeader({
               href="/account/general"
               onClick={closeDrawer}
               style={{
-                display: "inline-block",
-                padding: "8px 14px",
-                fontSize: 13,
-                fontWeight: 500,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: 40,
+                padding: "0 18px",
+                fontSize: 14,
+                fontWeight: 700,
                 color: "#fff",
                 background: "#111",
                 borderRadius: 999,
