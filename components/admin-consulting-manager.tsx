@@ -146,11 +146,11 @@ export function AdminConsultingManager() {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "pending":
-        return "답변대기중";
+        return "대기중";
       case "in_progress":
         return "답변중";
       case "resolved":
-        return "답변완료";
+        return "완료";
       case "closed":
         return "종료";
       default:
@@ -202,9 +202,9 @@ export function AdminConsultingManager() {
               <label>상태</label>
               <select value={status} onChange={(e) => setStatus(e.target.value)}>
                 <option value="all">전체</option>
-                <option value="pending">답변대기중</option>
+                <option value="pending">대기중</option>
                 <option value="in_progress">답변중</option>
-                <option value="resolved">답변완료</option>
+                <option value="resolved">완료</option>
                 <option value="closed">종료</option>
               </select>
             </div>
@@ -215,7 +215,7 @@ export function AdminConsultingManager() {
               </span>
               {pendingCount > 0 && (
                 <span className="admin-consulting-stat pending">
-                  답변대기중 <strong>{pendingCount}</strong>건
+                  대기중 <strong>{pendingCount}</strong>건
                 </span>
               )}
               {answeredCount > 0 && (

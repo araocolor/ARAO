@@ -152,7 +152,7 @@ export function ConsultingSection({
     }
   }
 
-  async function handleCloseInquiry(inquiry: Inquiry) {
+  async function handleDeleteInquiry(inquiry: Inquiry) {
     try {
       setIsSubmitting(true);
       const response = await fetch(
@@ -160,19 +160,19 @@ export function ConsultingSection({
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "close" }),
+          body: JSON.stringify({ action: "delete" }),
         }
       );
 
       if (response.ok) {
-        setMessage("문의가 종료되었습니다.");
+        setMessage("문의가 삭제되었습니다.");
         setExpandedId(null);
         await loadInquiries();
         window.dispatchEvent(new Event("notification-refresh"));
       }
     } catch (error) {
-      console.error("Failed to close inquiry:", error);
-      setMessage("문의 종료 중 오류가 발생했습니다.");
+      console.error("Failed to delete inquiry:", error);
+      setMessage("문의 삭제 중 오류가 발생했습니다.");
     } finally {
       setIsSubmitting(false);
     }
@@ -181,11 +181,11 @@ export function ConsultingSection({
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "pending":
-        return "답변대기중";
+        return "대기중";
       case "in_progress":
         return "답변중";
       case "resolved":
-        return "답변완료";
+        return "완료";
       case "closed":
         return "종료";
       default:
@@ -223,7 +223,7 @@ export function ConsultingSection({
                 setView("create");
               }}
             >
-              + 새 문의
+              문의하기
             </button>
           </div>
 
@@ -249,16 +249,18 @@ export function ConsultingSection({
                       aria-expanded={isOpen}
                     >
                       <div className="consulting-item-header">
-                        <h4>{inquiry.title}</h4>
+                        <div className="consulting-item-title-wrap">
+                          <h4>{inquiry.title}</h4>
+                          <span className="consulting-item-date">
+                            {new Date(inquiry.created_at).toLocaleDateString("ko-KR")}
+                          </span>
+                        </div>
                         <span
                           className={`consulting-status ${getStatusClass(inquiry.status)}`}
                         >
                           {getStatusLabel(inquiry.status)}
                         </span>
                       </div>
-                      <p className="consulting-item-date">
-                        {new Date(inquiry.created_at).toLocaleDateString("ko-KR")}
-                      </p>
                       {inquiry.has_unread_reply && (
                         <span className="consulting-item-badge">답변 있음</span>
                       )}
@@ -325,10 +327,10 @@ export function ConsultingSection({
                             </button>
                             <button
                               className="consulting-btn-close"
-                              onClick={() => handleCloseInquiry(inquiry)}
+                              onClick={() => handleDeleteInquiry(inquiry)}
                               disabled={isSubmitting}
                             >
-                              {isSubmitting ? "처리 중..." : "문의 종료"}
+                              {isSubmitting ? "처리 중..." : "문의 삭제"}
                             </button>
                           </div>
                         )}

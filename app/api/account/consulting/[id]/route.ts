@@ -1,8 +1,8 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import {
   getInquiryById,
-  updateInquiryStatus,
   updateInquiry,
+  deleteInquiry,
 } from "@/lib/consulting";
 import { syncProfile } from "@/lib/profiles";
 import { NextResponse } from "next/server";
@@ -120,16 +120,16 @@ export async function PATCH(
       );
     }
 
-    // close 액션
-    if (body.action === "close") {
-      const updated = await updateInquiryStatus(id, "closed");
-      if (!updated) {
+    // delete 액션 (close는 하위 호환)
+    if (body.action === "delete" || body.action === "close") {
+      const deleted = await deleteInquiry(id);
+      if (!deleted) {
         return NextResponse.json(
-          { message: "Failed to update inquiry" },
+          { message: "Failed to delete inquiry" },
           { status: 500 }
         );
       }
-      return NextResponse.json({ inquiry: updated });
+      return NextResponse.json({ ok: true });
     }
 
     // edit 액션

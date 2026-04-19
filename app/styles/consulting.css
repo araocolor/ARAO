@@ -5,6 +5,83 @@
   gap: 24px;
 }
 
+.account-section-card-consulting {
+  padding: 10px;
+}
+
+.consulting-faq-card {
+  gap: 14px;
+}
+
+.consulting-faq-title {
+  margin: 0;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+}
+
+.consulting-faq-list {
+  list-style: none;
+  counter-reset: consulting-faq;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.consulting-faq-item {
+  padding-left: 0;
+  counter-increment: consulting-faq;
+}
+
+.consulting-faq-item details {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.consulting-faq-item summary {
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.5;
+  list-style: none;
+}
+
+.consulting-faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.consulting-faq-item summary::before {
+  content: counter(consulting-faq) " ";
+}
+
+.consulting-faq-item details:not([open]) summary {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.consulting-faq-item details[open] summary {
+  white-space: normal;
+}
+
+.consulting-faq-item p {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
 .consulting-tabs {
   display: flex;
   gap: 12px;
@@ -51,7 +128,7 @@
   background: var(--text);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 999px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -74,7 +151,6 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  counter-reset: consulting-item;
 }
 
 .consulting-item {
@@ -125,26 +201,23 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
-  margin-bottom: 6px;
+}
+
+.consulting-item-title-wrap {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .consulting-item-header h4 {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 0;
-  flex: 1;
-  display: flex;
-  align-items: center;
-}
-
-.consulting-item-header h4::before {
-  counter-increment: consulting-item;
-  content: counter(consulting-item) ".";
-  display: inline-block;
-  min-width: 22px;
-  margin-right: 6px;
+  font-size: 17px;
   font-weight: 700;
-  color: var(--muted);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .consulting-status {
@@ -158,6 +231,8 @@
 .consulting-status-pending {
   background: rgba(239, 68, 68, 0.1);
   color: #DC2626;
+  font-size: 14px;
+  border-radius: 999px;
 }
 
 .consulting-status-progress {
@@ -166,8 +241,10 @@
 }
 
 .consulting-status-resolved {
-  background: rgba(59, 130, 246, 0.1);
-  color: #2563eb;
+  background: rgba(156, 163, 175, 0.1);
+  color: #6b7280;
+  font-size: 14px;
+  border-radius: 999px;
 }
 
 .consulting-status-closed {
@@ -178,7 +255,8 @@
 .consulting-item-date {
   font-size: 13px;
   color: var(--muted);
-  margin: 0;
+  white-space: nowrap;
+  line-height: 1.3;
 }
 
 .consulting-item-badge {
@@ -570,6 +648,8 @@
 .admin-consulting-status-pending {
   background: rgba(107, 114, 128, 0.1);
   color: #475569;
+  font-size: 14px;
+  border-radius: 999px;
 }
 
 .admin-consulting-status-progress {
@@ -578,8 +658,10 @@
 }
 
 .admin-consulting-status-resolved {
-  background: rgba(34, 197, 94, 0.1);
-  color: #16a34a;
+  background: rgba(156, 163, 175, 0.1);
+  color: #6b7280;
+  font-size: 14px;
+  border-radius: 999px;
 }
 
 .admin-consulting-status-closed {
@@ -855,11 +937,6 @@
 }
 
 @media (max-width: 768px) {
-  .consulting-item-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .admin-consulting-filters {
     display: grid;
     grid-template-columns: 1fr 1fr;

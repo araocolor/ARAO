@@ -279,6 +279,23 @@ export async function updateInquiry(
   return data as Inquiry;
 }
 
+// 사용자: 본인 문의 삭제
+export async function deleteInquiry(id: string) {
+  const supabase = createSupabaseAdminClient();
+
+  const { error } = await supabase
+    .from("inquiries")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("deleteInquiry error:", error);
+    return false;
+  }
+
+  return true;
+}
+
 // 관리자: 상태 변경
 export async function updateInquiryStatus(
   id: string,
