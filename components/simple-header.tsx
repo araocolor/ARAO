@@ -2,21 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export function SimpleHeader() {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const fromColorId = searchParams.get("fromColorId")?.trim() ?? "";
-  const isOrderDetailPage = /^\/account\/orders\/[^/]+$/.test(pathname);
 
   function handleBack() {
-    if (isOrderDetailPage && fromColorId) {
-      router.push(`/color/${fromColorId}`);
-      return;
-    }
-    router.back();
+    router.push("/");
   }
 
   return (

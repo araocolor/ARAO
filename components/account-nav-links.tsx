@@ -67,23 +67,7 @@ export function AccountNavLinks({ mobile, footer }: NavLinksProps) {
   if (footer) {
     return (
       <nav className="account-footer-nav">
-        <div className="account-footer-menu">
-          {userSections.map((section) => {
-            const Icon = SECTION_ICONS[section.icon];
-            return (
-              <Link
-                key={section.id}
-                href={`/account/${section.id}`}
-                prefetch={true}
-                className={`account-footer-item${isActive(section.id) ? " active" : ""}`}
-                title={section.menu}
-              >
-                {Icon && <Icon size={20} strokeWidth={1.7} aria-hidden="true" />}
-                <span className="account-footer-label">{section.menu}</span>
-              </Link>
-            );
-          })}
-        </div>
+        <div className="account-footer-menu" />
       </nav>
     );
   }

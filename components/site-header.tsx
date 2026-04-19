@@ -4,10 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Sparkles, MousePointerClick, Tag, BookOpen, Settings2, Users, CreditCard, MessageCircle, HelpCircle, ShieldCheck } from "lucide-react";
+import { useClerk } from "@clerk/nextjs";
+import { Sparkles, MousePointerClick, Tag, BookOpen, Settings2, Users, CreditCard, MessageCircle, HelpCircle, ShieldCheck, LogOut } from "lucide-react";
 import { TierBadge } from "@/components/tier-badge";
 import { useHeaderSessionStore } from "@/stores/header-session-store";
 import { REVIEW_LIST_CACHE_TTL } from "@/lib/cache-config";
+import { clearAllCachesOnLogout } from "@/hooks/use-prefetch-cache";
 
 type SiteHeaderProps = {
   links: Array<{ href: string; label: string; icon?: string; divider?: boolean }>;
@@ -30,6 +32,7 @@ type SiteHeaderProps = {
 
 const REVIEW_PREFETCH_LOCK_KEY = "user-review-list-prefetch-lock";
 const REVIEW_PREFETCH_LOCK_MS = 10000;
+const PROFILE_PANEL_AUTO_OPEN_ONCE_KEY = "profile-panel-auto-open-once-v1";
 
 function canPrefetchReviewList(): boolean {
   if (typeof navigator === "undefined") return true;
@@ -117,6 +120,7 @@ export function SiteHeader({
   version,
   hideOnScrollMode = "default",
 }: SiteHeaderProps) {
+  const { signOut } = useClerk();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [avatarToastVisible, setAvatarToastVisible] = useState(false);
   const [profilePanelOpen, setProfilePanelOpen] = useState(false);
@@ -250,10 +254,28 @@ export function SiteHeader({
     setPanelDragY(0);
   }
 
-  // 드로어 열릴 때 프로필 패널 자동 오픈 (0.5초 후)
+  // 로그아웃 상태가 되면 1회 자동 오픈 키 초기화
+  useEffect(() => {
+    if (isSignedIn) return;
+    try {
+      sessionStorage.removeItem(PROFILE_PANEL_AUTO_OPEN_ONCE_KEY);
+    } catch {}
+  }, [isSignedIn]);
+
+  // 드로어 열릴 때 프로필 패널 자동 오픈 (로그인당 1회, 0.5초 후)
   useEffect(() => {
     if (drawerOpen && isSignedIn && hasUsername) {
-      const timer = setTimeout(() => setProfilePanelOpen(true), 500);
+      try {
+        const alreadyOpened = sessionStorage.getItem(PROFILE_PANEL_AUTO_OPEN_ONCE_KEY) === "1";
+        if (alreadyOpened) return;
+      } catch {}
+
+      const timer = setTimeout(() => {
+        try {
+          sessionStorage.setItem(PROFILE_PANEL_AUTO_OPEN_ONCE_KEY, "1");
+        } catch {}
+        setProfilePanelOpen(true);
+      }, 500);
       return () => clearTimeout(timer);
     }
   }, [drawerOpen, isSignedIn, hasUsername]);
@@ -392,6 +414,15 @@ export function SiteHeader({
   }, [drawerOpen, fullWidth, hideOnScrollMode, profilePanelOpen]);
 
   const closeDrawer = () => { setDrawerOpen(false); setProfilePanelOpen(false); };
+  const handleLogout = () => {
+    closeDrawer();
+    clearAllCachesOnLogout();
+    void signOut().then(() => { window.location.href = "/"; });
+  };
+  const handleTopProfileClick = () => {
+    closeDrawer();
+    window.location.href = isSignedIn ? "/account/general" : "/sign-in";
+  };
   const handleAvatarClick = () => {
     if (isSignedIn) {
       setProfilePanelOpen((v) => !v);
@@ -466,7 +497,7 @@ export function SiteHeader({
             <button
               type="button"
               className="nav-drawer-profile-trigger"
-              onClick={handleAvatarClick}
+              onClick={handleTopProfileClick}
               aria-label="사용자 메뉴"
             >
               <span className="nav-drawer-avatar-icon" data-tier={tier ?? undefined}>{mobileProfile}</span>
@@ -546,7 +577,7 @@ export function SiteHeader({
           <nav className="nav-drawer-list">
             <Link href="/account/general" className="nav-drawer-link" onClick={closeDrawer}>
               <span className="nav-drawer-icon"><Settings2 width={20} height={20} strokeWidth={1.7} /></span>
-              개인정보관리
+              개인설정
             </Link>
             <Link href="/account/consulting" className="nav-drawer-link" onClick={closeDrawer}>
               <span className="nav-drawer-icon"><MessageCircle width={20} height={20} strokeWidth={1.7} /></span>
@@ -560,6 +591,15 @@ export function SiteHeader({
               <span className="nav-drawer-icon"><BookOpen width={20} height={20} strokeWidth={1.7} /></span>
               컬러레시피
             </Link>
+            <button
+              type="button"
+              className="nav-drawer-link"
+              style={{ width: "100%", background: "none", border: "none", textAlign: "left", cursor: "pointer" }}
+              onClick={handleLogout}
+            >
+              <span className="nav-drawer-icon"><LogOut width={20} height={20} strokeWidth={1.7} /></span>
+              로그아웃
+            </button>
             {isAdmin && (
               <Link href="/admin" className="nav-drawer-link" onClick={closeDrawer}>
                 <span className="nav-drawer-icon"><ShieldCheck width={20} height={20} strokeWidth={1.7} /></span>
@@ -647,7 +687,6 @@ export function SiteHeader({
                 </div>
               </>
             )}
-            {mobileFooterLogout}
             {mobileLeading ?? leading}
           </div>
         </div>

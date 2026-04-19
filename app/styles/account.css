@@ -409,7 +409,7 @@
 .account-page {
   display: flex;
   justify-content: center;
-  padding: 24px 16px 100px;
+  padding: 2px 16px 100px;
 }
 
 .account-content {
@@ -468,7 +468,7 @@
   transform: translateX(-50%);
   width: min(100vw, 820px);
   height: 80px;
-  background: rgba(245, 245, 247, 0.96);
+  background: rgba(17, 17, 17, 0.8);
   backdrop-filter: blur(14px);
   border-top: 1px solid var(--line);
   z-index: 39;
@@ -868,7 +868,7 @@
 
 @media (min-width: 820px) and (min-height: 600px) {
   .account-page {
-    padding: 24px 0 100px;
+    padding: 2px 0 100px;
   }
 
   .account-page .account-layout-root {

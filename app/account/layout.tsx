@@ -4,6 +4,7 @@ import { SimpleHeader } from "@/components/simple-header";
 import { AccountNavLinks } from "@/components/account-nav-links";
 import { syncProfile } from "@/lib/profiles";
 import { AccountPrefetchWrapper } from "@/components/account-prefetch-wrapper";
+import { AccountTopPills } from "@/components/account-top-pills";
 
 export default async function AccountLayout({ children }: { children: React.ReactNode }) {
   const { userId } = await auth();
@@ -35,8 +36,9 @@ export default async function AccountLayout({ children }: { children: React.Reac
       <SimpleHeader />
       <AccountPrefetchWrapper>
         <main className="account-page">
-          {profileError ? (
-            <div className="account-content">
+          <div className="account-content">
+            <AccountTopPills />
+            {profileError ? (
               <section className="section stack">
                 <h1>프로필 연결 오류</h1>
                 <p className="muted">이 계정의 profile을 읽는 중 문제가 발생했습니다.</p>
@@ -44,19 +46,15 @@ export default async function AccountLayout({ children }: { children: React.Reac
                 <p className="muted">hint: {profileError.hint ?? "없음"}</p>
                 <p className="muted">로그인 이메일: {email ?? "없음"}</p>
               </section>
-            </div>
-          ) : profile ? (
-            <div className="account-content">
-              {children}
-            </div>
-          ) : (
-            <div className="account-content">
+            ) : profile ? (
+              children
+            ) : (
               <section className="section stack">
                 <h1>회원 정보를 불러오지 못했습니다</h1>
                 <p className="muted">다시 로그인한 뒤 시도해주세요.</p>
               </section>
-            </div>
-          )}
+            )}
+          </div>
         </main>
       </AccountPrefetchWrapper>
       <AccountNavLinks footer />
