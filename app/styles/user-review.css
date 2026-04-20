@@ -411,7 +411,7 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--text);
-  line-height: 1.3;
+  line-height: 1.1;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -807,7 +807,7 @@
   justify-content: center;
   box-sizing: border-box;
   padding: 0 0 env(safe-area-inset-bottom);
-  height: calc(55px + env(safe-area-inset-bottom));
+  height: calc(60px + env(safe-area-inset-bottom));
   background: var(--surface, #fff);
   box-shadow: 0 -4px 16px rgb(17 17 17 / 10%);
   border-top: 1px solid var(--line);
@@ -845,6 +845,13 @@
 
 .user-content-bottom-more-btn {
   padding-right: 50px;
+}
+
+.user-content-bottom-comment-btn {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 12px;
+  justify-content: center;
 }
 
 .user-content-bottom-like-btn.liked {
@@ -1241,14 +1248,14 @@
 }
 
 .user-content-comment-item.is-reply .user-content-comment-avatar {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
 }
 
 .user-content-comment-avatar {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 999px;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -1273,15 +1280,15 @@
 .user-content-comment-body {
   display: flex;
   flex-direction: column;
-  gap: 3px;
   min-width: 0;
   flex: 1;
 }
 
 .user-content-comment-author {
   font-size: 16px;
-  font-weight: 600;
-  color: var(--text);
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.4);
+  line-height: 1;
 }
 
 .user-content-comment-author-badge {
@@ -1292,14 +1299,14 @@
   border-radius: 999px;
   font-size: 10px;
   font-weight: 600;
-  color: var(--text);
-  background: rgba(0, 0, 0, 0.08);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.3);
 }
 
 .user-content-comment-text {
-  margin: 0;
+  margin: 4px 0 0;
   font-size: 16px;
-  line-height: 1.5;
+  line-height: 1.2;
   color: var(--text);
   word-break: break-word;
   white-space: pre-line;
@@ -1311,15 +1318,19 @@
 }
 
 .user-content-comment-date {
+  display: block;
+  margin-top: 1px;
   font-size: 11px;
-  color: var(--muted);
+  color: rgba(0, 0, 0, 0.3);
+  text-align: left;
+  line-height: 1.5;
 }
 
 .user-content-comment-actions {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .user-content-comment-action-btn {
@@ -1369,9 +1380,17 @@
 
 .user-content-comment-author-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.user-content-comment-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .user-content-comment-more-btn {

@@ -696,16 +696,19 @@ export function UserContentInteractions({
                         <span className="user-content-comment-author-badge" aria-label="작성자">작성자</span>
                       )}
                     </span>
-                    {comment.isMine && !comment.isDeleted && (
-                      <button
-                        type="button"
-                        className="user-content-comment-more-btn"
-                        onClick={() => { setMenuComment(comment); }}
-                      >
-                        ...
-                      </button>
-                    )}
+                    <div className="user-content-comment-right">
+                      {comment.isMine && !comment.isDeleted && (
+                        <button
+                          type="button"
+                          className="user-content-comment-more-btn"
+                          onClick={() => { setMenuComment(comment); }}
+                        >
+                          ...
+                        </button>
+                      )}
+                    </div>
                   </div>
+                  <span className="user-content-comment-date">{formatDate(comment.createdAt)}</span>
                   {editingId === comment.id ? (
                     <div className="user-content-comment-edit-form">
                       <textarea
@@ -724,7 +727,6 @@ export function UserContentInteractions({
                   ) : (
                     <p className={`user-content-comment-text${comment.isDeleted ? " deleted" : ""}`}>{comment.content}</p>
                   )}
-                  <span className="user-content-comment-date">{formatDate(comment.createdAt)}</span>
                   <div className="user-content-comment-actions">
                     {!comment.isDeleted && (
                       <button
@@ -783,6 +785,7 @@ export function UserContentInteractions({
                           )}
                         </div>
                       </div>
+                      <span className="user-content-comment-date">{formatDate(reply.createdAt)}</span>
                       {editingId === reply.id ? (
                         <div className="user-content-comment-edit-form">
                           <textarea
@@ -801,7 +804,6 @@ export function UserContentInteractions({
                       ) : (
                         <p className={`user-content-comment-text${reply.isDeleted ? " deleted" : ""}`}>{reply.content}</p>
                       )}
-                      <span className="user-content-comment-date">{formatDate(reply.createdAt)}</span>
                       <div className="user-content-comment-actions">
                         {!reply.isDeleted && (
                           <button
