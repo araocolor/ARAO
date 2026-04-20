@@ -6,6 +6,7 @@ import { useUser } from "@clerk/nextjs";
 import { createPortal } from "react-dom";
 import { UserContentHeader } from "@/components/user-content-header";
 import { UserContentInteractions, UserContentLikeSection } from "@/components/user-content-interactions";
+import { UserProfileModal, type UserProfileModalTarget } from "@/components/user-profile-modal";
 
 function ContentImage({
   src,
@@ -377,7 +378,9 @@ type ReviewItem = {
   viewCount: number;
   createdAt: string;
   authorId: string;
+  authorEmail?: string | null;
   authorIconImage?: string | null;
+  authorTier?: string | null;
   profileId: string;
   isAuthor: boolean;
   board?: string;
@@ -429,8 +432,10 @@ export function UserContentPage({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isSignedIn } = useUser();
+  const { isSignedIn, user } = useUser();
   const [item, setItem] = useState<ReviewItem | null>(null);
+  const [viewerRole, setViewerRole] = useState<string | null>(null);
+  const [profileModalTarget, setProfileModalTarget] = useState<UserProfileModalTarget | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const [commentSheetOpen, setCommentSheetOpen] = useState(false);
@@ -448,6 +453,10 @@ export function UserContentPage({
   const boardListPath = getBoardListPath(normalizedBoard);
   const cameFromNotification = routeSource === "notification";
   const targetCommentId = routeCommentId && routeCommentId.trim().length > 0 ? routeCommentId : null;
+  const signedInEmail =
+    user?.primaryEmailAddress?.emailAddress ??
+    user?.emailAddresses?.[0]?.emailAddress ??
+    null;
 
   useEffect(() => {
     try {
@@ -523,6 +532,46 @@ export function UserContentPage({
       }
     }
   }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isSignedIn) {
+      setViewerRole(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    try {
+      if (signedInEmail) {
+        const cacheKey = `general_${signedInEmail.toLowerCase()}`;
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached) as { data?: { role?: string } };
+          const cachedRole = parsed?.data?.role;
+          if (typeof cachedRole === "string" && cachedRole.trim().length > 0) {
+            setViewerRole(cachedRole);
+          }
+        }
+      }
+    } catch {}
+
+    fetch("/api/account/general")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { role?: string } | null) => {
+        if (cancelled) return;
+        setViewerRole(data?.role ?? null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setViewerRole(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isSignedIn, signedInEmail]);
 
   useEffect(() => {
     if (commentSheetOpen) {
@@ -625,6 +674,21 @@ export function UserContentPage({
     setViewerIndex(null);
   }, []);
 
+  function handleAuthorAvatarClick() {
+    if (!item) return;
+    if (!isSignedIn) {
+      router.push("/sign-in");
+      return;
+    }
+
+    setProfileModalTarget({
+      authorId: item.authorId,
+      authorEmail: item.authorEmail ?? null,
+      authorTier: item.authorTier ?? null,
+      iconImage: item.authorIconImage ?? null,
+    });
+  }
+
   let attachedFile: { name: string; type: string; url?: string; data?: string } | null = null;
   if (item?.attachedFile) {
     try {
@@ -663,16 +727,23 @@ export function UserContentPage({
                 {item.title}
               </h1>
               <div className="user-content-author-row">
-                <span className="user-content-author-avatar" aria-hidden="true">
-                  {item.authorIconImage ? (
-                    <img src={item.authorIconImage} alt="" className="user-content-author-avatar-img" />
-                  ) : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="8" r="4" />
-                      <path d="M4 20c0-4.2 3.6-7 8-7s8 2.8 8 7" />
-                    </svg>
-                  )}
-                </span>
+                <button
+                  type="button"
+                  className="user-content-author-avatar-btn"
+                  onClick={handleAuthorAvatarClick}
+                  aria-label={`${item.authorId} 회원 정보 보기`}
+                >
+                  <span className="user-content-author-avatar">
+                    {item.authorIconImage ? (
+                      <img src={item.authorIconImage} alt="" className="user-content-author-avatar-img" />
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="8" r="4" />
+                        <path d="M4 20c0-4.2 3.6-7 8-7s8 2.8 8 7" />
+                      </svg>
+                    )}
+                  </span>
+                </button>
                 <div className="user-content-author-meta">
                   <p className="user-content-author-id">{item.authorId}</p>
                   <p className="user-content-author-date-line muted">
@@ -842,6 +913,14 @@ export function UserContentPage({
                 </div>
               );
             })()}
+
+            <UserProfileModal
+              target={profileModalTarget}
+              isSignedIn={!!isSignedIn}
+              viewerRole={viewerRole}
+              onRequestSignIn={() => router.push("/sign-in")}
+              onClose={() => setProfileModalTarget(null)}
+            />
           </>
         )}
       </div>

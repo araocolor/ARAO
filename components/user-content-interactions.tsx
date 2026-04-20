@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { TierBadge } from "@/components/tier-badge";
+import { UserProfileModal, type UserProfileModalTarget } from "@/components/user-profile-modal";
 
 type Comment = {
   id: string;
@@ -14,6 +15,7 @@ type Comment = {
   createdAt: string;
   parentId: string | null;
   authorId: string;
+  authorEmail?: string | null;
   authorTier?: string | null;
   iconImage: string | null;
   isMine?: boolean;
@@ -124,7 +126,13 @@ function getCommentsCache(reviewId: string): Comment[] | null {
     if (!cached) return null;
     const { data, ts } = JSON.parse(cached) as { data: { comments: Comment[] }; ts: number };
     if (Date.now() - ts < 300000) {
-      return (data.comments ?? []).map((comment) => ({ ...comment, parentId: comment.parentId ?? null, likeCount: comment.likeCount ?? 0, liked: comment.liked ?? false }));
+      return (data.comments ?? []).map((comment) => ({
+        ...comment,
+        parentId: comment.parentId ?? null,
+        authorEmail: comment.authorEmail ?? null,
+        likeCount: comment.likeCount ?? 0,
+        liked: comment.liked ?? false,
+      }));
     }
   } catch {}
   return null;
@@ -242,7 +250,7 @@ export function UserContentInteractions({
   targetCommentId?: string | null;
   onCommentCountChange?: (nextCommentCount: number) => void;
 }) {
-  const { isSignedIn } = useUser();
+  const { isSignedIn, user } = useUser();
   const router = useRouter();
   const cachedComments = getCommentsCache(reviewId);
   const [comments, setComments] = useState<Comment[]>(cachedComments ?? []);
@@ -266,7 +274,13 @@ export function UserContentInteractions({
   const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null);
   const [missingTargetNotice, setMissingTargetNotice] = useState(false);
   const [commentsLoaded, setCommentsLoaded] = useState(cachedComments !== null);
+  const [viewerRole, setViewerRole] = useState<string | null>(null);
+  const [profileModalTarget, setProfileModalTarget] = useState<UserProfileModalTarget | null>(null);
   const COMMENT_HIGHLIGHT_DURATION_MS = 1000;
+  const signedInEmail =
+    user?.primaryEmailAddress?.emailAddress ??
+    user?.emailAddresses?.[0]?.emailAddress ??
+    null;
 
   function setCommentsCache(nextComments: Comment[]) {
     try {
@@ -302,6 +316,46 @@ export function UserContentInteractions({
       }
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isSignedIn) {
+      setViewerRole(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    try {
+      if (signedInEmail) {
+        const cacheKey = `general_${signedInEmail.toLowerCase()}`;
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached) as { data?: { role?: string } };
+          const cachedRole = parsed?.data?.role;
+          if (typeof cachedRole === "string" && cachedRole.trim().length > 0) {
+            setViewerRole(cachedRole);
+          }
+        }
+      }
+    } catch {}
+
+    fetch("/api/account/general")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { role?: string } | null) => {
+        if (cancelled) return;
+        setViewerRole(data?.role ?? null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setViewerRole(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isSignedIn, signedInEmail]);
 
   useEffect(() => {
     syncCommentCount(comments);
@@ -414,11 +468,35 @@ export function UserContentInteractions({
     highlightedCommentDoneRef.current = null;
     setMissingTargetNotice(false);
 
-    // 캐시가 있으면 API 호출 생략 — Realtime이 변경사항 처리
+    // 캐시가 있으면 즉시 표시. 단, 이메일 필드가 비어 있으면 백그라운드 갱신
     const cached = getCommentsCache(reviewId);
     if (cached !== null) {
       setComments(cached);
       setCommentsLoaded(true);
+      const needEmailBackfill = cached.some((comment) => !(comment.authorEmail ?? "").trim());
+      if (needEmailBackfill) {
+        fetch(`/api/main/user-review/${reviewId}/comments`)
+          .then((r) => r.json())
+          .then((d) => {
+            const nextComments: Comment[] = Array.isArray(d.comments)
+              ? d.comments.map((comment: Comment) => ({
+                ...comment,
+                parentId: comment.parentId ?? null,
+                authorEmail: comment.authorEmail ?? null,
+                likeCount: comment.likeCount ?? 0,
+                liked: comment.liked ?? false,
+              }))
+              : [];
+            setComments(nextComments);
+            try {
+              sessionStorage.setItem(
+                `user-review-comments-${reviewId}`,
+                JSON.stringify({ data: { comments: nextComments }, ts: Date.now() })
+              );
+            } catch {}
+          })
+          .catch(() => {});
+      }
       return;
     }
 
@@ -427,7 +505,13 @@ export function UserContentInteractions({
       .then((r) => r.json())
       .then((d) => {
         const nextComments: Comment[] = Array.isArray(d.comments)
-          ? d.comments.map((comment: Comment) => ({ ...comment, parentId: comment.parentId ?? null, likeCount: comment.likeCount ?? 0, liked: comment.liked ?? false }))
+          ? d.comments.map((comment: Comment) => ({
+            ...comment,
+            parentId: comment.parentId ?? null,
+            authorEmail: comment.authorEmail ?? null,
+            likeCount: comment.likeCount ?? 0,
+            liked: comment.liked ?? false,
+          }))
           : [];
         setComments(nextComments);
         try {
@@ -461,7 +545,13 @@ export function UserContentInteractions({
             .then((r) => r.json())
             .then((d) => {
               const nextComments: Comment[] = Array.isArray(d.comments)
-                ? d.comments.map((comment: Comment) => ({ ...comment, parentId: comment.parentId ?? null, likeCount: comment.likeCount ?? 0, liked: comment.liked ?? false }))
+                ? d.comments.map((comment: Comment) => ({
+                  ...comment,
+                  parentId: comment.parentId ?? null,
+                  authorEmail: comment.authorEmail ?? null,
+                  likeCount: comment.likeCount ?? 0,
+                  liked: comment.liked ?? false,
+                }))
                 : [];
               setComments(nextComments);
               setCommentsCache(nextComments);
@@ -482,7 +572,13 @@ export function UserContentInteractions({
         .then((r) => r.json())
         .then((d) => {
           const nextComments: Comment[] = Array.isArray(d.comments)
-            ? d.comments.map((comment: Comment) => ({ ...comment, parentId: comment.parentId ?? null, likeCount: comment.likeCount ?? 0, liked: comment.liked ?? false }))
+            ? d.comments.map((comment: Comment) => ({
+              ...comment,
+              parentId: comment.parentId ?? null,
+              authorEmail: comment.authorEmail ?? null,
+              likeCount: comment.likeCount ?? 0,
+              liked: comment.liked ?? false,
+            }))
             : [];
           setComments(nextComments);
           setCommentsCache(nextComments);
@@ -561,6 +657,7 @@ export function UserContentInteractions({
           createdAt: rawComment.createdAt ?? new Date().toISOString(),
           parentId: rawComment.parentId ?? null,
           authorId: rawComment.authorId ?? "익명",
+          authorEmail: rawComment.authorEmail ?? null,
           authorTier: rawComment.authorTier ?? null,
           iconImage: rawComment.iconImage ?? null,
           isMine: rawComment.isMine ?? true,
@@ -658,6 +755,19 @@ export function UserContentInteractions({
     }
   }
 
+  function handleAvatarClick(target: Comment) {
+    if (!isSignedIn) {
+      router.push("/sign-in");
+      return;
+    }
+    setProfileModalTarget({
+      authorId: target.authorId,
+      authorEmail: target.authorEmail ?? null,
+      authorTier: target.authorTier ?? null,
+      iconImage: target.iconImage ?? null,
+    });
+  }
+
   const rootComments = comments.filter((comment) => !comment.parentId);
   const getReplies = (parentId: string) => comments.filter((comment) => comment.parentId === parentId);
   const isReviewAuthor = (authorId: string) => !!reviewAuthorId && authorId === reviewAuthorId;
@@ -681,12 +791,19 @@ export function UserContentInteractions({
                 id={`user-review-comment-${comment.id}`}
                 className={`user-content-comment-item${comment.isMine ? " is-mine" : ""}${highlightedCommentId === comment.id ? " is-highlighted" : ""}`}
               >
-                <span className="user-content-comment-avatar">
-                  {comment.iconImage
-                    ? <img src={comment.iconImage} alt="" className="user-content-comment-avatar-img" />
-                    : <span className="user-content-comment-avatar-default">{comment.authorId.slice(0, 1).toUpperCase()}</span>
-                  }
-                </span>
+                <button
+                  type="button"
+                  className="user-content-comment-avatar-btn"
+                  onClick={() => handleAvatarClick(comment)}
+                  aria-label={`${comment.authorId} 회원 정보 보기`}
+                >
+                  <span className="user-content-comment-avatar">
+                    {comment.iconImage
+                      ? <img src={comment.iconImage} alt="" className="user-content-comment-avatar-img" />
+                      : <span className="user-content-comment-avatar-default">{comment.authorId.slice(0, 1).toUpperCase()}</span>
+                    }
+                  </span>
+                </button>
                 <div className="user-content-comment-body">
                   <div className="user-content-comment-author-row">
                     <span className="user-content-comment-author">
@@ -758,12 +875,19 @@ export function UserContentInteractions({
                     id={`user-review-comment-${reply.id}`}
                     className={`user-content-comment-item is-reply${reply.isMine ? " is-mine" : ""}${highlightedCommentId === reply.id ? " is-highlighted" : ""}`}
                   >
-                    <span className="user-content-comment-avatar">
-                      {reply.iconImage
-                        ? <img src={reply.iconImage} alt="" className="user-content-comment-avatar-img" />
-                        : <span className="user-content-comment-avatar-default">{reply.authorId.slice(0, 1).toUpperCase()}</span>
-                      }
-                    </span>
+                    <button
+                      type="button"
+                      className="user-content-comment-avatar-btn"
+                      onClick={() => handleAvatarClick(reply)}
+                      aria-label={`${reply.authorId} 회원 정보 보기`}
+                    >
+                      <span className="user-content-comment-avatar">
+                        {reply.iconImage
+                          ? <img src={reply.iconImage} alt="" className="user-content-comment-avatar-img" />
+                          : <span className="user-content-comment-avatar-default">{reply.authorId.slice(0, 1).toUpperCase()}</span>
+                        }
+                      </span>
+                    </button>
                     <div className="user-content-comment-body">
                       <div className="user-content-comment-author-row">
                         <span className="user-content-comment-author">
@@ -887,6 +1011,14 @@ export function UserContentInteractions({
                 : "등록"}
         </button>
       </div>
+
+      <UserProfileModal
+        target={profileModalTarget}
+        isSignedIn={!!isSignedIn}
+        viewerRole={viewerRole}
+        onRequestSignIn={() => router.push("/sign-in")}
+        onClose={() => setProfileModalTarget(null)}
+      />
 
       {/* 댓글 메뉴 바텀시트 */}
       {menuComment && (

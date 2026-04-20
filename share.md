@@ -52,7 +52,7 @@ Shared information: routing, authentication, development workflow, deployment, a
 
 ### Important Patterns
 
-**Dynamic Routes (Next.js 16):**
+**Dynamic Routes (Next.js 15+):**
 ```typescript
 async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;  // Must await!

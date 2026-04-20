@@ -9,7 +9,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| 현재 | Next.js 16 웹 서비스 (arao-test-7gxt.vercel.app) |
+| 현재 | Next.js 15.5.15 웹 서비스 (arao-test-7gxt.vercel.app) |
 | 단기 목표 | 웹 기능 완성 |
 | 중기 목표 | 웹 완성 후 약 3개월 시점에 React Native 앱 개발 착수 |
 | 핵심 방향 | 웹/앱 코드 최대 재사용 + 네이티브 앱 수준의 사용감 |
@@ -192,7 +192,7 @@ supabase
 
 | 항목 | 웹 (현재) | 앱 (예정) |
 |------|---------|---------|
-| Framework | Next.js 16 | Expo (React Native) |
+| Framework | Next.js 15.5.15 | Expo (React Native) |
 | Auth | @clerk/nextjs | @clerk/clerk-expo |
 | DB | Supabase (서버/클라이언트) | Supabase (클라이언트 전용) |
 | 스타일 | CSS (styles/*.css) | NativeWind 또는 StyleSheet |

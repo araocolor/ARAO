@@ -14,6 +14,7 @@ export type UserReviewListItem = {
   commentCount: number;
   createdAt: string;
   authorId: string;
+  authorEmail: string | null;
   authorIconImage: string | null;
   authorTier: string | null;
   isAuthor: boolean;
@@ -72,6 +73,7 @@ function mapRowToListItem(row: any, viewerProfileId?: string | null): UserReview
     commentCount: Array.isArray(row.comment_count) ? (row.comment_count[0]?.count ?? 0) : (typeof row.comment_count === "number" ? row.comment_count : 0),
     createdAt: row.created_at ?? new Date(0).toISOString(),
     authorId: mapAuthorId(row),
+    authorEmail: profile?.email ? maskEmail(profile.email) : null,
     authorIconImage: profile?.icon_image ?? null,
     authorTier: profile?.tier ?? null,
     isAuthor: !!viewerProfileId && row.profile_id === viewerProfileId,

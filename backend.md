@@ -191,9 +191,9 @@ export async function POST(request: Request) {
 }
 ```
 
-**Dynamic Route (Next.js 16) Pattern:**
+**Dynamic Route (Next.js 15+) Pattern:**
 ```typescript
-// Next.js 16 requires params as Promise
+// Next.js 15+ requires params as Promise
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -248,6 +248,6 @@ Set in `.env.local` locally or Vercel project settings for production.
 
 ## Common Issues
 
-**"Type is not assignable to Promise"** — Next.js 16 dynamic routes require `await params`
+**"Type is not assignable to Promise"** — Next.js 15+ dynamic routes require `await params`
 **Cache corruption** — Delete `.next` folder and restart dev server
 **RLS policy violations** — Check Supabase RLS policies match auth requirements

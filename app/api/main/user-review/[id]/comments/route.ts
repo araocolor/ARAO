@@ -51,6 +51,7 @@ export async function GET(
     .map((row: any) => {
     const p = Array.isArray(row.profile) ? row.profile[0] : row.profile;
     const authorId = p?.username || (p?.email ? maskEmail(p.email) : "익명");
+    const authorEmail = p?.email ? maskEmail(p.email) : null;
     return {
       id: row.id,
       content: row.is_deleted ? SOFT_DELETED_PARENT_TEXT : row.content,
@@ -58,6 +59,7 @@ export async function GET(
       createdAt: row.created_at,
       parentId: row.parent_id ?? null,
       authorId,
+      authorEmail,
       authorTier: p?.tier ?? null,
       iconImage: p?.icon_image ?? null,
       isMine: viewerProfileId ? viewerProfileId === row.profile_id : false,
@@ -116,6 +118,7 @@ export async function POST(
   if (error) return NextResponse.json({ message: "댓글 저장 실패" }, { status: 500 });
 
   const authorId = profile.username || (profile.email ? maskEmail(profile.email) : "익명");
+  const authorEmail = profile.email ? maskEmail(profile.email) : null;
   const commenterName = profile.username || (profile.email ? maskEmail(profile.email) : null) || "누군가";
   const { data: review } = await supabase
     .from("user_reviews")
@@ -155,6 +158,7 @@ export async function POST(
     createdAt: data.created_at,
     parentId: data.parent_id ?? null,
     authorId,
+    authorEmail,
     authorTier: profile.tier ?? null,
     iconImage: profile.icon_image ?? null,
     isDeleted: false,
