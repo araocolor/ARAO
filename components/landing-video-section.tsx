@@ -46,10 +46,10 @@ export function LandingVideoSection({ label, title, body, youtubeUrl }: LandingV
   const thumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
 
   return (
-    <section className="landing-stack-sm">
-      <span className="landing-section-label">{label}</span>
+    <section className="landing-stack-sm landing-video-section">
       <h2 className="landing-video-title">{title}</h2>
-      <p className="muted">{body}</p>
+      <p className="landing-video-body muted">{body}</p>
+      <span className="landing-section-label">{label}</span>
       <div className="landing-video-wrap">
         {playing ? (
           <iframe

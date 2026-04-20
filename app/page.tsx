@@ -23,9 +23,9 @@ export default async function HomePage() {
               style={{ ["--landing-image" as string]: `url("${landingContent.comparison.beforeImage}")` }}
             />
 
-            <section className="landing-hero landing-stack-sm" id="intro">
+            <section className="landing-hero landing-stack-sm landing-hero-intro" id="intro">
               <img src="/apple-touch-icon.png" alt="ARAO" style={{ width: 40, height: 40, borderRadius: 10, display: "block", margin: "0 auto" }} />
-              <span className="landing-section-label">{landingContent.hero.badge}</span>
+              <span className="landing-section-label landing-hero-badge">{landingContent.hero.badge}</span>
               <h1 className="landing-hero-title">{landingContent.hero.title}</h1>
               <p className="landing-hero-body">{landingContent.hero.body}</p>
               <Link className="landing-button landing-button-primary" href={landingContent.hero.ctaHref}>
