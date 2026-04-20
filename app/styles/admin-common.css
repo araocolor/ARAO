@@ -103,6 +103,7 @@
   min-height: 120px;
   padding: 14px;
   resize: vertical;
+  white-space: pre-wrap;
 }
 
 .admin-review-card {
