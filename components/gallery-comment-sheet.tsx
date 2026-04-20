@@ -9,6 +9,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { buildSignInHrefFromCurrentLocation } from "@/lib/auth-redirect";
 import { TierBadge } from "@/components/tier-badge";
 import { CommentSheetFrame } from "@/components/comment-sheet-frame";
+import { UserProfileModal, type UserProfileModalTarget } from "@/components/user-profile-modal";
 
 function maskEmail(email: string): string {
   const atIndex = email.indexOf("@");
@@ -78,9 +79,11 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<ReplyContext | null>(null);
   const [nowTick, setNowTick] = useState(() => Date.now());
+  const [profileModalTarget, setProfileModalTarget] = useState<UserProfileModalTarget | null>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
   const commentsRef = useRef<GalleryComment[]>([]);
   const myEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase() ?? null;
+  const viewerRole = (user?.publicMetadata?.role as string | null | undefined) ?? null;
 
   // commentsRef를 항상 최신 상태로 유지 (Realtime 핸들러에서 사용)
   useEffect(() => { commentsRef.current = comments; }, [comments]);
@@ -408,15 +411,27 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
         ref={isHighlight ? highlightRef : undefined}
         className={`gallery-comment-item${isReply ? " is-reply" : ""}${isDeleted ? " is-deleted" : ""}`}
       >
-        <div className="gallery-comment-avatar">
-          {c.author_icon_image ? (
-            <img src={c.author_icon_image} className="gallery-comment-avatar-img" alt="" />
-          ) : (
-            <span className="gallery-comment-avatar-default">
-              {displayName.slice(0, 1).toUpperCase()}
-            </span>
-          )}
-        </div>
+        <button
+          type="button"
+          className="gallery-comment-avatar-btn"
+          onClick={() => setProfileModalTarget({
+            authorId: c.author_username ?? c.author_email ?? "익명",
+            authorEmail: c.author_email ?? null,
+            authorTier: c.author_tier ?? null,
+            iconImage: c.author_icon_image ?? null,
+          })}
+          aria-label={`${displayName} 회원 정보 보기`}
+        >
+          <div className="gallery-comment-avatar">
+            {c.author_icon_image ? (
+              <img src={c.author_icon_image} className="gallery-comment-avatar-img" alt="" />
+            ) : (
+              <span className="gallery-comment-avatar-default">
+                {displayName.slice(0, 1).toUpperCase()}
+              </span>
+            )}
+          </div>
+        </button>
         <div className="gallery-comment-body">
           <span className="gallery-comment-author-row">
             <span className="gallery-comment-author">
@@ -503,6 +518,13 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
 
   return (
     <CommentSheetFrame title="댓글" onClose={onClose}>
+      <UserProfileModal
+        target={profileModalTarget}
+        isSignedIn={!!isSignedIn}
+        viewerRole={viewerRole}
+        onRequestSignIn={() => router.push(buildSignInHrefFromCurrentLocation())}
+        onClose={() => setProfileModalTarget(null)}
+      />
       <div className="gallery-sheet-comments">
         {loading && <p className="gallery-sheet-empty">불러오는 중...</p>}
         {!loading && comments.length === 0 && (
