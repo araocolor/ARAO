@@ -1776,11 +1776,16 @@
 .user-content-comment-form {
   display: flex;
   gap: 8px;
-  align-items: flex-start;
+  align-items: center;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 999px;
   background: var(--surface);
-  padding: 6px 6px 6px 14px;
+  padding: 4px 4px 4px 16px;
+}
+
+.user-content-comment-submit {
+  border-radius: 999px;
+  align-self: center;
 }
 
 .user-content-comment-input {
@@ -1833,14 +1838,30 @@
   padding-bottom: 8px;
 }
 
-.gallery-sheet-comments .user-content-comment-form {
+.gallery-sheet-comments .user-content-comment-dock {
   position: sticky;
-  bottom: 0;
+  bottom: 10px;
   margin-top: auto;
   z-index: 3;
-  border-color: rgba(17, 17, 17, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--surface);
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
   box-shadow: 0 -6px 16px rgba(17, 17, 17, 0.08);
-  padding-bottom: calc(6px + env(safe-area-inset-bottom));
+}
+
+.gallery-sheet-comments .user-content-comment-dock .user-content-comment-form {
+  border-color: rgba(17, 17, 17, 0.12);
+  border-radius: 999px;
+  align-items: center;
+  padding: 4px 4px 4px 16px;
+}
+
+.gallery-sheet-comments .user-content-comment-dock .user-content-comment-submit {
+  border-radius: 999px;
+  align-self: center;
+  padding: 8px 14px;
 }
 
 /* ── 후기 작성 페이지 ── */

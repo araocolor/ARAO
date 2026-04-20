@@ -644,20 +644,66 @@
 }
 
 .gallery-sheet-handle {
+  width: 80px;
+  height: 24px;
+  background: transparent;
+  margin: 4px auto 0;
+  flex-shrink: 0;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+}
+
+.gallery-sheet-handle::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   width: 36px;
   height: 4px;
   background: #e5e7eb;
   border-radius: 2px;
-  margin: 10px auto 0;
+}
+
+.gallery-sheet-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px 0;
+  width: 100%;
+  align-self: stretch;
+  justify-content: flex-start;
+}
+
+.gallery-sheet-back-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #111;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
 }
 
 .gallery-sheet-title {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   color: #111;
-  margin: 8px 0 0;
-  text-align: center;
+  margin: 0;
+  text-align: left;
+}
+
+.gallery-sheet-title-count {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111;
+  margin-left: 4px;
 }
 
 .gallery-sheet-comments {

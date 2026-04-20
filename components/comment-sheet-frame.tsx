@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 type CommentSheetFrameProps = {
   title?: string;
+  count?: number;
   onClose: () => void;
   children: ReactNode;
   closeDurationMs?: number;
@@ -15,6 +16,7 @@ type CommentSheetFrameProps = {
 
 export function CommentSheetFrame({
   title = "댓글",
+  count,
   onClose,
   children,
   closeDurationMs = 300,
@@ -112,8 +114,28 @@ export function CommentSheetFrame({
           onTouchMove={onDragMove}
           onTouchEnd={onDragEnd}
         >
-          <div className="gallery-sheet-handle" />
-          <p className="gallery-sheet-title">{title}</p>
+          <button
+            type="button"
+            className="gallery-sheet-handle"
+            onClick={dismiss}
+            aria-label="댓글 닫기"
+          />
+          <div className="gallery-sheet-title-row">
+            <button
+              type="button"
+              className="gallery-sheet-back-btn"
+              onClick={dismiss}
+              aria-label="뒤로"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+            <p className="gallery-sheet-title" onClick={dismiss} style={{ cursor: "pointer" }}>
+              {title}
+              {typeof count === "number" && <span className="gallery-sheet-title-count"> {count}</span>}
+            </p>
+          </div>
         </div>
         {children}
       </div>

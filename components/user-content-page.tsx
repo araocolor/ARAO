@@ -440,6 +440,9 @@ export function UserContentPage({
   const [notFound, setNotFound] = useState(false);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const [commentSheetOpen, setCommentSheetOpen] = useState(false);
+  const [justSubmittedCommentId, setJustSubmittedCommentId] = useState<string | null>(null);
+  const [liveCommentCount, setLiveCommentCount] = useState<number>(0);
+  const [pendingReplyTarget, setPendingReplyTarget] = useState<{ authorId: string; commentId: string; parentId: string } | null>(null);
   const originalCacheRef = useRef<Record<string, boolean>>({});
   const [upgradedImages, setUpgradedImages] = useState<Record<number, string>>({});
   const routeBoard = searchParams.get("board");
@@ -480,13 +483,15 @@ export function UserContentPage({
     router.push(boardListPath, { scroll: false });
   }, [onRequestClose, router, boardListPath, cameFromNotification]);
 
-  function openCommentSheet() {
+  function openCommentSheet(replyTarget?: { authorId: string; commentId: string; parentId: string }) {
     if (!isSignedIn) { router.push("/sign-in"); return; }
+    setPendingReplyTarget(replyTarget ?? null);
     setCommentSheetOpen(true);
   }
 
   function closeCommentSheet() {
     setCommentSheetOpen(false);
+    setPendingReplyTarget(null);
   }
 
   useEffect(() => {
@@ -774,10 +779,12 @@ export function UserContentPage({
             <UserContentInteractions
               reviewId={id}
               reviewAuthorId={item.authorId}
-              targetCommentId={targetCommentId}
+              targetCommentId={justSubmittedCommentId ?? targetCommentId}
               onCommentCountChange={(nextCommentCount) => {
+                setLiveCommentCount(nextCommentCount);
                 onReviewCountsChange?.({ reviewId: id, commentCount: nextCommentCount });
               }}
+              onRequestOpenSheet={openCommentSheet}
             />
             <div className="user-content-bottom-footer">
               <div className="user-content-bottom-footer-inner">
@@ -808,7 +815,15 @@ export function UserContentPage({
 
             {/* 댓글 시트 */}
             {commentSheetOpen && (
-              <CommentSheetFrame title="댓글" onClose={closeCommentSheet}>
+              <CommentSheetFrame
+                title="댓글"
+                count={liveCommentCount}
+                onClose={closeCommentSheet}
+                collapsedHeight="100dvh"
+                expandedHeight="100dvh"
+                collapsedBorderRadius="0"
+                expandedBorderRadius="0"
+              >
                 <div className="gallery-sheet-comments" style={{ overflowY: "auto", flex: 1 }}>
                   <UserContentInteractions
                     reviewId={id}
@@ -817,6 +832,8 @@ export function UserContentPage({
                     onCommentCountChange={(nextCommentCount) => {
                       onReviewCountsChange?.({ reviewId: id, commentCount: nextCommentCount });
                     }}
+                    autoFocusComment
+                    initialReplyTarget={pendingReplyTarget}
                   />
                 </div>
               </CommentSheetFrame>

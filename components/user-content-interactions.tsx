@@ -244,11 +244,19 @@ export function UserContentInteractions({
   reviewAuthorId,
   targetCommentId,
   onCommentCountChange,
+  onRequestOpenSheet,
+  autoFocusComment,
+  onCommentSubmitted,
+  initialReplyTarget,
 }: {
   reviewId: string;
   reviewAuthorId?: string | null;
   targetCommentId?: string | null;
   onCommentCountChange?: (nextCommentCount: number) => void;
+  onRequestOpenSheet?: (replyTarget?: { authorId: string; commentId: string; parentId: string }) => void;
+  autoFocusComment?: boolean;
+  onCommentSubmitted?: (commentId: string) => void;
+  initialReplyTarget?: { authorId: string; commentId: string; parentId: string } | null;
 }) {
   const { isSignedIn, user } = useUser();
   const router = useRouter();
@@ -302,6 +310,40 @@ export function UserContentInteractions({
   useEffect(() => {
     commentsRef.current = comments;
   }, [comments]);
+
+  useEffect(() => {
+    if (!autoFocusComment) return;
+    const timer = window.setTimeout(() => {
+      const textarea = commentTextareaElRef.current;
+      if (!textarea) return;
+      textarea.focus();
+      const cursor = textarea.value.length;
+      try { textarea.setSelectionRange(cursor, cursor); } catch {}
+    }, 50);
+    return () => window.clearTimeout(timer);
+  }, [autoFocusComment]);
+
+  useEffect(() => {
+    if (!initialReplyTarget) return;
+    const mention = `@${initialReplyTarget.authorId} `;
+    const pseudoTarget = {
+      id: initialReplyTarget.commentId,
+      authorId: initialReplyTarget.authorId,
+    } as Comment;
+    setReplyTo({ target: pseudoTarget, parentId: initialReplyTarget.parentId });
+    setCommentInput(mention);
+    setSubmitButtonState("idle");
+    const timer = window.setTimeout(() => {
+      const textarea = commentTextareaElRef.current;
+      if (!textarea) return;
+      textarea.focus();
+      const cursor = textarea.value.length;
+      try { textarea.setSelectionRange(cursor, cursor); } catch {}
+      textarea.style.height = "auto";
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }, 50);
+    return () => window.clearTimeout(timer);
+  }, [initialReplyTarget]);
 
   useEffect(() => {
     return () => {
@@ -612,9 +654,23 @@ export function UserContentInteractions({
   }
 
   function startReply(target: Comment, parentId: string) {
+    if (onRequestOpenSheet) {
+      onRequestOpenSheet({ authorId: target.authorId, commentId: target.id, parentId });
+      return;
+    }
     setReplyTo({ target, parentId });
     setSubmitButtonState("idle");
-    focusCommentTextarea();
+    const mention = `@${target.authorId} `;
+    setCommentInput(mention);
+    window.setTimeout(() => {
+      const textarea = commentTextareaElRef.current;
+      if (!textarea) return;
+      textarea.focus();
+      const cursor = textarea.value.length;
+      try { textarea.setSelectionRange(cursor, cursor); } catch {}
+      textarea.style.height = "auto";
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }, 0);
   }
 
   function updateSubmitButtonState(next: SubmitButtonState, autoResetMs?: number) {
@@ -675,6 +731,7 @@ export function UserContentInteractions({
           updateSubmitButtonState("idle");
         }
         dispatchNotificationRefresh();
+        onCommentSubmitted?.(newComment.id);
       } else if (submittingReply) {
         updateSubmitButtonState("error", 2200);
       }
@@ -775,7 +832,6 @@ export function UserContentInteractions({
 
   return (
     <section ref={commentSectionRef} className="user-content-comment-section">
-      <p className="user-content-comment-label">댓글 {visibleCommentCount > 0 ? visibleCommentCount : ""}</p>
       {missingTargetNotice && (
         <p className="user-content-comment-missing-notice" role="status" aria-live="polite">
           삭제되었거나 찾을 수 없는 댓글임
@@ -958,29 +1014,7 @@ export function UserContentInteractions({
         </div>
       )}
 
-      {replyTo && (
-        <div className="user-content-replying-banner">
-          <span>{replyTo.target.authorId}에게 답글 남기는 중...</span>
-          <button type="button" onClick={() => { setReplyTo(null); updateSubmitButtonState("idle"); }}>
-            취소
-          </button>
-        </div>
-      )}
-
-      {/* 이모티콘 행 */}
-      <div className="gallery-sheet-emoji-row">
-        {["❤️","😍","🥰","😊","😂","🔥","✨","👍","🎉","💯"].map((emoji) => (
-          <button
-            key={emoji}
-            className="gallery-sheet-emoji-btn"
-            onClick={() => setCommentInput((prev) => prev + emoji)}
-            type="button"
-          >
-            {emoji}
-          </button>
-        ))}
-      </div>
-
+      <div className="user-content-comment-dock">
       {/* 댓글 입력폼 */}
       <div className="user-content-comment-form">
         <textarea
@@ -988,10 +1022,28 @@ export function UserContentInteractions({
           className="user-content-comment-input"
           placeholder={replyTo ? "답글을 남겨보세요" : "댓글을 남겨보세요"}
           value={commentInput}
-          onClick={() => { if (!isSignedIn) { router.push("/sign-in"); } }}
-          onFocus={() => { if (!isSignedIn) { router.push("/sign-in"); } }}
+          readOnly={!!onRequestOpenSheet}
+          onClick={(e) => {
+            if (!isSignedIn) { router.push("/sign-in"); return; }
+            if (onRequestOpenSheet) {
+              e.currentTarget.blur();
+              onRequestOpenSheet();
+            }
+          }}
+          onFocus={(e) => {
+            if (!isSignedIn) { router.push("/sign-in"); return; }
+            if (onRequestOpenSheet) {
+              e.currentTarget.blur();
+              onRequestOpenSheet();
+            }
+          }}
           onChange={(e) => {
-            setCommentInput(e.target.value);
+            const next = e.target.value;
+            setCommentInput(next);
+            if (replyTo && next.trim().length === 0) {
+              setReplyTo(null);
+              updateSubmitButtonState("idle");
+            }
             e.target.style.height = "auto";
             e.target.style.height = `${e.target.scrollHeight}px`;
           }}
@@ -1010,6 +1062,7 @@ export function UserContentInteractions({
                 ? "다시 시도"
                 : "등록"}
         </button>
+      </div>
       </div>
 
       <UserProfileModal
