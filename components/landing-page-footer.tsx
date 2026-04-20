@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { CompanyFooter } from "@/components/company-footer";
 import type { LandingContent } from "@/lib/landing-content";
 
 const QNA_CACHE_KEY = "user-review-list-cache-qna";
@@ -89,61 +90,7 @@ export function LandingPageFooter({ content }: LandingPageFooterProps) {
 
   return (
     <footer className="landing-footer" id="help" ref={footerRef}>
-      <div className="landing-footer-brand">
-        <p className="landing-footer-company">{content.company}</p>
-        <p className="landing-footer-text">{content.address}</p>
-        <div className="landing-footer-socials">
-          <a
-            className="landing-footer-social"
-            href="https://www.instagram.com/arao.color/"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Instagram"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="4" y="4" width="16" height="16" rx="5" />
-              <circle cx="12" cy="12" r="3.5" />
-              <circle cx="17.2" cy="6.8" r="1.1" />
-            </svg>
-          </a>
-          <a
-            className="landing-footer-social"
-            href="https://www.youtube.com/@Araocolor"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="YouTube"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="3" y="6.5" width="18" height="11" rx="4" />
-              <path d="M10 9.5 15 12l-5 2.5z" />
-            </svg>
-          </a>
-        </div>
-      </div>
-      <nav className="landing-footer-links">
-        {content.links.map((link) => {
-          const legalType =
-            link.label === "개인정보처리방침" ? "privacy" :
-            link.label === "이용약관" ? "terms" : null;
-          if (legalType) {
-            return (
-              <button
-                key={link.label}
-                type="button"
-                className="landing-footer-link landing-footer-link-button"
-                onClick={() => openLegalSheet(legalType)}
-              >
-                {link.label}
-              </button>
-            );
-          }
-          return (
-            <a key={link.label} className="landing-footer-link" href={link.href}>
-              {link.label}
-            </a>
-          );
-        })}
-      </nav>
+      <CompanyFooter address={content.address} links={content.links} onOpenLegalSheet={openLegalSheet} />
       {legalSheet && (
         <>
           <div
