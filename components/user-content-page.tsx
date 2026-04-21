@@ -1268,10 +1268,16 @@ export function UserContentPage({
                             resizeCommentSheetTextarea(e.target);
                           }}
                         />
+                        {commentSheetSubmitting && (
+                          <span className="user-content-compose-uploading-indicator" role="status" aria-live="polite">
+                            업로드중...
+                          </span>
+                        )}
                         <button
                           type="button"
                           className="user-content-compose-floating-submit"
                           aria-label={editTarget ? "수정 완료" : "댓글 전송"}
+                          disabled={commentSheetSubmitting}
                           onClick={() => {
                             void handleCommentSheetSubmit();
                           }}
