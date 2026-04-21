@@ -1876,6 +1876,10 @@
   to { transform: translateX(-50%) translateY(0); }
 }
 
+.user-content-compose-sheet.is-edit-mode {
+  background: rgb(204, 204, 204);
+}
+
 .user-content-compose-sheet-top {
   display: flex;
   align-items: flex-start;
@@ -2019,7 +2023,7 @@
 
 .user-content-compose-context-title {
   margin: 0;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.35;
   font-weight: 700;
   color: #111;
@@ -2039,7 +2043,7 @@
 
 .user-content-compose-context-body {
   margin: 6px 0 0;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.4;
   color: rgba(17, 17, 17, 0.84);
   white-space: pre-wrap;

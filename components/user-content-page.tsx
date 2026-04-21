@@ -450,6 +450,17 @@ type CommentSheetReplyTarget = {
   iconImage: string | null;
 };
 
+type CommentSheetEditTarget = {
+  commentId: string;
+  content: string;
+  parentId: string | null;
+  authorId: string;
+  iconImage: string | null;
+  parentAuthorId?: string | null;
+  parentContent?: string | null;
+  parentIconImage?: string | null;
+};
+
 export function UserContentPage({
   id,
   onRequestClose,
@@ -471,6 +482,7 @@ export function UserContentPage({
   const [justSubmittedCommentId, setJustSubmittedCommentId] = useState<string | null>(null);
   const [liveCommentCount, setLiveCommentCount] = useState<number>(0);
   const [pendingReplyTarget, setPendingReplyTarget] = useState<CommentSheetReplyTarget | null>(null);
+  const [editTarget, setEditTarget] = useState<CommentSheetEditTarget | null>(null);
   const [commentSheetInput, setCommentSheetInput] = useState("");
   const [commentSheetSubmitting, setCommentSheetSubmitting] = useState(false);
   const [commentSheetError, setCommentSheetError] = useState<string | null>(null);
@@ -528,8 +540,28 @@ export function UserContentPage({
     if (!isSignedIn) { router.push("/sign-in"); return; }
     setCommentSheetError(null);
     setEmojiPickerOpen(false);
+    setEditTarget(null);
     setCommentSheetInput(replyTarget ? `@${replyTarget.authorId} ` : "");
     setPendingReplyTarget(replyTarget ?? null);
+    setCommentSheetOpen(true);
+  }
+
+  function openEditSheet(comment: { id: string; content: string; parentId: string | null; authorId: string; iconImage: string | null; parentAuthorId?: string | null; parentContent?: string | null; parentIconImage?: string | null }) {
+    if (!isSignedIn) { router.push("/sign-in"); return; }
+    setCommentSheetError(null);
+    setEmojiPickerOpen(false);
+    setPendingReplyTarget(null);
+    setEditTarget({
+      commentId: comment.id,
+      content: comment.content,
+      parentId: comment.parentId,
+      authorId: comment.authorId,
+      iconImage: comment.iconImage,
+      parentAuthorId: comment.parentAuthorId,
+      parentContent: comment.parentContent,
+      parentIconImage: comment.parentIconImage,
+    });
+    setCommentSheetInput(comment.content);
     setCommentSheetOpen(true);
   }
 
@@ -553,6 +585,7 @@ export function UserContentPage({
   function closeCommentSheet() {
     setCommentSheetOpen(false);
     setPendingReplyTarget(null);
+    setEditTarget(null);
     setCommentSheetInput("");
     setCommentSheetSubmitting(false);
     setCommentSheetError(null);
@@ -582,6 +615,30 @@ export function UserContentPage({
     if (!commentSheetInput.trim() || commentSheetSubmitting) return;
     setCommentSheetSubmitting(true);
     setCommentSheetError(null);
+
+    if (editTarget) {
+      try {
+        const res = await fetch(`/api/main/user-review/${id}/comments`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ commentId: editTarget.commentId, content: commentSheetInput.trim() }),
+        });
+        if (!res.ok) {
+          setCommentSheetError("수정에 실패했습니다. 다시 시도해주세요.");
+          return;
+        }
+        window.dispatchEvent(new CustomEvent("user-review-comment-edited", {
+          detail: { reviewId: id, commentId: editTarget.commentId, content: commentSheetInput.trim() },
+        }));
+        closeCommentSheet();
+      } catch {
+        setCommentSheetError("수정에 실패했습니다. 다시 시도해주세요.");
+      } finally {
+        setCommentSheetSubmitting(false);
+      }
+      return;
+    }
+
     try {
       const res = await fetch(`/api/main/user-review/${id}/comments`, {
         method: "POST",
@@ -964,6 +1021,7 @@ export function UserContentPage({
                 onReviewCountsChange?.({ reviewId: id, commentCount: nextCommentCount });
               }}
               onRequestOpenSheet={openCommentSheet}
+              onRequestEditComment={openEditSheet}
             />
             <div className="user-content-bottom-footer">
               <div className="user-content-bottom-footer-inner">
@@ -995,24 +1053,28 @@ export function UserContentPage({
               </div>
             </div>
 
-            {/* 댓글 입력 시트 */}
+            {/* 댓글 입력/수정 시트 */}
             {commentSheetOpen && (
               <>
                 <div className="user-content-compose-sheet-backdrop" onClick={closeCommentSheet} />
-                <div className="user-content-compose-sheet" role="dialog" aria-modal="true" aria-label="댓글 입력">
+                <div className={`user-content-compose-sheet${editTarget ? " is-edit-mode" : ""}`} role="dialog" aria-modal="true" aria-label={editTarget ? "댓글 수정" : "댓글 입력"}>
                   <div className="user-content-compose-sheet-top">
                     <div className="user-content-compose-sheet-target-wrap">
                       <span className="user-content-compose-sheet-label">
-                        {pendingReplyTarget ? "답글 대상" : "댓글 작성"}
+                        {editTarget ? "댓글 수정" : pendingReplyTarget ? "답글 대상" : "댓글 작성"}
                       </span>
                       <p className="user-content-compose-sheet-target">
-                        {pendingReplyTarget
-                          ? `${pendingReplyTarget.authorId}님에게 답글`
-                          : `${item.authorId}님의 본문에 댓글 남기기`}
+                        {editTarget
+                          ? (editTarget.parentId
+                            ? `${editTarget.parentAuthorId ?? ""}님의 댓글에 남긴 답글 수정`
+                            : `${item.authorId}님의 본문에 남긴 댓글 수정`)
+                          : pendingReplyTarget
+                            ? `${pendingReplyTarget.authorId}님에게 답글`
+                            : `${item.authorId}님의 본문에 댓글 남기기`}
                       </p>
                     </div>
                     <button type="button" className="user-content-compose-sheet-close" onClick={closeCommentSheet}>
-                      닫기
+                      {editTarget ? "취소" : "닫기"}
                     </button>
                   </div>
 
@@ -1020,29 +1082,43 @@ export function UserContentPage({
                     <div className="user-content-compose-context-row">
                       <div className="user-content-compose-context-author">
                         <span className="user-content-compose-context-avatar" aria-hidden="true">
-                          {(pendingReplyTarget ? pendingReplyTarget.iconImage : item.authorIconImage)
-                            ? (
-                              <img
-                                src={(pendingReplyTarget ? pendingReplyTarget.iconImage : item.authorIconImage) ?? ""}
-                                alt=""
-                                className="user-content-compose-context-avatar-img"
-                              />
-                            )
-                            : (
-                              <span className="user-content-compose-context-avatar-fallback">
-                                {(pendingReplyTarget ? pendingReplyTarget.authorId : item.authorId).slice(0, 1).toUpperCase()}
-                              </span>
-                            )}
+                          {(() => {
+                            const avatarSrc = editTarget
+                              ? (editTarget.parentId ? editTarget.parentIconImage : item.authorIconImage)
+                              : (pendingReplyTarget ? pendingReplyTarget.iconImage : item.authorIconImage);
+                            const avatarId = editTarget
+                              ? (editTarget.parentId ? (editTarget.parentAuthorId ?? "") : item.authorId)
+                              : (pendingReplyTarget ? pendingReplyTarget.authorId : item.authorId);
+                            return avatarSrc
+                              ? <img src={avatarSrc} alt="" className="user-content-compose-context-avatar-img" />
+                              : <span className="user-content-compose-context-avatar-fallback">{avatarId.slice(0, 1).toUpperCase()}</span>;
+                          })()}
                         </span>
                       </div>
 
                       <div className="user-content-compose-context-main">
                         <span className="user-content-compose-context-author-id">
-                          {pendingReplyTarget ? pendingReplyTarget.authorId : item.authorId}
+                          {editTarget
+                            ? (editTarget.parentId ? (editTarget.parentAuthorId ?? "") : item.authorId)
+                            : (pendingReplyTarget ? pendingReplyTarget.authorId : item.authorId)}
                         </span>
 
                         <div className="user-content-compose-context-bubble" role="note" aria-label="작성 대상 미리보기">
-                          {pendingReplyTarget ? (
+                          {editTarget ? (
+                            editTarget.parentId ? (
+                              <>
+                                <p className="user-content-compose-context-reply-author">{editTarget.parentAuthorId ?? ""}님의 댓글</p>
+                                <p className="user-content-compose-context-body is-reply">{editTarget.parentContent?.trim() || "내용이 없습니다."}</p>
+                              </>
+                            ) : (
+                              <>
+                                <p className="user-content-compose-context-title">{item.title || "제목 없음"}</p>
+                                {item.content.trim().length > 0 && (
+                                  <p className="user-content-compose-context-body is-post">{item.content}</p>
+                                )}
+                              </>
+                            )
+                          ) : pendingReplyTarget ? (
                             <>
                               <p className="user-content-compose-context-reply-author">{pendingReplyTarget.authorId}님의 댓글</p>
                               <p className="user-content-compose-context-body is-reply">{pendingReplyTarget.content.trim() || "내용이 없습니다."}</p>
@@ -1092,7 +1168,7 @@ export function UserContentPage({
                         <textarea
                           ref={commentSheetTextareaRef}
                           className="user-content-compose-input"
-                          placeholder={pendingReplyTarget ? "답글을 남겨보세요" : "댓글을 남겨보세요"}
+                          placeholder={editTarget ? "댓글을 수정해보세요" : pendingReplyTarget ? "답글을 남겨보세요" : "댓글을 남겨보세요"}
                           value={commentSheetInput}
                           rows={1}
                           maxLength={300}
@@ -1105,7 +1181,7 @@ export function UserContentPage({
                       <button
                         type="button"
                         className={`user-content-compose-floating-submit${commentSheetInput.trim() ? " active" : ""}`}
-                        aria-label="댓글 전송"
+                        aria-label={editTarget ? "수정 완료" : "댓글 전송"}
                         onClick={() => {
                           void handleCommentSheetSubmit();
                         }}

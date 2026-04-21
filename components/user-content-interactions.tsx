@@ -250,6 +250,7 @@ export function UserContentInteractions({
   targetCommentId,
   onCommentCountChange,
   onRequestOpenSheet,
+  onRequestEditComment,
   autoFocusComment,
   onCommentSubmitted,
   initialReplyTarget,
@@ -259,6 +260,7 @@ export function UserContentInteractions({
   targetCommentId?: string | null;
   onCommentCountChange?: (nextCommentCount: number) => void;
   onRequestOpenSheet?: (replyTarget?: { authorId: string; commentId: string; parentId: string; content: string; iconImage: string | null }) => void;
+  onRequestEditComment?: (comment: { id: string; content: string; parentId: string | null; authorId: string; iconImage: string | null; parentAuthorId?: string | null; parentContent?: string | null; parentIconImage?: string | null }) => void;
   autoFocusComment?: boolean;
   onCommentSubmitted?: (commentId: string) => void;
   initialReplyTarget?: { authorId: string; commentId: string; parentId: string } | null;
@@ -345,6 +347,24 @@ export function UserContentInteractions({
     window.addEventListener("user-review-comment-created", handleCreated as EventListener);
     return () => {
       window.removeEventListener("user-review-comment-created", handleCreated as EventListener);
+    };
+  }, [reviewId]);
+
+  useEffect(() => {
+    function handleEdited(event: Event) {
+      const custom = event as CustomEvent<{ reviewId: string; commentId: string; content: string }>;
+      const detail = custom.detail;
+      if (!detail || detail.reviewId !== reviewId) return;
+      setComments((prev) => {
+        const next = prev.map((c) => c.id === detail.commentId ? { ...c, content: detail.content } : c);
+        setCommentsCache(next);
+        return next;
+      });
+    }
+
+    window.addEventListener("user-review-comment-edited", handleEdited as EventListener);
+    return () => {
+      window.removeEventListener("user-review-comment-edited", handleEdited as EventListener);
     };
   }, [reviewId]);
 
@@ -1113,8 +1133,24 @@ export function UserContentInteractions({
               type="button"
               className="user-content-comment-sheet-item"
               onClick={() => {
-                setEditingId(menuComment.id);
-                setEditInput(menuComment.content);
+                if (onRequestEditComment) {
+                  const parentComment = menuComment.parentId
+                    ? comments.find((c) => c.id === menuComment.parentId) ?? null
+                    : null;
+                  onRequestEditComment({
+                    id: menuComment.id,
+                    content: menuComment.content,
+                    parentId: menuComment.parentId,
+                    authorId: menuComment.authorId,
+                    iconImage: menuComment.iconImage,
+                    parentAuthorId: parentComment?.authorId ?? null,
+                    parentContent: parentComment?.content ?? null,
+                    parentIconImage: parentComment?.iconImage ?? null,
+                  });
+                } else {
+                  setEditingId(menuComment.id);
+                  setEditInput(menuComment.content);
+                }
                 setMenuComment(null);
               }}
             >
