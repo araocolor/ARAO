@@ -258,7 +258,7 @@ export function UserContentInteractions({
   reviewAuthorId?: string | null;
   targetCommentId?: string | null;
   onCommentCountChange?: (nextCommentCount: number) => void;
-  onRequestOpenSheet?: (replyTarget?: { authorId: string; commentId: string; parentId: string }) => void;
+  onRequestOpenSheet?: (replyTarget?: { authorId: string; commentId: string; parentId: string; content: string; iconImage: string | null }) => void;
   autoFocusComment?: boolean;
   onCommentSubmitted?: (commentId: string) => void;
   initialReplyTarget?: { authorId: string; commentId: string; parentId: string } | null;
@@ -680,7 +680,13 @@ export function UserContentInteractions({
 
   function startReply(target: Comment, parentId: string) {
     if (onRequestOpenSheet) {
-      onRequestOpenSheet({ authorId: target.authorId, commentId: target.id, parentId });
+      onRequestOpenSheet({
+        authorId: target.authorId,
+        commentId: target.id,
+        parentId,
+        content: target.content,
+        iconImage: target.iconImage ?? null,
+      });
       return;
     }
     setReplyTo({ target, parentId });

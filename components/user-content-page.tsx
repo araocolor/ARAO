@@ -442,6 +442,14 @@ type SheetSubmittedComment = {
   liked: boolean;
 };
 
+type CommentSheetReplyTarget = {
+  authorId: string;
+  commentId: string;
+  parentId: string;
+  content: string;
+  iconImage: string | null;
+};
+
 export function UserContentPage({
   id,
   onRequestClose,
@@ -462,7 +470,7 @@ export function UserContentPage({
   const [commentSheetOpen, setCommentSheetOpen] = useState(false);
   const [justSubmittedCommentId, setJustSubmittedCommentId] = useState<string | null>(null);
   const [liveCommentCount, setLiveCommentCount] = useState<number>(0);
-  const [pendingReplyTarget, setPendingReplyTarget] = useState<{ authorId: string; commentId: string; parentId: string } | null>(null);
+  const [pendingReplyTarget, setPendingReplyTarget] = useState<CommentSheetReplyTarget | null>(null);
   const [commentSheetInput, setCommentSheetInput] = useState("");
   const [commentSheetSubmitting, setCommentSheetSubmitting] = useState(false);
   const [commentSheetError, setCommentSheetError] = useState<string | null>(null);
@@ -516,7 +524,7 @@ export function UserContentPage({
     router.push(boardListPath, { scroll: false });
   }, [onRequestClose, router, boardListPath, cameFromNotification]);
 
-  function openCommentSheet(replyTarget?: { authorId: string; commentId: string; parentId: string }) {
+  function openCommentSheet(replyTarget?: CommentSheetReplyTarget) {
     if (!isSignedIn) { router.push("/sign-in"); return; }
     setCommentSheetError(null);
     setEmojiPickerOpen(false);
@@ -529,6 +537,19 @@ export function UserContentPage({
     openCommentSheet();
   }
 
+  function handleFooterEmojiButtonClick() {
+    if (!isSignedIn) {
+      router.push("/sign-in");
+      return;
+    }
+    if (!commentSheetOpen) {
+      openCommentSheet();
+      setEmojiPickerOpen(true);
+      return;
+    }
+    setEmojiPickerOpen((prev) => !prev);
+  }
+
   function closeCommentSheet() {
     setCommentSheetOpen(false);
     setPendingReplyTarget(null);
@@ -536,10 +557,6 @@ export function UserContentPage({
     setCommentSheetSubmitting(false);
     setCommentSheetError(null);
     setEmojiPickerOpen(false);
-  }
-
-  function handleCommentSheetEmojiToggle() {
-    setEmojiPickerOpen(true);
   }
 
   function handleCommentSheetEmojiSelect(emoji: string) {
@@ -967,10 +984,13 @@ export function UserContentPage({
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
               </button>
-              <button type="button" className="user-content-bottom-more-btn" aria-label="더보기">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" />
-                </svg>
+              <button
+                type="button"
+                className="user-content-bottom-emoji-btn"
+                aria-label="이모티콘"
+                onClick={handleFooterEmojiButtonClick}
+              >
+                <span className="user-content-bottom-emoji" aria-hidden="true">🙂</span>
               </button>
               </div>
             </div>
@@ -994,6 +1014,50 @@ export function UserContentPage({
                     <button type="button" className="user-content-compose-sheet-close" onClick={closeCommentSheet}>
                       닫기
                     </button>
+                  </div>
+
+                  <div className="user-content-compose-context">
+                    <div className="user-content-compose-context-row">
+                      <div className="user-content-compose-context-author">
+                        <span className="user-content-compose-context-avatar" aria-hidden="true">
+                          {(pendingReplyTarget ? pendingReplyTarget.iconImage : item.authorIconImage)
+                            ? (
+                              <img
+                                src={(pendingReplyTarget ? pendingReplyTarget.iconImage : item.authorIconImage) ?? ""}
+                                alt=""
+                                className="user-content-compose-context-avatar-img"
+                              />
+                            )
+                            : (
+                              <span className="user-content-compose-context-avatar-fallback">
+                                {(pendingReplyTarget ? pendingReplyTarget.authorId : item.authorId).slice(0, 1).toUpperCase()}
+                              </span>
+                            )}
+                        </span>
+                      </div>
+
+                      <div className="user-content-compose-context-main">
+                        <span className="user-content-compose-context-author-id">
+                          {pendingReplyTarget ? pendingReplyTarget.authorId : item.authorId}
+                        </span>
+
+                        <div className="user-content-compose-context-bubble" role="note" aria-label="작성 대상 미리보기">
+                          {pendingReplyTarget ? (
+                            <>
+                              <p className="user-content-compose-context-reply-author">{pendingReplyTarget.authorId}님의 댓글</p>
+                              <p className="user-content-compose-context-body is-reply">{pendingReplyTarget.content.trim() || "내용이 없습니다."}</p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="user-content-compose-context-title">{item.title || "제목 없음"}</p>
+                              {item.content.trim().length > 0 && (
+                                <p className="user-content-compose-context-body is-post">{item.content}</p>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="user-content-compose-sheet-bottom">
@@ -1037,15 +1101,6 @@ export function UserContentPage({
                             resizeCommentSheetTextarea(e.target);
                           }}
                         />
-                        <button
-                          type="button"
-                          className={`user-content-compose-emoji-btn${emojiPickerOpen ? " is-open" : ""}`}
-                          onClick={handleCommentSheetEmojiToggle}
-                          aria-label="이모티콘 선택"
-                          aria-expanded={emojiPickerOpen}
-                        >
-                          <span className="user-content-compose-emoji" aria-hidden="true">🙂</span>
-                        </button>
                       </form>
                       <button
                         type="button"
