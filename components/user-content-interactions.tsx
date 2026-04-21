@@ -271,12 +271,14 @@ export function UserContentInteractions({
   const [comments, setComments] = useState<Comment[]>(cachedComments ?? []);
   const commentsRef = useRef<Comment[]>(cachedComments ?? []);
   const [commentInput, setCommentInput] = useState("");
+  const [replyThreadInput, setReplyThreadInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [replyThreadSubmitting, setReplyThreadSubmitting] = useState(false);
   const [replyTo, setReplyTo] = useState<ReplyContext | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editInput, setEditInput] = useState("");
   const commentTextareaElRef = useRef<HTMLTextAreaElement>(null);
-  const editTextareaElRef = useRef<HTMLTextAreaElement>(null);
+  const replyThreadTextareaElRef = useRef<HTMLTextAreaElement>(null);
   const [menuComment, setMenuComment] = useState<Comment | null>(null);
   const [pendingLikeCommentIds, setPendingLikeCommentIds] = useState<Set<string>>(new Set());
   const [submitButtonState, setSubmitButtonState] = useState<SubmitButtonState>("idle");
@@ -291,11 +293,20 @@ export function UserContentInteractions({
   const [commentsLoaded, setCommentsLoaded] = useState(cachedComments !== null);
   const [viewerRole, setViewerRole] = useState<string | null>(null);
   const [profileModalTarget, setProfileModalTarget] = useState<UserProfileModalTarget | null>(null);
+  const [activeReplyThreadParentId, setActiveReplyThreadParentId] = useState<string | null>(null);
   const COMMENT_HIGHLIGHT_DURATION_MS = 2000;
   const signedInEmail =
     user?.primaryEmailAddress?.emailAddress ??
     user?.emailAddresses?.[0]?.emailAddress ??
     null;
+
+  const openReplyThread = useCallback((parentId: string) => {
+    setActiveReplyThreadParentId(parentId);
+  }, []);
+
+  const closeReplyThread = useCallback(() => {
+    setActiveReplyThreadParentId(null);
+  }, []);
 
   function setCommentsCache(nextComments: Comment[]) {
     try {
@@ -317,6 +328,22 @@ export function UserContentInteractions({
   useEffect(() => {
     commentsRef.current = comments;
   }, [comments]);
+
+  useEffect(() => {
+    if (!activeReplyThreadParentId) return;
+    const parentExists = comments.some((comment) => comment.id === activeReplyThreadParentId && !comment.parentId);
+    if (!parentExists) {
+      setActiveReplyThreadParentId(null);
+    }
+  }, [comments, activeReplyThreadParentId]);
+
+  useEffect(() => {
+    setReplyThreadInput("");
+    setReplyThreadSubmitting(false);
+    const textarea = replyThreadTextareaElRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+  }, [activeReplyThreadParentId]);
 
   useEffect(() => {
     if (!autoFocusComment) return;
@@ -460,6 +487,13 @@ export function UserContentInteractions({
         : null;
     if (!normalizedTargetId) return;
     if (highlightedCommentDoneRef.current === normalizedTargetId) return;
+
+    const targetComment = comments.find((comment) => comment.id === normalizedTargetId) ?? null;
+    if (targetComment?.parentId && activeReplyThreadParentId !== targetComment.parentId) {
+      openReplyThread(targetComment.parentId);
+      return;
+    }
+
     const targetEl = document.getElementById(`user-review-comment-${normalizedTargetId}`);
     if (!targetEl) {
       if (!commentsLoaded) return;
@@ -489,7 +523,7 @@ export function UserContentInteractions({
     highlightTimerRef.current = window.setTimeout(() => {
       setHighlightedCommentId((prev) => (prev === normalizedTargetId ? null : prev));
     }, COMMENT_HIGHLIGHT_DURATION_MS);
-  }, [targetCommentId, comments, commentsLoaded, COMMENT_HIGHLIGHT_DURATION_MS]);
+  }, [targetCommentId, comments, commentsLoaded, COMMENT_HIGHLIGHT_DURATION_MS, activeReplyThreadParentId, openReplyThread]);
 
   function setCommentLikePending(commentId: string, pending: boolean) {
     setPendingLikeCommentIds((prev) => {
@@ -688,19 +722,9 @@ export function UserContentInteractions({
     return Math.min(Math.max(text.split("\n").length, 1), 3);
   }
 
-  function focusCommentTextarea() {
-    const textarea = commentTextareaElRef.current;
-    if (!textarea) return;
-    textarea.focus();
-    const cursor = textarea.value.length;
-    try {
-      textarea.setSelectionRange(cursor, cursor);
-    } catch {}
-  }
-
   function startReply(target: Comment, parentId: string) {
     if (onRequestOpenSheet) {
-      onRequestOpenSheet({
+      requestOpenSheet({
         authorId: target.authorId,
         commentId: target.id,
         parentId,
@@ -722,6 +746,22 @@ export function UserContentInteractions({
       textarea.style.height = "auto";
       textarea.style.height = `${textarea.scrollHeight}px`;
     }, 0);
+  }
+
+  function requestOpenSheet(replyTarget?: { authorId: string; commentId: string; parentId: string; content: string; iconImage: string | null }) {
+    if (!onRequestOpenSheet) return;
+    onRequestOpenSheet(replyTarget);
+  }
+
+  function openCommentSheetForReplyThread() {
+    if (!activeReplyThreadParentComment) return;
+    requestOpenSheet({
+      authorId: activeReplyThreadParentComment.authorId,
+      commentId: activeReplyThreadParentComment.id,
+      parentId: activeReplyThreadParentComment.id,
+      content: activeReplyThreadParentComment.content,
+      iconImage: activeReplyThreadParentComment.iconImage ?? null,
+    });
   }
 
   function updateSubmitButtonState(next: SubmitButtonState, autoResetMs?: number) {
@@ -792,6 +832,52 @@ export function UserContentInteractions({
       }
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleSubmitReplyThreadComment() {
+    if (!isSignedIn) { router.push("/sign-in"); return; }
+    if (!activeReplyThreadParentComment) return;
+    if (!replyThreadInput.trim() || replyThreadSubmitting) return;
+
+    setReplyThreadSubmitting(true);
+    try {
+      const res = await fetch(`/api/main/user-review/${reviewId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: replyThreadInput.trim(), parentId: activeReplyThreadParentComment.id }),
+      });
+
+      if (!res.ok) return;
+
+      const rawComment = (await res.json()) as Partial<Comment>;
+      const newComment: Comment = {
+        id: rawComment.id ?? crypto.randomUUID(),
+        content: rawComment.content ?? replyThreadInput.trim(),
+        isDeleted: rawComment.isDeleted ?? false,
+        createdAt: rawComment.createdAt ?? new Date().toISOString(),
+        parentId: rawComment.parentId ?? activeReplyThreadParentComment.id,
+        authorId: rawComment.authorId ?? "익명",
+        authorEmail: rawComment.authorEmail ?? null,
+        authorTier: rawComment.authorTier ?? null,
+        iconImage: rawComment.iconImage ?? null,
+        isMine: rawComment.isMine ?? true,
+        likeCount: sanitizeCount(rawComment.likeCount) ?? 0,
+        liked: rawComment.liked ?? false,
+      };
+
+      setComments((prev) => {
+        const next = [...prev, newComment];
+        setCommentsCache(next);
+        return next;
+      });
+      setReplyThreadInput("");
+      const textarea = replyThreadTextareaElRef.current;
+      if (textarea) textarea.style.height = "auto";
+      dispatchNotificationRefresh();
+      onCommentSubmitted?.(newComment.id);
+    } finally {
+      setReplyThreadSubmitting(false);
     }
   }
 
@@ -878,8 +964,11 @@ export function UserContentInteractions({
 
   const rootComments = comments.filter((comment) => !comment.parentId);
   const getReplies = (parentId: string) => comments.filter((comment) => comment.parentId === parentId);
+  const activeReplyThreadParentComment = activeReplyThreadParentId
+    ? comments.find((comment) => comment.id === activeReplyThreadParentId && !comment.parentId) ?? null
+    : null;
+  const activeReplyThreadReplies = activeReplyThreadParentId ? getReplies(activeReplyThreadParentId) : [];
   const isReviewAuthor = (authorId: string) => !!reviewAuthorId && authorId === reviewAuthorId;
-  const visibleCommentCount = getVisibleCommentCount(comments);
 
   return (
     <section ref={commentSectionRef} className="user-content-comment-section">
@@ -892,91 +981,159 @@ export function UserContentInteractions({
       {/* 댓글 목록 */}
       {comments.length > 0 && (
         <div className="user-content-comment-thread-list">
-          {rootComments.map((comment) => (
-            <div key={comment.id} className="user-content-comment-thread">
-              <div
-                id={`user-review-comment-${comment.id}`}
-                className={`user-content-comment-item${comment.isMine ? " is-mine" : ""}${highlightedCommentId === comment.id ? " is-highlighted" : ""}`}
-              >
-                <button
-                  type="button"
-                  className="user-content-comment-avatar-btn"
-                  onClick={() => handleAvatarClick(comment)}
-                  aria-label={`${comment.authorId} 회원 정보 보기`}
+          {rootComments.map((comment) => {
+            const replyCount = getReplies(comment.id).length;
+
+            return (
+              <div key={comment.id} className="user-content-comment-thread">
+                <div
+                  id={`user-review-comment-${comment.id}`}
+                  className={`user-content-comment-item${comment.isMine ? " is-mine" : ""}${highlightedCommentId === comment.id ? " is-highlighted" : ""}`}
                 >
-                  <span className="user-content-comment-avatar">
-                    {comment.iconImage
-                      ? <img src={comment.iconImage} alt="" className="user-content-comment-avatar-img" />
-                      : <span className="user-content-comment-avatar-default">{comment.authorId.slice(0, 1).toUpperCase()}</span>
-                    }
-                  </span>
-                </button>
-                <div className="user-content-comment-body">
-                  <div className="user-content-comment-author-row">
-                    <span className="user-content-comment-author">
-                      {comment.authorId}
-                      <TierBadge tier={comment.authorTier} />
-                      {isReviewAuthor(comment.authorId) && (
-                        <span className="user-content-comment-author-badge" aria-label="작성자">작성자</span>
-                      )}
+                  <button
+                    type="button"
+                    className="user-content-comment-avatar-btn"
+                    onClick={() => handleAvatarClick(comment)}
+                    aria-label={`${comment.authorId} 회원 정보 보기`}
+                  >
+                    <span className="user-content-comment-avatar">
+                      {comment.iconImage
+                        ? <img src={comment.iconImage} alt="" className="user-content-comment-avatar-img" />
+                        : <span className="user-content-comment-avatar-default">{comment.authorId.slice(0, 1).toUpperCase()}</span>
+                      }
                     </span>
-                    <div className="user-content-comment-right">
-                      {comment.isMine && !comment.isDeleted && (
-                        <button
-                          type="button"
-                          className="user-content-comment-more-btn"
-                          onClick={() => { setMenuComment(comment); }}
-                        >
-                          ...
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <span className="user-content-comment-date">{formatDate(comment.createdAt)}</span>
-                  {editingId === comment.id ? (
-                    <div className="user-content-comment-edit-form">
-                      <textarea
-                        className="user-content-comment-input"
-                        value={editInput}
-                        onChange={(e) => setEditInput(e.target.value)}
-                        rows={editRows(editInput)}
-                        maxLength={300}
-                        ref={(el) => { if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }}
-                      />
-                      <div className="user-content-comment-edit-actions">
-                        <button type="button" className="user-content-comment-action-btn" onClick={() => { setEditingId(null); setEditInput(""); }}>취소</button>
-                        <button type="button" className="user-content-comment-action-btn" onClick={() => handleEditComment(comment.id)} disabled={!editInput.trim() || submitting}>저장</button>
+                  </button>
+                  <div className="user-content-comment-body">
+                    <div className="user-content-comment-author-row">
+                      <span className="user-content-comment-author">
+                        {comment.authorId}
+                        <TierBadge tier={comment.authorTier} />
+                        {isReviewAuthor(comment.authorId) && (
+                          <span className="user-content-comment-author-badge" aria-label="작성자">작성자</span>
+                        )}
+                      </span>
+                      <div className="user-content-comment-right">
+                        {comment.isMine && !comment.isDeleted && (
+                          <button
+                            type="button"
+                            className="user-content-comment-more-btn"
+                            onClick={() => { setMenuComment(comment); }}
+                          >
+                            ...
+                          </button>
+                        )}
                       </div>
                     </div>
-                  ) : (
-                    <p className={`user-content-comment-text${comment.isDeleted ? " deleted" : ""}`}>{comment.content}</p>
-                  )}
-                  <div className="user-content-comment-actions">
-                    {!comment.isDeleted && (
+                    <span className="user-content-comment-date">{formatDate(comment.createdAt)}</span>
+                    {editingId === comment.id ? (
+                      <div className="user-content-comment-edit-form">
+                        <textarea
+                          className="user-content-comment-input"
+                          value={editInput}
+                          onChange={(e) => setEditInput(e.target.value)}
+                          rows={editRows(editInput)}
+                          maxLength={300}
+                          ref={(el) => { if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }}
+                        />
+                        <div className="user-content-comment-edit-actions">
+                          <button type="button" className="user-content-comment-action-btn" onClick={() => { setEditingId(null); setEditInput(""); }}>취소</button>
+                          <button type="button" className="user-content-comment-action-btn" onClick={() => handleEditComment(comment.id)} disabled={!editInput.trim() || submitting}>저장</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className={`user-content-comment-text${comment.isDeleted ? " deleted" : ""}`}>{comment.content}</p>
+                    )}
+                    <div className="user-content-comment-actions">
+                      {!comment.isDeleted && (
+                        <button
+                          type="button"
+                          className="user-content-comment-action-btn"
+                          onClick={() => startReply(comment, comment.id)}
+                        >
+                          댓글쓰기
+                        </button>
+                      )}
                       <button
                         type="button"
-                        className="user-content-comment-action-btn"
-                        onClick={() => startReply(comment, comment.id)}
+                        className="user-content-comment-like-btn"
+                        onClick={() => handleLikeComment(comment.id)}
+                        aria-label="좋아요"
+                        disabled={pendingLikeCommentIds.has(comment.id)}
                       >
-                        댓글쓰기
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill={comment.liked ? "#E02424" : "none"} stroke={comment.liked ? "#E02424" : "currentColor"} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        {comment.likeCount > 0 && <span>{comment.likeCount}</span>}
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      className="user-content-comment-like-btn"
-                      onClick={() => handleLikeComment(comment.id)}
-                      aria-label="좋아요"
-                      disabled={pendingLikeCommentIds.has(comment.id)}
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill={comment.liked ? "#E02424" : "none"} stroke={comment.liked ? "#E02424" : "currentColor"} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                      {comment.likeCount > 0 && <span>{comment.likeCount}</span>}
-                    </button>
+                    </div>
+                  </div>
+                </div>
+
+                {replyCount > 0 && (
+                  <button
+                    type="button"
+                    className="user-content-comment-reply-open-btn"
+                    onClick={() => openReplyThread(comment.id)}
+                    aria-label={`댓글 ${replyCount}개 보기`}
+                  >
+                    <span className="user-content-comment-reply-open-line" aria-hidden="true" />
+                    <span className="user-content-comment-reply-open-label">{`댓글 ${replyCount}개 보기`}</span>
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {activeReplyThreadParentComment && (
+        <>
+          <div className="user-content-reply-thread-backdrop" onClick={closeReplyThread} />
+          <section className="user-content-reply-thread-sheet" role="dialog" aria-modal="true" aria-label="대댓글 목록">
+            <header className="user-content-reply-thread-head">
+              <span className="user-content-reply-thread-head-spacer" aria-hidden="true" />
+              <p className="user-content-reply-thread-head-title">답글</p>
+              <button type="button" className="user-content-reply-thread-head-btn" onClick={closeReplyThread} aria-label="닫기">
+                x
+              </button>
+            </header>
+            <div className="user-content-reply-thread-body">
+              <div className="user-content-reply-thread-parent-wrap">
+                <div className="user-content-comment-item is-parent-preview">
+                  <button
+                    type="button"
+                    className="user-content-comment-avatar-btn"
+                    onClick={() => handleAvatarClick(activeReplyThreadParentComment)}
+                    aria-label={`${activeReplyThreadParentComment.authorId} 회원 정보 보기`}
+                  >
+                    <span className="user-content-comment-avatar">
+                      {activeReplyThreadParentComment.iconImage
+                        ? <img src={activeReplyThreadParentComment.iconImage} alt="" className="user-content-comment-avatar-img" />
+                        : <span className="user-content-comment-avatar-default">{activeReplyThreadParentComment.authorId.slice(0, 1).toUpperCase()}</span>
+                      }
+                    </span>
+                  </button>
+                  <div className="user-content-comment-body">
+                    <div className="user-content-comment-author-row">
+                      <span className="user-content-comment-author">
+                        {activeReplyThreadParentComment.authorId}
+                        <TierBadge tier={activeReplyThreadParentComment.authorTier} />
+                        {isReviewAuthor(activeReplyThreadParentComment.authorId) && (
+                          <span className="user-content-comment-author-badge" aria-label="작성자">작성자</span>
+                        )}
+                      </span>
+                    </div>
+                    <span className="user-content-comment-date">{formatDate(activeReplyThreadParentComment.createdAt)}</span>
+                    <p className={`user-content-comment-text${activeReplyThreadParentComment.isDeleted ? " deleted" : ""}`}>
+                      {activeReplyThreadParentComment.content}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div className="user-content-comment-replies">
-                {getReplies(comment.id).map((reply) => (
+              <div className="user-content-reply-thread-list">
+                {activeReplyThreadReplies.length === 0 && (
+                  <p className="user-content-reply-thread-empty">아직 답글이 없습니다.</p>
+                )}
+                {activeReplyThreadReplies.map((reply) => (
                   <div
                     key={reply.id}
                     id={`user-review-comment-${reply.id}`}
@@ -1040,7 +1197,8 @@ export function UserContentInteractions({
                           <button
                             type="button"
                             className="user-content-comment-action-btn"
-                            onClick={() => startReply(reply, comment.id)}
+                            onClick={() => startReply(reply, activeReplyThreadParentComment.id)}
+                            aria-label={`${reply.authorId}님에게 답글쓰기`}
                           >
                             댓글쓰기
                           </button>
@@ -1061,8 +1219,49 @@ export function UserContentInteractions({
                 ))}
               </div>
             </div>
-          ))}
-        </div>
+            <div className="user-content-reply-thread-dock">
+              <div className="user-content-comment-form">
+                <textarea
+                  ref={replyThreadTextareaElRef}
+                  className="user-content-comment-input"
+                  placeholder="답글을 남겨보세요"
+                  value={replyThreadInput}
+                  readOnly={!!onRequestOpenSheet}
+                  onClick={(e) => {
+                    if (!isSignedIn) { router.push("/sign-in"); return; }
+                    if (onRequestOpenSheet) {
+                      e.currentTarget.blur();
+                      openCommentSheetForReplyThread();
+                    }
+                  }}
+                  onFocus={(e) => {
+                    if (!isSignedIn) { router.push("/sign-in"); return; }
+                    if (onRequestOpenSheet) {
+                      e.currentTarget.blur();
+                      openCommentSheetForReplyThread();
+                    }
+                  }}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setReplyThreadInput(next);
+                    e.target.style.height = "auto";
+                    e.target.style.height = `${e.target.scrollHeight}px`;
+                  }}
+                  maxLength={300}
+                  rows={1}
+                />
+                <button
+                  type="button"
+                  className={`user-content-comment-submit${replyThreadInput.trim() ? " active" : ""}`}
+                  onClick={handleSubmitReplyThreadComment}
+                  disabled={!replyThreadInput.trim() || replyThreadSubmitting}
+                >
+                  {replyThreadSubmitting ? "등록 중..." : "등록"}
+                </button>
+              </div>
+            </div>
+          </section>
+        </>
       )}
 
       <div className="user-content-comment-dock">

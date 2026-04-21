@@ -1246,9 +1246,46 @@
 }
 
 .user-content-comment-thread {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.user-content-comment-reply-open-btn {
+  position: static;
+  border: none;
+  background: transparent;
+  width: fit-content;
+  margin: 0 0 0 46px;
+  padding: 2px 0 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.user-content-comment-reply-open-line {
+  position: absolute;
+  left: 18px;
+  bottom: 16px;
+  height: 75px;
+  width: 14px;
+  border-left: 1.5px solid rgba(17, 17, 17, 0.25);
+  border-bottom: 1.5px solid rgba(17, 17, 17, 0.25);
+  border-bottom-left-radius: 9px;
+  pointer-events: none;
+}
+
+.user-content-comment-reply-open-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1.2;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 4px 10px;
+  border-radius: 999px;
 }
 
 .user-content-comment-list {
@@ -1496,6 +1533,10 @@
     border-top: 1px solid rgba(17, 17, 17, 0.08);
   }
 
+  .user-content-comment-reply-open-btn {
+    margin-left: 46px;
+  }
+
   .user-content-comment-replies {
     gap: 0;
     margin-top: 2px;
@@ -1508,6 +1549,116 @@
     padding: 10px 0 0;
     border-top: 1px solid rgba(17, 17, 17, 0.06);
   }
+}
+
+.user-content-reply-thread-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 104;
+  background: rgba(0, 0, 0, 0.38);
+}
+
+.user-content-reply-thread-sheet {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: min(100%, var(--tablet-width, 820px));
+  max-width: 100vw;
+  background: var(--surface, #fff);
+  z-index: 105;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 10px 0 28px rgba(17, 17, 17, 0.16);
+  animation: user-content-reply-thread-slide-in 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes user-content-reply-thread-slide-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.user-content-reply-thread-head {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 6px;
+  padding: calc(8px + env(safe-area-inset-top)) 10px 8px;
+  border-bottom: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+.user-content-reply-thread-head-spacer {
+  width: 34px;
+  height: 34px;
+  justify-self: center;
+}
+
+.user-content-reply-thread-head-btn {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(17, 17, 17, 0.8);
+  font-size: 22px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.user-content-reply-thread-head-title {
+  margin: 0;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 700;
+  color: rgba(17, 17, 17, 0.85);
+  line-height: 1.2;
+}
+
+.user-content-reply-thread-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px calc(16px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.user-content-reply-thread-parent-wrap {
+  margin: -12px -14px 0;
+  padding: 10px 14px 10px;
+  border-bottom: 1px solid rgba(17, 17, 17, 0.08);
+  background: rgba(17, 17, 17, 0.1);
+}
+
+.user-content-comment-item.is-parent-preview {
+  margin: 0;
+}
+
+.user-content-reply-thread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.user-content-reply-thread-empty {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.35;
+  color: rgba(17, 17, 17, 0.55);
+}
+
+.user-content-reply-thread-dock {
+  border-top: 1px solid rgba(17, 17, 17, 0.08);
+  background: var(--surface, #fff);
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+}
+
+.user-content-reply-thread-dock .user-content-comment-form {
+  margin: 0;
 }
 
 .user-content-comment-sheet-backdrop {
@@ -1883,7 +2034,7 @@
   top: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.42);
-  z-index: 34;
+  z-index: 106;
 }
 
 .user-content-compose-sheet {
@@ -1899,7 +2050,7 @@
   background: #36b6d3;
   border-radius: 18px 18px 0 0;
   box-shadow: 0 -12px 28px rgba(17, 17, 17, 0.16);
-  z-index: 35;
+  z-index: 107;
   animation: user-content-compose-sheet-up 0.24s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
