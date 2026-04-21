@@ -1694,7 +1694,7 @@
 .user-content-comment-sheet-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 200;
   background: rgba(0, 0, 0, 0.4);
 }
 
@@ -1703,7 +1703,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 101;
+  z-index: 201;
   background: var(--surface);
   border-radius: 16px 16px 0 0;
   padding: 8px 0 calc(16px + env(safe-area-inset-bottom));
