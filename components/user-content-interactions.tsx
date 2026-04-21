@@ -35,6 +35,11 @@ type ReviewCountPatch = {
   commentCount?: number;
 };
 
+type CommentCreatedEventDetail = {
+  reviewId: string;
+  comment: Comment;
+};
+
 const SOFT_DELETED_PARENT_TEXT = "댓글이 삭제되었습니다.";
 
 function dispatchNotificationRefresh() {
@@ -324,6 +329,26 @@ export function UserContentInteractions({
   }, [autoFocusComment]);
 
   useEffect(() => {
+    function handleCreated(event: Event) {
+      const custom = event as CustomEvent<CommentCreatedEventDetail>;
+      const detail = custom.detail;
+      if (!detail || detail.reviewId !== reviewId || !detail.comment) return;
+
+      setComments((prev) => {
+        if (prev.some((comment) => comment.id === detail.comment.id)) return prev;
+        const next = [...prev, detail.comment];
+        setCommentsCache(next);
+        return next;
+      });
+    }
+
+    window.addEventListener("user-review-comment-created", handleCreated as EventListener);
+    return () => {
+      window.removeEventListener("user-review-comment-created", handleCreated as EventListener);
+    };
+  }, [reviewId]);
+
+  useEffect(() => {
     if (!initialReplyTarget) return;
     const mention = `@${initialReplyTarget.authorId} `;
     const pseudoTarget = {
@@ -579,7 +604,7 @@ export function UserContentInteractions({
         {
           event: "*",
           schema: "public",
-          table: "review_comments",
+          table: "user_review_comments",
           filter: `review_id=eq.${reviewId}`,
         },
         () => {
@@ -640,7 +665,7 @@ export function UserContentInteractions({
   }, [reviewId]);
 
   function editRows(text: string) {
-    return Math.max(text.split("\n").length, 1);
+    return Math.min(Math.max(text.split("\n").length, 1), 3);
   }
 
   function focusCommentTextarea() {

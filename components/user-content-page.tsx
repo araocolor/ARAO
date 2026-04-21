@@ -6,7 +6,6 @@ import { useUser } from "@clerk/nextjs";
 import { createPortal } from "react-dom";
 import { UserContentHeader } from "@/components/user-content-header";
 import { UserContentInteractions, UserContentLikeSection } from "@/components/user-content-interactions";
-import { CommentSheetFrame } from "@/components/comment-sheet-frame";
 import { UserProfileModal, type UserProfileModalTarget } from "@/components/user-profile-modal";
 
 function ContentImage({
@@ -422,6 +421,27 @@ function getBoardListPath(board: string): string {
   return board === "review" ? "/user_review" : `/user_review?board=${board}`;
 }
 
+const COMMENT_SHEET_EMOJIS = [
+  "😍", "😀", "😘", "😜", "😁", "😂", "🥹", "😎", "🤔",
+  "👍", "✌️", "👏", "🙏", "🔥", "🏖️", "🎈", "🎊", "🍺",
+  "📍", "🍏", "🍆", "🍊", "🥕", "🇰🇷",
+] as const;
+
+type SheetSubmittedComment = {
+  id: string;
+  content: string;
+  isDeleted: boolean;
+  createdAt: string;
+  parentId: string | null;
+  authorId: string;
+  authorEmail?: string | null;
+  authorTier?: string | null;
+  iconImage: string | null;
+  isMine?: boolean;
+  likeCount: number;
+  liked: boolean;
+};
+
 export function UserContentPage({
   id,
   onRequestClose,
@@ -443,6 +463,12 @@ export function UserContentPage({
   const [justSubmittedCommentId, setJustSubmittedCommentId] = useState<string | null>(null);
   const [liveCommentCount, setLiveCommentCount] = useState<number>(0);
   const [pendingReplyTarget, setPendingReplyTarget] = useState<{ authorId: string; commentId: string; parentId: string } | null>(null);
+  const [commentSheetInput, setCommentSheetInput] = useState("");
+  const [commentSheetSubmitting, setCommentSheetSubmitting] = useState(false);
+  const [commentSheetError, setCommentSheetError] = useState<string | null>(null);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const commentSheetTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const emojiPickerWrapRef = useRef<HTMLDivElement | null>(null);
   const originalCacheRef = useRef<Record<string, boolean>>({});
   const [upgradedImages, setUpgradedImages] = useState<Record<number, string>>({});
   const routeBoard = searchParams.get("board");
@@ -456,6 +482,13 @@ export function UserContentPage({
     user?.primaryEmailAddress?.emailAddress ??
     user?.emailAddresses?.[0]?.emailAddress ??
     null;
+
+  function resizeCommentSheetTextarea(textarea?: HTMLTextAreaElement | null) {
+    const target = textarea ?? commentSheetTextareaRef.current;
+    if (!target) return;
+    target.style.height = "auto";
+    target.style.height = `${Math.max(target.scrollHeight, 28)}px`;
+  }
 
   useEffect(() => {
     try {
@@ -485,6 +518,9 @@ export function UserContentPage({
 
   function openCommentSheet(replyTarget?: { authorId: string; commentId: string; parentId: string }) {
     if (!isSignedIn) { router.push("/sign-in"); return; }
+    setCommentSheetError(null);
+    setEmojiPickerOpen(false);
+    setCommentSheetInput(replyTarget ? `@${replyTarget.authorId} ` : "");
     setPendingReplyTarget(replyTarget ?? null);
     setCommentSheetOpen(true);
   }
@@ -496,6 +532,81 @@ export function UserContentPage({
   function closeCommentSheet() {
     setCommentSheetOpen(false);
     setPendingReplyTarget(null);
+    setCommentSheetInput("");
+    setCommentSheetSubmitting(false);
+    setCommentSheetError(null);
+    setEmojiPickerOpen(false);
+  }
+
+  function handleCommentSheetEmojiToggle() {
+    setEmojiPickerOpen(true);
+  }
+
+  function handleCommentSheetEmojiSelect(emoji: string) {
+    setCommentSheetInput((prev) => {
+      const separator = prev.length === 0 || /\s$/.test(prev) ? "" : " ";
+      const next = `${prev}${separator}${emoji} `;
+      return Array.from(next).slice(0, 300).join("");
+    });
+    window.setTimeout(() => {
+      const textarea = commentSheetTextareaRef.current;
+      if (!textarea) return;
+      resizeCommentSheetTextarea(textarea);
+      textarea.focus();
+      const cursor = textarea.value.length;
+      try {
+        textarea.setSelectionRange(cursor, cursor);
+      } catch {}
+    }, 0);
+  }
+
+  async function handleCommentSheetSubmit() {
+    if (!isSignedIn) { router.push("/sign-in"); return; }
+    if (!commentSheetInput.trim() || commentSheetSubmitting) return;
+    setCommentSheetSubmitting(true);
+    setCommentSheetError(null);
+    try {
+      const res = await fetch(`/api/main/user-review/${id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: commentSheetInput.trim(),
+          parentId: pendingReplyTarget?.parentId ?? null,
+        }),
+      });
+
+      if (!res.ok) {
+        setCommentSheetError("댓글 등록에 실패했습니다. 다시 시도해주세요.");
+        return;
+      }
+
+      const rawComment = (await res.json()) as Partial<SheetSubmittedComment>;
+      const newComment: SheetSubmittedComment = {
+        id: rawComment.id ?? crypto.randomUUID(),
+        content: rawComment.content ?? commentSheetInput.trim(),
+        isDeleted: rawComment.isDeleted ?? false,
+        createdAt: rawComment.createdAt ?? new Date().toISOString(),
+        parentId: rawComment.parentId ?? null,
+        authorId: rawComment.authorId ?? "익명",
+        authorEmail: rawComment.authorEmail ?? null,
+        authorTier: rawComment.authorTier ?? null,
+        iconImage: rawComment.iconImage ?? null,
+        isMine: rawComment.isMine ?? true,
+        likeCount: rawComment.likeCount ?? 0,
+        liked: rawComment.liked ?? false,
+      };
+      setJustSubmittedCommentId(newComment.id);
+      window.dispatchEvent(new CustomEvent("user-review-comment-created", {
+        detail: { reviewId: id, comment: newComment },
+      }));
+      setCommentSheetInput("");
+      setPendingReplyTarget(null);
+      closeCommentSheet();
+    } catch {
+      setCommentSheetError("댓글 등록에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setCommentSheetSubmitting(false);
+    }
   }
 
   useEffect(() => {
@@ -543,6 +654,50 @@ export function UserContentPage({
     const cached = getContentCache(id);
     if (cached) setItem(cached);
   }, [id]);
+
+  useEffect(() => {
+    if (!commentSheetOpen) return;
+
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    const timer = window.setTimeout(() => {
+      const textarea = commentSheetTextareaRef.current;
+      if (!textarea) return;
+      resizeCommentSheetTextarea(textarea);
+      textarea.focus();
+      const cursor = textarea.value.length;
+      try {
+        textarea.setSelectionRange(cursor, cursor);
+      } catch {}
+    }, 40);
+
+    return () => {
+      window.clearTimeout(timer);
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [commentSheetOpen, pendingReplyTarget?.commentId]);
+
+  useEffect(() => {
+    if (!commentSheetOpen || !emojiPickerOpen) return;
+
+    function handleOutsidePointer(event: MouseEvent | TouchEvent) {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (emojiPickerWrapRef.current?.contains(target)) return;
+      setEmojiPickerOpen(false);
+    }
+
+    document.addEventListener("mousedown", handleOutsidePointer);
+    document.addEventListener("touchstart", handleOutsidePointer);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsidePointer);
+      document.removeEventListener("touchstart", handleOutsidePointer);
+    };
+  }, [commentSheetOpen, emojiPickerOpen]);
 
   // 2단계: 서버에서 최신 데이터 가져오기
   useEffect(() => {
@@ -817,30 +972,107 @@ export function UserContentPage({
               </div>
             </div>
 
-            {/* 댓글 시트 */}
+            {/* 댓글 입력 시트 */}
             {commentSheetOpen && (
-              <CommentSheetFrame
-                title="댓글"
-                count={liveCommentCount}
-                onClose={closeCommentSheet}
-                collapsedHeight="100dvh"
-                expandedHeight="100dvh"
-                collapsedBorderRadius="0"
-                expandedBorderRadius="0"
-              >
-                <div className="gallery-sheet-comments" style={{ overflowY: "auto", flex: 1 }}>
-                  <UserContentInteractions
-                    reviewId={id}
-                    reviewAuthorId={item.authorId}
-                    targetCommentId={targetCommentId}
-                    onCommentCountChange={(nextCommentCount) => {
-                      onReviewCountsChange?.({ reviewId: id, commentCount: nextCommentCount });
-                    }}
-                    autoFocusComment
-                    initialReplyTarget={pendingReplyTarget}
-                  />
+              <>
+                <div className="user-content-compose-sheet-backdrop" onClick={closeCommentSheet} />
+                <div className="user-content-compose-sheet" role="dialog" aria-modal="true" aria-label="댓글 입력">
+                  <div className="user-content-compose-sheet-top">
+                    <div className="user-content-compose-sheet-target-wrap">
+                      <span className="user-content-compose-sheet-label">
+                        {pendingReplyTarget ? "답글 대상" : "댓글 작성"}
+                      </span>
+                      <p className="user-content-compose-sheet-target">
+                        {pendingReplyTarget
+                          ? `${pendingReplyTarget.authorId}님에게 답글`
+                          : `${item.authorId}님의 본문에 댓글 남기기`}
+                      </p>
+                    </div>
+                    <button type="button" className="user-content-compose-sheet-close" onClick={closeCommentSheet}>
+                      닫기
+                    </button>
+                  </div>
+
+                  <div className="user-content-compose-sheet-bottom">
+                    {commentSheetError && (
+                      <p className="user-content-compose-sheet-error" role="status">
+                        {commentSheetError}
+                      </p>
+                    )}
+                    <div className="user-content-compose-input-wrap" ref={emojiPickerWrapRef}>
+                      <div className={`user-content-compose-emoji-sheet${emojiPickerOpen ? " is-open" : ""}`}>
+                        <div className="user-content-compose-emoji-sheet-grid">
+                          {COMMENT_SHEET_EMOJIS.map((emoji) => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              className="user-content-compose-emoji-option"
+                              onClick={() => handleCommentSheetEmojiSelect(emoji)}
+                              aria-label={`${emoji} 추가`}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <form
+                        className="user-content-compose-input-form"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          void handleCommentSheetSubmit();
+                        }}
+                      >
+                        <textarea
+                          ref={commentSheetTextareaRef}
+                          className="user-content-compose-input"
+                          placeholder={pendingReplyTarget ? "답글을 남겨보세요" : "댓글을 남겨보세요"}
+                          value={commentSheetInput}
+                          rows={1}
+                          maxLength={300}
+                          onChange={(e) => {
+                            setCommentSheetInput(e.target.value);
+                            resizeCommentSheetTextarea(e.target);
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className={`user-content-compose-emoji-btn${emojiPickerOpen ? " is-open" : ""}`}
+                          onClick={handleCommentSheetEmojiToggle}
+                          aria-label="이모티콘 선택"
+                          aria-expanded={emojiPickerOpen}
+                        >
+                          <span className="user-content-compose-emoji" aria-hidden="true">🙂</span>
+                        </button>
+                      </form>
+                      <button
+                        type="button"
+                        className={`user-content-compose-floating-submit${commentSheetInput.trim() ? " active" : ""}`}
+                        aria-label="댓글 전송"
+                        onClick={() => {
+                          void handleCommentSheetSubmit();
+                        }}
+                        disabled={!commentSheetInput.trim() || commentSheetSubmitting}
+                      >
+                        <svg
+                          className="user-content-compose-floating-submit-icon"
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M12 20h9" />
+                          <path d="m16.5 3.5 4 4L7 21H3v-4z" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </CommentSheetFrame>
+              </>
             )}
 
             <UserProfileModal

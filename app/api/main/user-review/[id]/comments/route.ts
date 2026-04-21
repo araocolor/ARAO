@@ -5,6 +5,7 @@ import { syncProfile } from "@/lib/profiles";
 import { createNotification } from "@/lib/notifications";
 
 const SOFT_DELETED_PARENT_TEXT = "댓글이 삭제되었습니다.";
+const MAX_COMMENT_LENGTH = 300;
 
 function maskEmail(email: string): string {
   const at = email.indexOf("@");
@@ -87,6 +88,9 @@ export async function POST(
   const body = (await request.json()) as { content?: string; parentId?: string | null };
   const content = (body.content ?? "").trim();
   if (!content) return NextResponse.json({ message: "내용을 입력해주세요." }, { status: 400 });
+  if (content.length > MAX_COMMENT_LENGTH) {
+    return NextResponse.json({ message: `댓글은 ${MAX_COMMENT_LENGTH}자까지 입력할 수 있습니다.` }, { status: 400 });
+  }
   const supabase = createSupabaseAdminClient();
   const rawParentId = typeof body.parentId === "string" ? body.parentId.trim() : "";
   let parentId: string | null = rawParentId || null;
@@ -185,6 +189,9 @@ export async function PATCH(
   const commentId = (body.commentId ?? "").trim();
   const content = (body.content ?? "").trim();
   if (!commentId || !content) return NextResponse.json({ message: "내용을 입력해주세요." }, { status: 400 });
+  if (content.length > MAX_COMMENT_LENGTH) {
+    return NextResponse.json({ message: `댓글은 ${MAX_COMMENT_LENGTH}자까지 입력할 수 있습니다.` }, { status: 400 });
+  }
 
   const supabase = createSupabaseAdminClient();
   const { error } = await supabase
