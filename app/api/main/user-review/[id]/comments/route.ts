@@ -47,8 +47,14 @@ export async function GET(
     likedSet = new Set((likeRows ?? []).map((r: any) => r.comment_id));
   }
 
+  const parentCommentIdSet = new Set(
+    (data ?? [])
+      .map((row: any) => row.parent_id)
+      .filter((parentId: string | null): parentId is string => typeof parentId === "string" && parentId.length > 0)
+  );
+
   const comments = (data ?? [])
-    .filter((row: any) => !(row.is_deleted && row.parent_id))
+    .filter((row: any) => !(row.is_deleted && row.parent_id && !parentCommentIdSet.has(row.id)))
     .map((row: any) => {
     const p = Array.isArray(row.profile) ? row.profile[0] : row.profile;
     const authorId = p?.username || (p?.email ? maskEmail(p.email) : "익명");
@@ -108,8 +114,6 @@ export async function POST(
       return NextResponse.json({ message: "원댓글을 찾을 수 없습니다." }, { status: 400 });
     }
 
-    // 대댓글의 대댓글 요청은 1단계로 정규화
-    parentId = parentComment.parent_id ?? parentComment.id;
     parentCommentAuthorProfileId = parentComment.profile_id ?? null;
   }
 
@@ -235,20 +239,6 @@ export async function DELETE(
 
   if (targetCommentError) return NextResponse.json({ message: "댓글 삭제 실패" }, { status: 500 });
   if (!targetComment) return NextResponse.json({ message: "댓글을 찾을 수 없습니다." }, { status: 404 });
-
-  const isReply = !!targetComment.parent_id;
-
-  if (isReply) {
-    const { error: deleteReplyError } = await supabase
-      .from("user_review_comments")
-      .delete()
-      .eq("id", commentId)
-      .eq("review_id", id)
-      .eq("profile_id", profile.id);
-
-    if (deleteReplyError) return NextResponse.json({ message: "댓글 삭제 실패" }, { status: 500 });
-    return NextResponse.json({ ok: true, mode: "hard" as const, commentId });
-  }
 
   const { count: replyCount, error: replyCountError } = await supabase
     .from("user_review_comments")

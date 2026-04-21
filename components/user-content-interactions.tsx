@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
@@ -927,8 +927,8 @@ export function UserContentInteractions({
           content?: string;
         };
         const deletedCommentId = payload.commentId ?? commentId;
-        const target = commentsRef.current.find((c) => c.id === deletedCommentId);
-        const fallbackMode: "hard" | "soft" = target?.parentId ? "hard" : "soft";
+        const hasChildReplies = commentsRef.current.some((c) => c.parentId === deletedCommentId);
+        const fallbackMode: "hard" | "soft" = hasChildReplies ? "soft" : "hard";
         const deleteMode = payload.mode ?? fallbackMode;
 
         setComments((prev) => {
@@ -963,12 +963,142 @@ export function UserContentInteractions({
   }
 
   const rootComments = comments.filter((comment) => !comment.parentId);
-  const getReplies = (parentId: string) => comments.filter((comment) => comment.parentId === parentId);
+  const commentById = useMemo(() => {
+    const map = new Map<string, Comment>();
+    comments.forEach((comment) => {
+      map.set(comment.id, comment);
+    });
+    return map;
+  }, [comments]);
+  const replyChildrenMap = useMemo(() => {
+    const map = new Map<string, Comment[]>();
+    comments.forEach((comment) => {
+      if (!comment.parentId) return;
+      const bucket = map.get(comment.parentId) ?? [];
+      bucket.push(comment);
+      map.set(comment.parentId, bucket);
+    });
+    return map;
+  }, [comments]);
+  const getReplies = useCallback((parentId: string) => replyChildrenMap.get(parentId) ?? [], [replyChildrenMap]);
+  const getReplyDescendantCount = useCallback((parentId: string) => {
+    let count = 0;
+    const stack = [parentId];
+    while (stack.length > 0) {
+      const currentParentId = stack.pop() as string;
+      const children = replyChildrenMap.get(currentParentId) ?? [];
+      count += children.length;
+      children.forEach((child) => stack.push(child.id));
+    }
+    return count;
+  }, [replyChildrenMap]);
   const activeReplyThreadParentComment = activeReplyThreadParentId
     ? comments.find((comment) => comment.id === activeReplyThreadParentId && !comment.parentId) ?? null
     : null;
   const activeReplyThreadReplies = activeReplyThreadParentId ? getReplies(activeReplyThreadParentId) : [];
   const isReviewAuthor = (authorId: string) => !!reviewAuthorId && authorId === reviewAuthorId;
+
+  function renderReplyThreadComment(reply: Comment, depth = 0) {
+    const childReplies = getReplies(reply.id);
+    const indentStyle = depth > 0 ? { marginLeft: "22px" } : undefined;
+    const isThirdLevel = depth === 1;
+    const parentAuthorId = isThirdLevel && reply.parentId ? commentById.get(reply.parentId)?.authorId ?? null : null;
+
+    return (
+      <div key={reply.id} className="user-content-reply-thread-node">
+        <div
+          id={`user-review-comment-${reply.id}`}
+          className={`user-content-comment-item is-reply${depth > 0 ? " is-reply-nested" : ""}${reply.isMine ? " is-mine" : ""}${highlightedCommentId === reply.id ? " is-highlighted" : ""}`}
+          style={indentStyle}
+        >
+          <button
+            type="button"
+            className="user-content-comment-avatar-btn"
+            onClick={() => handleAvatarClick(reply)}
+            aria-label={`${reply.authorId} 회원 정보 보기`}
+          >
+            <span className="user-content-comment-avatar">
+              {reply.iconImage
+                ? <img src={reply.iconImage} alt="" className="user-content-comment-avatar-img" />
+                : <span className="user-content-comment-avatar-default">{reply.authorId.slice(0, 1).toUpperCase()}</span>
+              }
+            </span>
+          </button>
+          <div className="user-content-comment-body">
+            <div className="user-content-comment-author-row">
+              <span className="user-content-comment-author">
+                {reply.authorId}
+                {parentAuthorId && (
+                  <span className="user-content-comment-author-parent-ref">{` > @${parentAuthorId}`}</span>
+                )}
+                <TierBadge tier={reply.authorTier} />
+                {isReviewAuthor(reply.authorId) && (
+                  <span className="user-content-comment-author-badge" aria-label="작성자">작성자</span>
+                )}
+              </span>
+              <div className="user-content-comment-right">
+                {reply.isMine && !reply.isDeleted && (
+                  <button
+                    type="button"
+                    className="user-content-comment-more-btn"
+                    onClick={() => { setMenuComment(reply); }}
+                  >
+                    ...
+                  </button>
+                )}
+              </div>
+            </div>
+            <span className="user-content-comment-date">{formatDate(reply.createdAt)}</span>
+            {editingId === reply.id ? (
+              <div className="user-content-comment-edit-form">
+                <textarea
+                  className="user-content-comment-input"
+                  value={editInput}
+                  onChange={(e) => setEditInput(e.target.value)}
+                  rows={editRows(editInput)}
+                  maxLength={300}
+                  ref={(el) => { if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }}
+                />
+                <div className="user-content-comment-edit-actions">
+                  <button type="button" className="user-content-comment-action-btn" onClick={() => { setEditingId(null); setEditInput(""); }}>취소</button>
+                  <button type="button" className="user-content-comment-action-btn" onClick={() => handleEditComment(reply.id)} disabled={!editInput.trim() || submitting}>저장</button>
+                </div>
+              </div>
+            ) : (
+              <p className={`user-content-comment-text${reply.isDeleted ? " deleted" : ""}`}>{reply.content}</p>
+            )}
+            <div className="user-content-comment-actions">
+              {!reply.isDeleted && (
+                <button
+                  type="button"
+                  className="user-content-comment-action-btn"
+                  onClick={() => startReply(reply, reply.id)}
+                  aria-label={`${reply.authorId}님에게 답글쓰기`}
+                >
+                  댓글쓰기
+                </button>
+              )}
+              <button
+                type="button"
+                className="user-content-comment-like-btn"
+                onClick={() => handleLikeComment(reply.id)}
+                aria-label="좋아요"
+                disabled={pendingLikeCommentIds.has(reply.id)}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill={reply.liked ? "#E02424" : "none"} stroke={reply.liked ? "#E02424" : "currentColor"} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                {reply.likeCount > 0 && <span>{reply.likeCount}</span>}
+              </button>
+            </div>
+          </div>
+        </div>
+        {childReplies.length > 0 && (
+          <div className="user-content-reply-thread-children">
+            {childReplies.map((childReply) => renderReplyThreadComment(childReply, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <section ref={commentSectionRef} className="user-content-comment-section">
@@ -982,7 +1112,7 @@ export function UserContentInteractions({
       {comments.length > 0 && (
         <div className="user-content-comment-thread-list">
           {rootComments.map((comment) => {
-            const replyCount = getReplies(comment.id).length;
+            const replyCount = getReplyDescendantCount(comment.id);
 
             return (
               <div key={comment.id} className="user-content-comment-thread">
@@ -1133,90 +1263,7 @@ export function UserContentInteractions({
                 {activeReplyThreadReplies.length === 0 && (
                   <p className="user-content-reply-thread-empty">아직 답글이 없습니다.</p>
                 )}
-                {activeReplyThreadReplies.map((reply) => (
-                  <div
-                    key={reply.id}
-                    id={`user-review-comment-${reply.id}`}
-                    className={`user-content-comment-item is-reply${reply.isMine ? " is-mine" : ""}${highlightedCommentId === reply.id ? " is-highlighted" : ""}`}
-                  >
-                    <button
-                      type="button"
-                      className="user-content-comment-avatar-btn"
-                      onClick={() => handleAvatarClick(reply)}
-                      aria-label={`${reply.authorId} 회원 정보 보기`}
-                    >
-                      <span className="user-content-comment-avatar">
-                        {reply.iconImage
-                          ? <img src={reply.iconImage} alt="" className="user-content-comment-avatar-img" />
-                          : <span className="user-content-comment-avatar-default">{reply.authorId.slice(0, 1).toUpperCase()}</span>
-                        }
-                      </span>
-                    </button>
-                    <div className="user-content-comment-body">
-                      <div className="user-content-comment-author-row">
-                        <span className="user-content-comment-author">
-                          {reply.authorId}
-                          <TierBadge tier={reply.authorTier} />
-                          {isReviewAuthor(reply.authorId) && (
-                            <span className="user-content-comment-author-badge" aria-label="작성자">작성자</span>
-                          )}
-                        </span>
-                        <div className="user-content-comment-right">
-                          {reply.isMine && !reply.isDeleted && (
-                            <button
-                              type="button"
-                              className="user-content-comment-more-btn"
-                              onClick={() => { setMenuComment(reply); }}
-                            >
-                              ...
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <span className="user-content-comment-date">{formatDate(reply.createdAt)}</span>
-                      {editingId === reply.id ? (
-                        <div className="user-content-comment-edit-form">
-                          <textarea
-                            className="user-content-comment-input"
-                            value={editInput}
-                            onChange={(e) => setEditInput(e.target.value)}
-                            rows={editRows(editInput)}
-                            maxLength={300}
-                            ref={(el) => { if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }}
-                          />
-                          <div className="user-content-comment-edit-actions">
-                            <button type="button" className="user-content-comment-action-btn" onClick={() => { setEditingId(null); setEditInput(""); }}>취소</button>
-                            <button type="button" className="user-content-comment-action-btn" onClick={() => handleEditComment(reply.id)} disabled={!editInput.trim() || submitting}>저장</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className={`user-content-comment-text${reply.isDeleted ? " deleted" : ""}`}>{reply.content}</p>
-                      )}
-                      <div className="user-content-comment-actions">
-                        {!reply.isDeleted && (
-                          <button
-                            type="button"
-                            className="user-content-comment-action-btn"
-                            onClick={() => startReply(reply, activeReplyThreadParentComment.id)}
-                            aria-label={`${reply.authorId}님에게 답글쓰기`}
-                          >
-                            댓글쓰기
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className="user-content-comment-like-btn"
-                          onClick={() => handleLikeComment(reply.id)}
-                          aria-label="좋아요"
-                          disabled={pendingLikeCommentIds.has(reply.id)}
-                        >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill={reply.liked ? "#E02424" : "none"} stroke={reply.liked ? "#E02424" : "currentColor"} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                          {reply.likeCount > 0 && <span>{reply.likeCount}</span>}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                {activeReplyThreadReplies.map((reply) => renderReplyThreadComment(reply))}
               </div>
             </div>
             <div className="user-content-reply-thread-dock">
