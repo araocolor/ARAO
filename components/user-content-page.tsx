@@ -595,10 +595,13 @@ export function UserContentPage({
         likeCount: rawComment.likeCount ?? 0,
         liked: rawComment.liked ?? false,
       };
-      setJustSubmittedCommentId(newComment.id);
       window.dispatchEvent(new CustomEvent("user-review-comment-created", {
         detail: { reviewId: id, comment: newComment },
       }));
+      setJustSubmittedCommentId(null);
+      window.requestAnimationFrame(() => {
+        setJustSubmittedCommentId(newComment.id);
+      });
       setCommentSheetInput("");
       setPendingReplyTarget(null);
       closeCommentSheet();

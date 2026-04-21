@@ -289,7 +289,7 @@ export function UserContentInteractions({
   const [commentsLoaded, setCommentsLoaded] = useState(cachedComments !== null);
   const [viewerRole, setViewerRole] = useState<string | null>(null);
   const [profileModalTarget, setProfileModalTarget] = useState<UserProfileModalTarget | null>(null);
-  const COMMENT_HIGHLIGHT_DURATION_MS = 1000;
+  const COMMENT_HIGHLIGHT_DURATION_MS = 2000;
   const signedInEmail =
     user?.primaryEmailAddress?.emailAddress ??
     user?.emailAddresses?.[0]?.emailAddress ??
