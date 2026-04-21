@@ -886,6 +886,51 @@ export function UserContentPage({
     });
   }
 
+  function handleComposeContextAvatarClick() {
+    if (!item) return;
+    if (!isSignedIn) {
+      router.push("/sign-in");
+      return;
+    }
+
+    if (editTarget) {
+      if (editTarget.parentId) {
+        setProfileModalTarget({
+          authorId: editTarget.parentAuthorId ?? "",
+          authorEmail: null,
+          authorTier: null,
+          iconImage: editTarget.parentIconImage ?? null,
+        });
+        return;
+      }
+
+      setProfileModalTarget({
+        authorId: item.authorId,
+        authorEmail: item.authorEmail ?? null,
+        authorTier: item.authorTier ?? null,
+        iconImage: item.authorIconImage ?? null,
+      });
+      return;
+    }
+
+    if (pendingReplyTarget) {
+      setProfileModalTarget({
+        authorId: pendingReplyTarget.authorId,
+        authorEmail: null,
+        authorTier: null,
+        iconImage: pendingReplyTarget.iconImage ?? null,
+      });
+      return;
+    }
+
+    setProfileModalTarget({
+      authorId: item.authorId,
+      authorEmail: item.authorEmail ?? null,
+      authorTier: item.authorTier ?? null,
+      iconImage: item.authorIconImage ?? null,
+    });
+  }
+
   let attachedFile: { name: string; type: string; url?: string; data?: string } | null = null;
   if (item?.attachedFile) {
     try {
@@ -1120,7 +1165,13 @@ export function UserContentPage({
                   <div className="user-content-compose-context">
                     <div className="user-content-compose-context-row">
                       <div className="user-content-compose-context-author">
-                        <span className="user-content-compose-context-avatar" aria-hidden="true">
+                        <button
+                          type="button"
+                          className="user-content-compose-context-avatar-btn"
+                          onClick={handleComposeContextAvatarClick}
+                          aria-label="작성자 정보 보기"
+                        >
+                          <span className="user-content-compose-context-avatar" aria-hidden="true">
                           {(() => {
                             const avatarSrc = editTarget
                               ? (editTarget.parentId ? editTarget.parentIconImage : item.authorIconImage)
@@ -1132,7 +1183,8 @@ export function UserContentPage({
                               ? <img src={avatarSrc} alt="" className="user-content-compose-context-avatar-img" />
                               : <span className="user-content-compose-context-avatar-fallback">{avatarId.slice(0, 1).toUpperCase()}</span>;
                           })()}
-                        </span>
+                          </span>
+                        </button>
                       </div>
 
                       <div className="user-content-compose-context-main">

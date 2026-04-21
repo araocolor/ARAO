@@ -2004,6 +2004,15 @@
   flex: 0 0 auto;
 }
 
+.user-content-compose-context-avatar-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  cursor: pointer;
+}
+
 .user-content-compose-context-main {
   flex: 1;
   min-width: 0;
