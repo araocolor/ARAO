@@ -181,13 +181,13 @@ export function ConsultingSection({
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "pending":
-        return "대기중";
+        return "접수완료";
       case "in_progress":
         return "답변중";
       case "resolved":
         return "완료";
       case "closed":
-        return "종료";
+        return "완료";
       default:
         return status;
     }
@@ -202,7 +202,7 @@ export function ConsultingSection({
       case "resolved":
         return "consulting-status-resolved";
       case "closed":
-        return "consulting-status-closed";
+        return "consulting-status-resolved";
       default:
         return "";
     }
@@ -233,9 +233,9 @@ export function ConsultingSection({
             <div className="consulting-items">
               {inquiries.map((inquiry) => {
                 const isOpen = expandedId === inquiry.id;
+                const isResolved = inquiry.status === "resolved";
                 const replies = repliesMap[inquiry.id] ?? [];
-                const canModify =
-                  inquiry.status !== "closed" && inquiry.status !== "resolved";
+                const canModify = inquiry.status === "pending" || inquiry.status === "in_progress";
 
                 return (
                   <div
@@ -268,46 +268,68 @@ export function ConsultingSection({
 
                     {isOpen && (
                       <div className="consulting-item-body">
-                        <div className="consulting-section-box">
-                          <h4>문의 내용</h4>
-                          <p>{inquiry.content}</p>
-                        </div>
+                        {isResolved ? (
+                          <div className="consulting-chat-thread">
+                            <div className="consulting-chat-row consulting-chat-row-question">
+                              <span className="consulting-chat-label">문의내용</span>
+                              <div className="consulting-chat-bubble consulting-chat-bubble-question">
+                                <p>{inquiry.content}</p>
+                              </div>
+                            </div>
 
-                        {replies.length > 0 && (
-                          <div className="consulting-replies">
-                            <h4>답변 ({replies.length})</h4>
                             {replies.map((reply) => (
-                              <div
-                                key={reply.id}
-                                className={`consulting-reply ${
-                                  reply.author_role === "admin"
-                                    ? "consulting-reply-admin"
-                                    : "consulting-reply-customer"
-                                }`}
-                              >
-                                <div className="consulting-reply-meta">
-                                  <span className="consulting-reply-author">
-                                    {reply.author_role === "admin"
-                                      ? "관리자"
-                                      : "고객"}
-                                  </span>
-                                  <span className="consulting-reply-date">
-                                    {new Date(reply.created_at).toLocaleDateString(
-                                      "ko-KR",
-                                      {
-                                        year: "numeric",
-                                        month: "long",
-                                        day: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      }
-                                    )}
-                                  </span>
+                              <div key={reply.id} className="consulting-chat-row consulting-chat-row-answer">
+                                <span className="consulting-chat-label">관리자(답변)</span>
+                                <div className="consulting-chat-bubble consulting-chat-bubble-answer">
+                                  <p>{reply.content}</p>
                                 </div>
-                                <p>{reply.content}</p>
                               </div>
                             ))}
                           </div>
+                        ) : (
+                          <>
+                            <div className="consulting-section-box">
+                              <h4>문의 내용</h4>
+                              <p>{inquiry.content}</p>
+                            </div>
+
+                            {replies.length > 0 && (
+                              <div className="consulting-replies">
+                                <h4>답변 ({replies.length})</h4>
+                                {replies.map((reply) => (
+                                  <div
+                                    key={reply.id}
+                                    className={`consulting-reply ${
+                                      reply.author_role === "admin"
+                                        ? "consulting-reply-admin"
+                                        : "consulting-reply-customer"
+                                    }`}
+                                  >
+                                    <div className="consulting-reply-meta">
+                                      <span className="consulting-reply-author">
+                                        {reply.author_role === "admin"
+                                          ? "관리자"
+                                          : "고객"}
+                                      </span>
+                                      <span className="consulting-reply-date">
+                                        {new Date(reply.created_at).toLocaleDateString(
+                                          "ko-KR",
+                                          {
+                                            year: "numeric",
+                                            month: "long",
+                                            day: "numeric",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                          }
+                                        )}
+                                      </span>
+                                    </div>
+                                    <p>{reply.content}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
                         )}
 
                         {canModify && (

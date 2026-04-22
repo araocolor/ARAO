@@ -159,7 +159,7 @@ export async function getNotificationsForProfile(
     .from("inquiries")
     .select("id, type, title, status, has_unread_reply, updated_at")
     .eq("profile_id", profileId)
-    .in("status", ["in_progress", "resolved", "closed"])
+    .in("status", ["in_progress", "resolved"])
     .order("updated_at", { ascending: false });
 
   if (inquiriesError) {

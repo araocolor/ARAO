@@ -32,7 +32,6 @@ type SiteHeaderProps = {
 
 const REVIEW_PREFETCH_LOCK_KEY = "user-review-list-prefetch-lock";
 const REVIEW_PREFETCH_LOCK_MS = 10000;
-const PROFILE_PANEL_AUTO_OPEN_ONCE_KEY = "profile-panel-auto-open-once-v1";
 const SETTINGS_PATH = "/account/general";
 const SIGN_IN_WITH_SETTINGS_REDIRECT = "/sign-in?redirect_url=%2Faccount%2Fgeneral";
 
@@ -133,14 +132,8 @@ export function SiteHeader({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [avatarToastVisible, setAvatarToastVisible] = useState(false);
   const [profilePanelOpen, setProfilePanelOpen] = useState(false);
-  const [autoOpenedProfilePanelActive, setAutoOpenedProfilePanelActive] = useState(false);
-  const [profilePanelHeight, setProfilePanelHeight] = useState(0);
-  const [panelDragY, setPanelDragY] = useState(0);
   const [hideOnScroll, setHideOnScroll] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const touchStartY = useRef<number>(0);
-  const isDragging = useRef<boolean>(false);
   const lastScrollYRef = useRef(0);
   const lastScrollTsRef = useRef(0);
   const scrollRafRef = useRef<number | null>(null);
@@ -243,79 +236,6 @@ export function SiteHeader({
     if (hasUsername) return username as string;
     return createTempIdFromEmail(email);
   }, [hasUsername, username, email]);
-
-  function handlePanelTouchStart(e: React.TouchEvent) {
-    isDragging.current = true;
-    touchStartY.current = e.touches[0].clientY;
-    setPanelDragY(0);
-  }
-
-  function handlePanelTouchMove(e: React.TouchEvent) {
-    if (!isDragging.current) return;
-    const delta = e.touches[0].clientY - touchStartY.current;
-    if (delta < 0) return;
-    setPanelDragY(delta);
-  }
-
-  function handlePanelTouchEnd() {
-    isDragging.current = false;
-    if (panelDragY > 80) {
-      setAutoOpenedProfilePanelActive(false);
-      setProfilePanelOpen(false);
-    }
-    setPanelDragY(0);
-  }
-
-  // 로그아웃 상태가 되면 1회 자동 오픈 키 초기화
-  useEffect(() => {
-    if (isSignedIn) return;
-    try {
-      sessionStorage.removeItem(PROFILE_PANEL_AUTO_OPEN_ONCE_KEY);
-    } catch {}
-  }, [isSignedIn]);
-
-  // 드로어 열릴 때 프로필 패널 자동 오픈 (로그인당 1회, 0.5초 후)
-  useEffect(() => {
-    if (drawerOpen && isSignedIn && hasUsername) {
-      try {
-        const alreadyOpened = sessionStorage.getItem(PROFILE_PANEL_AUTO_OPEN_ONCE_KEY) === "1";
-        if (alreadyOpened) return;
-      } catch {}
-
-      const timer = setTimeout(() => {
-        try {
-          sessionStorage.setItem(PROFILE_PANEL_AUTO_OPEN_ONCE_KEY, "1");
-        } catch {}
-        setAutoOpenedProfilePanelActive(true);
-        setProfilePanelOpen(true);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [drawerOpen, isSignedIn, hasUsername]);
-
-  useEffect(() => {
-    if (!profilePanelOpen) {
-      setProfilePanelHeight(0);
-      return;
-    }
-    const panelEl = panelRef.current;
-    if (!panelEl) return;
-
-    const updatePanelHeight = () => {
-      setProfilePanelHeight(panelEl.offsetHeight);
-    };
-
-    updatePanelHeight();
-
-    const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(updatePanelHeight) : null;
-    resizeObserver?.observe(panelEl);
-    window.addEventListener("resize", updatePanelHeight);
-
-    return () => {
-      resizeObserver?.disconnect();
-      window.removeEventListener("resize", updatePanelHeight);
-    };
-  }, [profilePanelOpen]);
 
   // 드로어 열릴 때 body 스크롤 잠금 + 커뮤니티 prefetch
   useEffect(() => {
@@ -451,7 +371,6 @@ export function SiteHeader({
 
   const closeDrawer = () => {
     setDrawerOpen(false);
-    setAutoOpenedProfilePanelActive(false);
     setProfilePanelOpen(false);
   };
   const handleLogout = () => {
@@ -465,8 +384,8 @@ export function SiteHeader({
   };
   const handleAvatarClick = () => {
     if (isSignedIn) {
-      setAutoOpenedProfilePanelActive(false);
-      setProfilePanelOpen((v) => !v);
+      closeDrawer();
+      window.location.href = "/account/general";
     } else {
       window.location.href = "/sign-in";
     }
@@ -474,11 +393,6 @@ export function SiteHeader({
   const shouldHideHeader = fullWidth && hideOnScroll;
   const hideClassName = hideOnScrollMode === "terms" ? "header-scroll-hidden-terms" : "header-scroll-hidden";
   const shouldShowAvatarRegisterCta = !!isSignedIn && !avatar;
-  const shouldPlaceAvatarCtaAbovePanel =
-    shouldShowAvatarRegisterCta &&
-    autoOpenedProfilePanelActive &&
-    profilePanelOpen &&
-    profilePanelHeight > 0;
   const avatarRegisterCta = (
     <div
       style={{
@@ -610,109 +524,76 @@ export function SiteHeader({
         {/* 메뉴 목록 */}
         <nav className="nav-drawer-list">
           {links.map((link) => {
-            const isAccountSettings = link.href === "/account/general" && isSignedIn && hasUsername;
+            const isSettingsAccordionTrigger = link.href === SETTINGS_PATH && isSignedIn;
             const resolvedHref = resolveMenuHref(link.href, isSignedIn);
             return (
               <div key={link.href}>
                 {link.divider && <hr className="nav-drawer-divider" />}
                 <Link
                   href={resolvedHref}
-                  className="nav-drawer-link"
+                  className={`nav-drawer-link${isSettingsAccordionTrigger ? " nav-drawer-link-settings" : ""}`}
+                  aria-expanded={isSettingsAccordionTrigger ? profilePanelOpen : undefined}
+                  aria-controls={isSettingsAccordionTrigger ? "nav-drawer-settings-accordion" : undefined}
                   onClick={(e) => {
-                    if (isAccountSettings) {
+                    if (isSettingsAccordionTrigger) {
                       e.preventDefault();
-                      setAutoOpenedProfilePanelActive(false);
                       setProfilePanelOpen((v) => !v);
                     } else {
                       closeDrawer();
                     }
                   }}
                 >
-                  <span className="nav-drawer-icon" aria-hidden="true">
-                    {MENU_ICONS[link.href] ?? (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="9" />
-                      </svg>
-                    )}
+                  <span className="nav-drawer-link-main">
+                    <span className="nav-drawer-icon" aria-hidden="true">
+                      {MENU_ICONS[link.href] ?? (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="9" />
+                        </svg>
+                      )}
+                    </span>
+                    {link.label}
                   </span>
-                  {link.label}
+                  {isSettingsAccordionTrigger && (
+                    <span className={`nav-drawer-settings-toggle${profilePanelOpen ? " is-open" : ""}`} aria-hidden="true">+</span>
+                  )}
                 </Link>
+                {isSettingsAccordionTrigger && (
+                  <div id="nav-drawer-settings-accordion" className={`nav-drawer-settings-accordion${profilePanelOpen ? " is-open" : ""}`}>
+                    <nav className="nav-drawer-settings-links" aria-label="설정 세부 메뉴">
+                      <Link href="/account/general" className="nav-drawer-sub-link" onClick={closeDrawer}>
+                        <span className="nav-drawer-icon"><Settings2 width={18} height={18} strokeWidth={1.7} /></span>
+                        개인설정
+                      </Link>
+                      <Link href="/account/consulting" className="nav-drawer-sub-link" onClick={closeDrawer}>
+                        <span className="nav-drawer-icon"><MessageCircle width={18} height={18} strokeWidth={1.7} /></span>
+                        상담/문의
+                      </Link>
+                      <Link href="/account/orders" className="nav-drawer-sub-link" onClick={closeDrawer}>
+                        <span className="nav-drawer-icon"><CreditCard width={18} height={18} strokeWidth={1.7} /></span>
+                        주문관리
+                      </Link>
+                      <Link href="/account/mycolor" className="nav-drawer-sub-link" onClick={closeDrawer}>
+                        <span className="nav-drawer-icon"><BookOpen width={18} height={18} strokeWidth={1.7} /></span>
+                        컬러레시피
+                      </Link>
+                      <button type="button" className="nav-drawer-sub-link nav-drawer-sub-button" onClick={handleLogout}>
+                        <span className="nav-drawer-icon"><LogOut width={18} height={18} strokeWidth={1.7} /></span>
+                        로그아웃
+                      </button>
+                      {isAdmin && (
+                        <Link href="/admin" className="nav-drawer-sub-link" onClick={closeDrawer}>
+                          <span className="nav-drawer-icon"><ShieldCheck width={18} height={18} strokeWidth={1.7} /></span>
+                          관리자
+                        </Link>
+                      )}
+                    </nav>
+                  </div>
+                )}
               </div>
             );
           })}
         </nav>
-
-        {shouldPlaceAvatarCtaAbovePanel && (
-          <div
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: `${profilePanelHeight + 81}px`,
-              zIndex: 11,
-            }}
-          >
-            {avatarRegisterCta}
-          </div>
-        )}
-
-        {/* 사용자 서브패널 */}
-        <div
-          ref={panelRef}
-          className={`nav-drawer-profile-panel${profilePanelOpen ? " is-open" : ""}`}
-          onTouchStart={handlePanelTouchStart}
-          onTouchMove={handlePanelTouchMove}
-          onTouchEnd={handlePanelTouchEnd}
-          style={{
-            transform: panelDragY > 0 ? `translateY(${panelDragY}px)` : undefined,
-            transition: isDragging.current ? "none" : "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
-          }}
-        >
-          <div
-            className="nav-drawer-profile-panel-handle"
-            onClick={() => {
-              setAutoOpenedProfilePanelActive(false);
-              setProfilePanelOpen(false);
-            }}
-          >
-            <span className="nav-drawer-profile-panel-handle-bar" />
-          </div>
-          <nav className="nav-drawer-list">
-            <Link href="/account/general" className="nav-drawer-link" onClick={closeDrawer}>
-              <span className="nav-drawer-icon"><Settings2 width={20} height={20} strokeWidth={1.7} /></span>
-              개인설정
-            </Link>
-            <Link href="/account/consulting" className="nav-drawer-link" onClick={closeDrawer}>
-              <span className="nav-drawer-icon"><MessageCircle width={20} height={20} strokeWidth={1.7} /></span>
-              상담/문의
-            </Link>
-            <Link href="/account/orders" className="nav-drawer-link" onClick={closeDrawer}>
-              <span className="nav-drawer-icon"><CreditCard width={20} height={20} strokeWidth={1.7} /></span>
-              주문관리
-            </Link>
-            <Link href="/account/mycolor" className="nav-drawer-link" onClick={closeDrawer}>
-              <span className="nav-drawer-icon"><BookOpen width={20} height={20} strokeWidth={1.7} /></span>
-              컬러레시피
-            </Link>
-            <button
-              type="button"
-              className="nav-drawer-link"
-              style={{ width: "100%", background: "none", border: "none", textAlign: "left", cursor: "pointer" }}
-              onClick={handleLogout}
-            >
-              <span className="nav-drawer-icon"><LogOut width={20} height={20} strokeWidth={1.7} /></span>
-              로그아웃
-            </button>
-            {isAdmin && (
-              <Link href="/admin" className="nav-drawer-link" onClick={closeDrawer}>
-                <span className="nav-drawer-icon"><ShieldCheck width={20} height={20} strokeWidth={1.7} /></span>
-                관리자
-              </Link>
-            )}
-          </nav>
-        </div>
-
-        {shouldShowAvatarRegisterCta && !shouldPlaceAvatarCtaAbovePanel && avatarRegisterCta}
+        {shouldShowAvatarRegisterCta && avatarRegisterCta}
         <div className="nav-drawer-footer-top" style={idErrorMsg ? { color: "#e53935" } : undefined}>{idErrorMsg ? idErrorMsg : idInputFocused ? "4-8자 영어, 숫자 조합" : ""}</div>
 
         {/* 하단 로그인/로그아웃 */}

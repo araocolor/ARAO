@@ -146,13 +146,13 @@ export function AdminConsultingManager() {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "pending":
-        return "대기중";
+        return "접수완료";
       case "in_progress":
         return "답변중";
       case "resolved":
         return "완료";
       case "closed":
-        return "종료";
+        return "완료";
       default:
         return status;
     }
@@ -167,7 +167,7 @@ export function AdminConsultingManager() {
       case "resolved":
         return "admin-consulting-status-resolved";
       case "closed":
-        return "admin-consulting-status-closed";
+        return "admin-consulting-status-resolved";
       default:
         return "";
     }
@@ -202,10 +202,9 @@ export function AdminConsultingManager() {
               <label>상태</label>
               <select value={status} onChange={(e) => setStatus(e.target.value)}>
                 <option value="all">전체</option>
-                <option value="pending">대기중</option>
+                <option value="pending">접수완료</option>
                 <option value="in_progress">답변중</option>
                 <option value="resolved">완료</option>
-                <option value="closed">종료</option>
               </select>
             </div>
 
@@ -215,7 +214,7 @@ export function AdminConsultingManager() {
               </span>
               {pendingCount > 0 && (
                 <span className="admin-consulting-stat pending">
-                  대기중 <strong>{pendingCount}</strong>건
+                  접수완료 <strong>{pendingCount}</strong>건
                 </span>
               )}
               {answeredCount > 0 && (
@@ -323,7 +322,7 @@ export function AdminConsultingManager() {
               <div className="admin-consulting-status-controls">
                 <label>상태 변경</label>
                 <div className="admin-consulting-status-buttons">
-                  {["pending", "in_progress", "resolved", "closed"].map(
+                  {["pending", "in_progress", "resolved"].map(
                     (s) => (
                       <button
                         key={s}

@@ -7,7 +7,7 @@ export type Inquiry = {
   type: "consulting" | "general";
   title: string;
   content: string;
-  status: "pending" | "in_progress" | "resolved" | "closed";
+  status: "pending" | "in_progress" | "resolved";
   has_unread_reply: boolean;
   created_at: string;
   updated_at: string;
@@ -299,7 +299,7 @@ export async function deleteInquiry(id: string) {
 // 관리자: 상태 변경
 export async function updateInquiryStatus(
   id: string,
-  status: "pending" | "in_progress" | "resolved" | "closed"
+  status: "pending" | "in_progress" | "resolved"
 ) {
   const supabase = createSupabaseAdminClient();
 

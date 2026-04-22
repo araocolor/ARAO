@@ -123,7 +123,7 @@ export async function PATCH(
 
     if (
       !body.status ||
-      !["pending", "in_progress", "resolved", "closed"].includes(body.status)
+      !["pending", "in_progress", "resolved"].includes(body.status)
     ) {
       return NextResponse.json(
         { message: "Invalid status" },
@@ -133,7 +133,7 @@ export async function PATCH(
 
     const updated = await updateInquiryStatus(
       id,
-      body.status as "pending" | "in_progress" | "resolved" | "closed"
+      body.status as "pending" | "in_progress" | "resolved"
     );
 
     if (!updated) {

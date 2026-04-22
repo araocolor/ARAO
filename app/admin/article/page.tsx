@@ -53,13 +53,13 @@ export default async function ArticlePage() {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "pending":
-        return "대기중";
+        return "접수완료";
       case "in_progress":
         return "답변중";
       case "resolved":
         return "완료";
       case "closed":
-        return "종료";
+        return "완료";
       default:
         return status;
     }
@@ -74,7 +74,7 @@ export default async function ArticlePage() {
       case "resolved":
         return "consulting-status-resolved";
       case "closed":
-        return "consulting-status-closed";
+        return "consulting-status-resolved";
       default:
         return "";
     }

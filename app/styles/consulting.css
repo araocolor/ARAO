@@ -247,11 +247,6 @@
   border-radius: 999px;
 }
 
-.consulting-status-closed {
-  background: rgba(156, 163, 175, 0.1);
-  color: #6b7280;
-}
-
 .consulting-item-date {
   font-size: 13px;
   color: var(--muted);
@@ -386,6 +381,58 @@
   font-size: 15px;
   line-height: 1.6;
   margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.consulting-chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.consulting-chat-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 84%;
+}
+
+.consulting-chat-row-question {
+  align-items: flex-start;
+}
+
+.consulting-chat-row-answer {
+  margin-left: auto;
+  align-items: flex-end;
+}
+
+.consulting-chat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  line-height: 1.2;
+}
+
+.consulting-chat-bubble {
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.consulting-chat-bubble-question {
+  background: rgba(17, 17, 17, 0.06);
+  color: var(--text);
+}
+
+.consulting-chat-bubble-answer {
+  background: rgba(17, 17, 17, 0.7);
+  color: #ffffff;
+}
+
+.consulting-chat-bubble p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -662,11 +709,6 @@
   color: #6b7280;
   font-size: 14px;
   border-radius: 999px;
-}
-
-.admin-consulting-status-closed {
-  background: rgba(156, 163, 175, 0.1);
-  color: #6b7280;
 }
 
 .admin-consulting-btn-back {
