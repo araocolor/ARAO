@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useUser } from "@clerk/nextjs";
+import { Pencil } from "lucide-react";
 import { type Inquiry, type InquiryReply } from "@/lib/consulting";
 
 type ConsultingSectionProps = {
@@ -12,6 +14,7 @@ type View = "list" | "create" | "edit";
 export function ConsultingSection({
   initialInquiries = [],
 }: ConsultingSectionProps) {
+  const { user } = useUser();
   const [view, setView] = useState<View>("list");
   const [inquiries, setInquiries] = useState<Inquiry[]>(initialInquiries);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -288,6 +291,20 @@ export function ConsultingSection({
     }
   };
 
+  const renderCustomerBadge = () => (
+    <span className="consulting-chat-user-badge" aria-label="문의자">
+      {user?.imageUrl ? (
+        <img
+          src={user.imageUrl}
+          alt=""
+          className="consulting-chat-user-avatar"
+        />
+      ) : (
+        <span className="consulting-chat-user-icon">👤</span>
+      )}
+    </span>
+  );
+
   return (
     <div className="consulting-section">
       {view === "list" && (
@@ -296,6 +313,9 @@ export function ConsultingSection({
             <h3>1:1 문의 ({inquiries.length})</h3>
             <button
               className="consulting-btn-create"
+              type="button"
+              aria-label="문의하기"
+              title="문의하기"
               onClick={() => {
                 setFormTitle("");
                 setFormContent("");
@@ -303,7 +323,7 @@ export function ConsultingSection({
                 setView("create");
               }}
             >
-              문의하기
+              <Pencil size={18} strokeWidth={2.4} />
             </button>
           </div>
 
@@ -384,7 +404,7 @@ export function ConsultingSection({
                         {useChatThread ? (
                           <div className="consulting-chat-thread">
                             <div className="consulting-chat-row consulting-chat-row-question">
-                              <span className="consulting-chat-label">문의내용</span>
+                              {renderCustomerBadge()}
                               <div className="consulting-chat-bubble consulting-chat-bubble-question">
                                 <p>{inquiry.content}</p>
                               </div>
@@ -399,11 +419,11 @@ export function ConsultingSection({
                                     : "consulting-chat-row-question"
                                 }`}
                               >
-                                <span className="consulting-chat-label">
-                                  {reply.author_role === "admin"
-                                    ? "관리자(답변)"
-                                    : "문의자 추가질문"}
-                                </span>
+                                {reply.author_role === "admin" ? (
+                                  <span className="consulting-chat-label">관리자(답변)</span>
+                                ) : (
+                                  renderCustomerBadge()
+                                )}
                                 <div
                                   className={`consulting-chat-bubble ${
                                     reply.author_role === "admin"
