@@ -1,15 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { LandingContent } from "@/lib/landing-content";
 import { AdminContentManager } from "@/components/admin-content-manager";
 import { AdminPricingManager } from "@/components/admin-pricing-manager";
 import { AdminConsultingManager } from "@/components/admin-consulting-manager";
 import { AdminCommitListPage } from "@/components/admin-commit-list-page";
-
-const MOBILE_DRAWER_CLOSE_MS = 280;
 
 const adminSections = [
   {
@@ -88,11 +85,10 @@ type AdminDashboardProps = {
 };
 
 export function AdminDashboard({ email, role, landingContent }: AdminDashboardProps) {
-  const [activeSectionId, setActiveSectionId] = useState(adminSections[0].id);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [menuMounted, setMenuMounted] = useState(false);
+  const [activeSectionId, setActiveSectionId] = useState("consulting");
+  const [isConsultingDetail, setIsConsultingDetail] = useState(false);
+  const [consultingBackToken, setConsultingBackToken] = useState(0);
   const [hydrated, setHydrated] = useState(false);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeSection =
     adminSections.find((section) => section.id === activeSectionId) ?? adminSections[0];
   const isCommitSection = activeSection.id === "commit-list";
@@ -104,121 +100,31 @@ export function AdminDashboard({ email, role, landingContent }: AdminDashboardPr
     setHydrated(true);
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (closeTimerRef.current) {
-        clearTimeout(closeTimerRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (menuOpen) {
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = "";
-      };
-    }
-    document.body.style.overflow = "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [menuOpen]);
-
-  const openMenu = () => {
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-    setMenuMounted(true);
-    setMenuOpen(true);
-  };
-
-  const closeMenu = () => {
-    setMenuOpen(false);
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current);
-    }
-    closeTimerRef.current = setTimeout(() => {
-      setMenuMounted(false);
-      closeTimerRef.current = null;
-    }, MOBILE_DRAWER_CLOSE_MS);
-  };
-
   const selectSection = (sectionId: string) => {
     setActiveSectionId(sectionId);
+    if (sectionId !== "consulting") {
+      setIsConsultingDetail(false);
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleMobileBack = () => {
+    if (activeSectionId === "consulting" && isConsultingDetail) {
+      setConsultingBackToken((prev) => prev + 1);
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = "/";
+      }
+    }
   };
 
   return (
     <div className="admin-layout admin-layout-root">
-      <button
-        aria-expanded={menuOpen}
-        aria-label="관리 메뉴 열기"
-        className={menuOpen ? "admin-mobile-menu-toggle is-hidden" : "admin-mobile-menu-toggle"}
-        type="button"
-        onClick={() => (menuOpen ? closeMenu() : openMenu())}
-      >
-        <span />
-        <span />
-        <span />
-      </button>
-
-      {menuMounted ? (
-        <div
-          className={`admin-nav-drawer-backdrop${menuOpen ? " is-open" : ""}`}
-          onClick={() => closeMenu()}
-          role="presentation"
-          aria-hidden="true"
-        >
-          <aside
-            className={`admin-nav-drawer${menuOpen ? " is-open" : ""}`}
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label="관리 메뉴"
-          >
-            <div className="admin-nav-drawer-header">
-              <Link href="/" className="admin-nav-drawer-logo" onClick={() => closeMenu()}>
-                <Image src="/logo.svg" alt="ARAO" width={72} height={26} />
-              </Link>
-              <button
-                type="button"
-                className="admin-nav-drawer-close"
-                onClick={closeMenu}
-                aria-label="닫기"
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-
-            <nav className="admin-nav-drawer-list">
-              <Link className="admin-nav-drawer-link" href="/" onClick={() => closeMenu()}>
-                1. Home
-              </Link>
-              {adminSections.map((section, sectionIndex) => (
-                <button
-                  key={`mobile-${section.id}`}
-                  className={section.id === activeSectionId ? "admin-nav-drawer-link admin-mobile-nav-button is-active" : "admin-nav-drawer-link admin-mobile-nav-button"}
-                  type="button"
-                  onClick={() => {
-                    selectSection(section.id);
-                    closeMenu();
-                  }}
-                >
-                  {`${sectionIndex + 2}. ${section.menu}`}
-                </button>
-              ))}
-            </nav>
-
-            <div className="admin-nav-drawer-footer" />
-          </aside>
-        </div>
-      ) : null}
-
       <aside className="admin-sidebar admin-sidebar-root">
         <p className="admin-sidebar-title">관리 메뉴</p>
         <div className="admin-sidebar-top">
@@ -241,7 +147,35 @@ export function AdminDashboard({ email, role, landingContent }: AdminDashboardPr
         <div className="admin-sidebar-bottom" />
       </aside>
 
-      <div className="admin-panel stack" onClick={() => (menuOpen ? closeMenu() : null)}>
+      <div className="admin-panel stack">
+        <div className="admin-mobile-top-dropdown-wrap">
+          <div className="admin-mobile-top-dropdown-inner">
+            {activeSectionId === "consulting" ? (
+              <button
+                type="button"
+                className="admin-consulting-btn-back admin-mobile-header-back-btn"
+                onClick={handleMobileBack}
+                aria-label="컨설팅 목록으로 돌아가기"
+              >
+                {"<"}
+              </button>
+            ) : null}
+
+            <select
+              aria-label="관리자 메뉴 선택"
+              className="admin-mobile-top-dropdown-select"
+              value={activeSectionId}
+              onChange={(event) => selectSection(event.target.value)}
+            >
+              {adminSections.map((section) => (
+                <option key={`top-${section.id}`} value={section.id}>
+                  {section.menu}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         <div className={panelCardClassName}>
           {activeSection.id !== "landing" && activeSection.id !== "gallery" && activeSection.id !== "consulting" ? (
             <>
@@ -258,7 +192,11 @@ export function AdminDashboard({ email, role, landingContent }: AdminDashboardPr
           ) : activeSection.id === "pricing" ? (
             <AdminPricingManager key="pricing" initialContent={landingContent} />
           ) : activeSection.id === "consulting" ? (
-            <AdminConsultingManager key="consulting" />
+            <AdminConsultingManager
+              key="consulting"
+              onDetailViewChange={setIsConsultingDetail}
+              forceListToken={consultingBackToken}
+            />
           ) : activeSection.id === "commit-list" ? (
             <AdminCommitListPage key="commit-list" embedded />
           ) : (

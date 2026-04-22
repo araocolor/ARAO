@@ -311,6 +311,10 @@
 }
 
 @media (max-width: 500px) {
+  .admin-page {
+    padding-top: 8px;
+  }
+
   .grid {
     grid-template-columns: 1fr;
   }
@@ -347,6 +351,10 @@
 
   .admin-sidebar {
     display: none;
+  }
+
+  .admin-panel-card {
+    padding-top: 3px;
   }
 }
 

@@ -14,7 +14,7 @@ export type Inquiry = {
 };
 
 export type InquiryWithProfile = Inquiry & {
-  profile: { email: string; full_name: string | null };
+  profile: { email: string; full_name: string | null; icon_image: string | null };
 };
 
 export type InquiryReply = {
@@ -168,14 +168,16 @@ export async function getAllInquiries(
 
   let query = supabase
     .from("inquiries")
-    .select("*, profile:profile_id(email, full_name)")
+    .select("*, profile:profile_id(email, full_name, icon_image)")
     .order("updated_at", { ascending: false });
 
   if (type) {
     query = query.eq("type", type);
   }
 
-  if (status) {
+  if (status === "unread") {
+    query = query.eq("has_unread_reply", true);
+  } else if (status) {
     query = query.eq("status", status);
   }
 
@@ -200,7 +202,7 @@ export async function getInquiryByIdAdmin(id: string) {
   const [inquiryRes, repliesRes] = await Promise.all([
     supabase
       .from("inquiries")
-      .select("*, profile:profile_id(email, full_name)")
+      .select("*, profile:profile_id(email, full_name, icon_image)")
       .eq("id", id)
       .single(),
     supabase
@@ -215,9 +217,33 @@ export async function getInquiryByIdAdmin(id: string) {
     return null;
   }
 
+  let inquiry = inquiryRes.data as InquiryWithProfile;
+  const replies = (repliesRes.data ?? []) as InquiryReply[];
+  const hasAdminReply = replies.some((reply) => reply.author_role === "admin");
+
+  // 관리자 열람 시: 접수완료 + 관리자 답변 없음 상태는 자동으로 답변중 처리
+  if (inquiry.status === "pending" && !hasAdminReply) {
+    const { data: updatedInquiry } = await supabase
+      .from("inquiries")
+      .update({
+        status: "in_progress",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .eq("status", "pending")
+      .select("*, profile:profile_id(email, full_name, icon_image)")
+      .single();
+
+    if (updatedInquiry) {
+      inquiry = updatedInquiry as InquiryWithProfile;
+    } else {
+      inquiry = { ...inquiry, status: "in_progress" };
+    }
+  }
+
   return {
-    inquiry: inquiryRes.data as InquiryWithProfile,
-    replies: (repliesRes.data ?? []) as InquiryReply[],
+    inquiry,
+    replies,
   };
 }
 
@@ -242,7 +268,7 @@ export async function createReply(
       .from("inquiries")
       .update({
         has_unread_reply: true,
-        status: "in_progress",
+        status: "resolved",
         updated_at: new Date().toISOString(),
       })
       .eq("id", inquiryId),
@@ -254,6 +280,87 @@ export async function createReply(
   }
 
   return replyRes.data as InquiryReply;
+}
+
+// 관리자: 기존 답변 수정
+export async function updateReplyByAdmin(
+  inquiryId: string,
+  replyId: string,
+  content: string
+) {
+  const supabase = createSupabaseAdminClient();
+
+  const { data, error } = await supabase
+    .from("inquiry_replies")
+    .update({ content })
+    .eq("id", replyId)
+    .eq("inquiry_id", inquiryId)
+    .eq("author_role", "admin")
+    .select()
+    .single();
+
+  if (error) {
+    console.error("updateReplyByAdmin error:", error);
+    return null;
+  }
+
+  await supabase
+    .from("inquiries")
+    .update({
+      has_unread_reply: true,
+      status: "resolved",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", inquiryId);
+
+  return data as InquiryReply;
+}
+
+// 관리자: 기존 답변 삭제
+export async function deleteReplyByAdmin(
+  inquiryId: string,
+  replyId: string
+) {
+  const supabase = createSupabaseAdminClient();
+
+  const { error } = await supabase
+    .from("inquiry_replies")
+    .delete()
+    .eq("id", replyId)
+    .eq("inquiry_id", inquiryId)
+    .eq("author_role", "admin");
+
+  if (error) {
+    console.error("deleteReplyByAdmin error:", error);
+    return false;
+  }
+
+  const { count: adminReplyCount, error: countError } = await supabase
+    .from("inquiry_replies")
+    .select("id", { count: "exact", head: true })
+    .eq("inquiry_id", inquiryId)
+    .eq("author_role", "admin");
+
+  if (countError) {
+    console.error("deleteReplyByAdmin count error:", countError);
+    return false;
+  }
+
+  const updatePayload: { updated_at: string; has_unread_reply?: boolean } = {
+    updated_at: new Date().toISOString(),
+  };
+
+  // 관리자 답글이 하나도 없으면 '읽지않음' 배지를 강제로 내린다.
+  if ((adminReplyCount ?? 0) === 0) {
+    updatePayload.has_unread_reply = false;
+  }
+
+  await supabase
+    .from("inquiries")
+    .update(updatePayload)
+    .eq("id", inquiryId);
+
+  return true;
 }
 
 // 사용자: 본인 문의 수정

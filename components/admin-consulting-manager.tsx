@@ -1,14 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { type InquiryWithProfile, type InquiryReply } from "@/lib/consulting";
 
 type View = "list" | "detail";
+type SortField = "updated" | "created";
+type SortOrder = "normal" | "reverse";
 
-export function AdminConsultingManager() {
+type AdminConsultingManagerProps = {
+  onDetailViewChange?: (isDetail: boolean) => void;
+  forceListToken?: number;
+};
+
+export function AdminConsultingManager({
+  onDetailViewChange,
+  forceListToken = 0,
+}: AdminConsultingManagerProps) {
   const [view, setView] = useState<View>("list");
-  const [type, setType] = useState<"consulting" | "general" | "all">("consulting");
-  const [status, setStatus] = useState<string>("all");
+  const [status, setStatus] = useState<string>("pending");
+  const [sortField, setSortField] = useState<SortField>("updated");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("normal");
   const [inquiries, setInquiries] = useState<InquiryWithProfile[]>([]);
   const [selectedInquiry, setSelectedInquiry] = useState<InquiryWithProfile | null>(
     null
@@ -18,20 +29,35 @@ export function AdminConsultingManager() {
   const [replyContent, setReplyContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
+  const [editReplyContent, setEditReplyContent] = useState("");
+  const [replyActionLoadingId, setReplyActionLoadingId] = useState<string | null>(null);
 
   // 목록 조회 - 초기 로드 및 타입/상태 변경 시
   useEffect(() => {
     loadInquiries();
-  }, [type, status]);
+  }, [status]);
+
+  useEffect(() => {
+    onDetailViewChange?.(view === "detail");
+  }, [view, onDetailViewChange]);
+
+  useEffect(() => {
+    if (view !== "detail") return;
+
+    setView("list");
+    setSelectedInquiry(null);
+    setReplies([]);
+    setMessage(null);
+    setEditingReplyId(null);
+    setEditReplyContent("");
+    setReplyActionLoadingId(null);
+  }, [forceListToken, view]);
 
   async function loadInquiries() {
     try {
       setIsLoading(true);
       let url = "/api/admin/consulting?limit=50";
-
-      if (type !== "all") {
-        url += `&type=${type}`;
-      }
 
       if (status !== "all") {
         url += `&status=${status}`;
@@ -74,8 +100,18 @@ export function AdminConsultingManager() {
           replies: InquiryReply[];
         };
         setSelectedInquiry(data.inquiry);
+        setInquiries((prev) =>
+          prev.map((inquiry) =>
+            inquiry.id === data.inquiry.id
+              ? { ...inquiry, status: data.inquiry.status, updated_at: data.inquiry.updated_at }
+              : inquiry
+          )
+        );
         setReplies(data.replies);
         setReplyContent("");
+        setEditingReplyId(null);
+        setEditReplyContent("");
+        setReplyActionLoadingId(null);
         setMessage(null);
         setView("detail");
       }
@@ -143,6 +179,90 @@ export function AdminConsultingManager() {
     }
   }
 
+  function startEditReply(reply: InquiryReply) {
+    setEditingReplyId(reply.id);
+    setEditReplyContent(reply.content);
+    setMessage(null);
+  }
+
+  function cancelEditReply() {
+    setEditingReplyId(null);
+    setEditReplyContent("");
+  }
+
+  async function handleUpdateReply(replyId: string) {
+    if (!selectedInquiry || !editReplyContent.trim()) return;
+
+    try {
+      setReplyActionLoadingId(replyId);
+      const response = await fetch(
+        `/api/admin/consulting/${selectedInquiry.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "reply-edit",
+            replyId,
+            content: editReplyContent,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        setMessage("답변이 수정되었습니다.");
+        setEditingReplyId(null);
+        setEditReplyContent("");
+        await loadInquiryDetail(selectedInquiry.id);
+      } else {
+        const data = (await response.json()) as { message?: string };
+        setMessage(data.message ?? "답변 수정 중 오류가 발생했습니다.");
+      }
+    } catch (error) {
+      console.error("Failed to update reply:", error);
+      setMessage("답변 수정 중 오류가 발생했습니다.");
+    } finally {
+      setReplyActionLoadingId(null);
+    }
+  }
+
+  async function handleDeleteReply(replyId: string) {
+    if (!selectedInquiry) return;
+    const isConfirmed = window.confirm("이 답변을 삭제할까요?");
+    if (!isConfirmed) return;
+
+    try {
+      setReplyActionLoadingId(replyId);
+      const response = await fetch(
+        `/api/admin/consulting/${selectedInquiry.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "reply-delete",
+            replyId,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        setMessage("답변이 삭제되었습니다.");
+        if (editingReplyId === replyId) {
+          setEditingReplyId(null);
+          setEditReplyContent("");
+        }
+        await loadInquiryDetail(selectedInquiry.id);
+      } else {
+        const data = (await response.json()) as { message?: string };
+        setMessage(data.message ?? "답변 삭제 중 오류가 발생했습니다.");
+      }
+    } catch (error) {
+      console.error("Failed to delete reply:", error);
+      setMessage("답변 삭제 중 오류가 발생했습니다.");
+    } finally {
+      setReplyActionLoadingId(null);
+    }
+  }
+
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "pending":
@@ -150,9 +270,9 @@ export function AdminConsultingManager() {
       case "in_progress":
         return "답변중";
       case "resolved":
-        return "완료";
+        return "답변완료";
       case "closed":
-        return "완료";
+        return "답변완료";
       default:
         return status;
     }
@@ -173,11 +293,43 @@ export function AdminConsultingManager() {
     }
   };
 
+  const formatDate = (value: string) =>
+    new Date(value).toLocaleDateString("ko-KR");
+
+  const sortedInquiries = useMemo(() => {
+    const sorted = [...inquiries].sort((a, b) => {
+      const aTime = new Date(
+        sortField === "updated" ? a.updated_at : a.created_at
+      ).getTime();
+      const bTime = new Date(
+        sortField === "updated" ? b.updated_at : b.created_at
+      ).getTime();
+
+      return bTime - aTime;
+    });
+
+    if (sortOrder === "reverse") {
+      sorted.reverse();
+    }
+
+    return sorted;
+  }, [inquiries, sortField, sortOrder]);
+
+  const handleSortClick = (nextField: SortField) => {
+    if (sortField === nextField) {
+      setSortOrder((prev) => (prev === "normal" ? "reverse" : "normal"));
+      return;
+    }
+
+    setSortField(nextField);
+    setSortOrder("normal");
+  };
+
   const pendingCount = inquiries.filter(
     (i) => i.status === "pending"
   ).length;
   const answeredCount = inquiries.filter(
-    (i) => i.has_unread_reply && i.status === "in_progress"
+    (i) => i.has_unread_reply && i.status === "resolved"
   ).length;
 
   return (
@@ -186,26 +338,55 @@ export function AdminConsultingManager() {
         <div className="admin-consulting-list">
           {/* 필터 */}
           <div className="admin-consulting-filters">
-            <div className="admin-consulting-filter-group">
-              <label>유형</label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value as any)}
-              >
-                <option value="all">전체</option>
-                <option value="consulting">1:1 상담</option>
-                <option value="general">일반 문의</option>
-              </select>
-            </div>
+            <div className="admin-consulting-filter-line">
+              <div className="admin-consulting-filter-group admin-consulting-filter-status">
+                <select value={status} onChange={(e) => setStatus(e.target.value)}>
+                  <option value="all">전체</option>
+                  <option value="pending">접수완료</option>
+                  <option value="unread">읽지않음</option>
+                  <option value="resolved">답변완료</option>
+                </select>
+              </div>
 
-            <div className="admin-consulting-filter-group">
-              <label>상태</label>
-              <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                <option value="all">전체</option>
-                <option value="pending">접수완료</option>
-                <option value="in_progress">답변중</option>
-                <option value="resolved">완료</option>
-              </select>
+              <div className="admin-consulting-filter-group admin-consulting-filter-progress">
+                <button
+                  type="button"
+                  className={`admin-consulting-inline-filter-btn ${
+                    status === "in_progress" ? "active" : ""
+                  }`}
+                  onClick={() =>
+                    setStatus((prev) => (prev === "in_progress" ? "all" : "in_progress"))
+                  }
+                  aria-pressed={status === "in_progress"}
+                >
+                  답변중
+                </button>
+              </div>
+
+              <div className="admin-consulting-filter-group admin-consulting-filter-sort">
+                <div className="admin-consulting-sort-buttons">
+                  <button
+                    type="button"
+                    className={`admin-consulting-sort-btn ${
+                      sortField === "updated" ? "active" : ""
+                    }`}
+                    onClick={() => handleSortClick("updated")}
+                    aria-pressed={sortField === "updated"}
+                  >
+                    수정순 {sortField === "updated" ? (sortOrder === "normal" ? "↑" : "↓") : ""}
+                  </button>
+                  <button
+                    type="button"
+                    className={`admin-consulting-sort-btn ${
+                      sortField === "created" ? "active" : ""
+                    }`}
+                    onClick={() => handleSortClick("created")}
+                    aria-pressed={sortField === "created"}
+                  >
+                    시간순 {sortField === "created" ? (sortOrder === "normal" ? "↑" : "↓") : ""}
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="admin-consulting-stats">
@@ -226,48 +407,72 @@ export function AdminConsultingManager() {
           </div>
 
           {/* 목록 */}
-          {inquiries.length === 0 ? (
+          {sortedInquiries.length === 0 ? (
             <div className="admin-consulting-empty">
               조회된 상담/문의가 없습니다.
             </div>
           ) : (
             <div className="admin-consulting-items">
-              <div className="admin-consulting-header-row">
-                <div className="col-title">제목</div>
-                <div className="col-type">유형</div>
-                <div className="col-status">상태</div>
-                <div className="col-date">접수일</div>
-              </div>
+              {sortedInquiries.map((inquiry) => {
+                const writerId =
+                  inquiry.profile.email.split("@")[0] ||
+                  inquiry.profile.full_name?.trim() ||
+                  inquiry.profile.email;
+                const hasUpdatedAt =
+                  new Date(inquiry.updated_at).getTime() -
+                    new Date(inquiry.created_at).getTime() >
+                  1000;
 
-              {inquiries.map((inquiry) => (
-                <button
-                  key={inquiry.id}
-                  className="admin-consulting-item"
-                  onClick={() => loadInquiryDetail(inquiry.id)}
-                >
-                  <div className="col-title">
-                    {inquiry.title}
-                    {inquiry.has_unread_reply && (
-                      <span className="admin-consulting-badge">새로운</span>
-                    )}
-                  </div>
-                  <div className="col-type">
-                    {inquiry.type === "consulting" ? "상담" : "문의"}
-                  </div>
-                  <div className="col-status">
-                    <span
-                      className={`admin-consulting-status ${getStatusClass(
-                        inquiry.status
-                      )}`}
-                    >
-                      {getStatusLabel(inquiry.status)}
-                    </span>
-                  </div>
-                  <div className="col-date">
-                    {new Date(inquiry.created_at).toLocaleDateString("ko-KR")}
-                  </div>
-                </button>
-              ))}
+                return (
+                  <button
+                    key={inquiry.id}
+                    className="admin-consulting-item"
+                    onClick={() => loadInquiryDetail(inquiry.id)}
+                  >
+                    <div className="admin-consulting-item-top">
+                      <span className="admin-consulting-item-writer">
+                        {inquiry.profile.icon_image ? (
+                          <img
+                            src={inquiry.profile.icon_image}
+                            alt=""
+                            className="admin-consulting-item-writer-avatar"
+                          />
+                        ) : (
+                          <span className="admin-consulting-item-writer-icon">👤</span>
+                        )}
+                        <span className="admin-consulting-item-writer-id">{writerId}</span>
+                      </span>
+                      {inquiry.has_unread_reply && (
+                        <span className="admin-consulting-badge">읽지않음</span>
+                      )}
+                    </div>
+
+                    <div className="admin-consulting-item-bottom">
+                      <span className="admin-consulting-item-title">{inquiry.title}</span>
+                      <span className="admin-consulting-item-meta">
+                        {hasUpdatedAt && (
+                          <>
+                            <span className="admin-consulting-item-meta-updated">
+                              {formatDate(inquiry.updated_at)}
+                            </span>
+                            <span className="admin-consulting-item-meta-sep">|</span>
+                          </>
+                        )}
+                        <span className="admin-consulting-item-meta-created">
+                          {formatDate(inquiry.created_at)}
+                        </span>
+                      </span>
+                      <span
+                        className={`admin-consulting-status ${getStatusClass(
+                          inquiry.status
+                        )}`}
+                      >
+                        {getStatusLabel(inquiry.status)}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -275,46 +480,49 @@ export function AdminConsultingManager() {
         // 상세 뷰
         selectedInquiry && (
           <div className="admin-consulting-detail">
-            <button
-              className="admin-consulting-btn-back"
-              onClick={() => setView("list")}
-            >
-              ← 목록으로
-            </button>
-
             {/* 문의 정보 */}
             <div className="admin-consulting-detail-header">
-              <div className="admin-consulting-detail-info">
-                <h3>{selectedInquiry.title}</h3>
-                <div className="admin-consulting-detail-meta">
-                  <span className="meta-email">
-                    📧 {selectedInquiry.profile.email}
-                  </span>
-                  <span className="meta-name">
-                    👤 {selectedInquiry.profile.full_name ?? "이름 없음"}
-                  </span>
-                  <span className="meta-type">
-                    {selectedInquiry.type === "consulting" ? "1:1 상담" : "일반 문의"}
-                  </span>
-                  <span
-                    className={`meta-status admin-consulting-status ${getStatusClass(
-                      selectedInquiry.status
-                    )}`}
-                  >
-                    {getStatusLabel(selectedInquiry.status)}
-                  </span>
-                  <span className="meta-date">
-                    {new Date(selectedInquiry.created_at).toLocaleDateString(
-                      "ko-KR",
-                      {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      }
-                    )}
-                  </span>
+              <div className="admin-consulting-detail-header-left">
+                <button
+                  className="admin-consulting-btn-back admin-consulting-btn-back-desktop"
+                  onClick={() => setView("list")}
+                  aria-label="목록으로 돌아가기"
+                >
+                  {"<"}
+                </button>
+
+                <div className="admin-consulting-detail-info">
+                  <h3>{selectedInquiry.title}</h3>
+                  <div className="admin-consulting-detail-meta">
+                    <span className="meta-email">
+                      📧 {selectedInquiry.profile.email}
+                    </span>
+                    <span className="meta-name">
+                      👤 {selectedInquiry.profile.full_name ?? "이름 없음"}
+                    </span>
+                    <span className="meta-type">
+                      {selectedInquiry.type === "consulting" ? "1:1 상담" : "일반 문의"}
+                    </span>
+                    <span
+                      className={`meta-status admin-consulting-status ${getStatusClass(
+                        selectedInquiry.status
+                      )}`}
+                    >
+                      {getStatusLabel(selectedInquiry.status)}
+                    </span>
+                    <span className="meta-date">
+                      {new Date(selectedInquiry.created_at).toLocaleDateString(
+                        "ko-KR",
+                        {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }
+                      )}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -329,9 +537,9 @@ export function AdminConsultingManager() {
                         className={`admin-consulting-status-btn ${
                           selectedInquiry.status === s ? "active" : ""
                         }`}
-                        onClick={() =>
-                          handleStatusChange(s as any)
-                        }
+                        onClick={() => handleStatusChange(s as any)}
+                        disabled={s === "resolved"}
+                        title={s === "resolved" ? "답변 작성 시 자동 완료됩니다." : undefined}
                       >
                         {getStatusLabel(s)}
                       </button>
@@ -380,7 +588,61 @@ export function AdminConsultingManager() {
                           )}
                         </span>
                       </div>
-                      <p>{reply.content}</p>
+                      {editingReplyId === reply.id ? (
+                        <div className="admin-consulting-reply-edit">
+                          <textarea
+                            value={editReplyContent}
+                            onChange={(e) => setEditReplyContent(e.target.value)}
+                            rows={4}
+                            disabled={replyActionLoadingId === reply.id}
+                          />
+                          <div className="admin-consulting-reply-actions">
+                            <button
+                              type="button"
+                              className="admin-consulting-reply-action-btn"
+                              onClick={cancelEditReply}
+                              disabled={replyActionLoadingId === reply.id}
+                            >
+                              취소
+                            </button>
+                            <button
+                              type="button"
+                              className="admin-consulting-reply-action-btn primary"
+                              onClick={() => handleUpdateReply(reply.id)}
+                              disabled={
+                                replyActionLoadingId === reply.id ||
+                                !editReplyContent.trim()
+                              }
+                            >
+                              {replyActionLoadingId === reply.id ? "저장 중..." : "저장"}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p>{reply.content}</p>
+                          {reply.author_role === "admin" && (
+                            <div className="admin-consulting-reply-actions">
+                              <button
+                                type="button"
+                                className="admin-consulting-reply-action-btn"
+                                onClick={() => startEditReply(reply)}
+                                disabled={replyActionLoadingId === reply.id}
+                              >
+                                수정
+                              </button>
+                              <button
+                                type="button"
+                                className="admin-consulting-reply-action-btn danger"
+                                onClick={() => handleDeleteReply(reply.id)}
+                                disabled={replyActionLoadingId === reply.id}
+                              >
+                                {replyActionLoadingId === reply.id ? "삭제 중..." : "삭제"}
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>

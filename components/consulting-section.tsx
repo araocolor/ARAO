@@ -185,9 +185,9 @@ export function ConsultingSection({
       case "in_progress":
         return "답변중";
       case "resolved":
-        return "완료";
+        return "답변완료";
       case "closed":
-        return "완료";
+        return "답변완료";
       default:
         return status;
     }

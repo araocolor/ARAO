@@ -3,6 +3,8 @@ import {
   getInquiryByIdAdmin,
   createReply,
   updateInquiryStatus,
+  updateReplyByAdmin,
+  deleteReplyByAdmin,
 } from "@/lib/consulting";
 import { syncProfile } from "@/lib/profiles";
 import { NextResponse } from "next/server";
@@ -119,7 +121,56 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const body = await request.json() as { status?: string };
+    const body = await request.json() as {
+      status?: string;
+      action?: "reply-edit" | "reply-delete";
+      replyId?: string;
+      content?: string;
+    };
+
+    if (body.action === "reply-edit") {
+      if (!body.replyId || !body.content?.trim()) {
+        return NextResponse.json(
+          { message: "Reply id and content are required" },
+          { status: 400 }
+        );
+      }
+
+      const updatedReply = await updateReplyByAdmin(
+        id,
+        body.replyId,
+        body.content.trim()
+      );
+
+      if (!updatedReply) {
+        return NextResponse.json(
+          { message: "Failed to update reply" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ reply: updatedReply });
+    }
+
+    if (body.action === "reply-delete") {
+      if (!body.replyId) {
+        return NextResponse.json(
+          { message: "Reply id is required" },
+          { status: 400 }
+        );
+      }
+
+      const deleted = await deleteReplyByAdmin(id, body.replyId);
+
+      if (!deleted) {
+        return NextResponse.json(
+          { message: "Failed to delete reply" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ success: true });
+    }
 
     if (
       !body.status ||
@@ -131,9 +182,16 @@ export async function PATCH(
       );
     }
 
+    if (body.status === "resolved") {
+      return NextResponse.json(
+        { message: "답변완료는 답변 작성 시 자동으로 처리됩니다." },
+        { status: 400 }
+      );
+    }
+
     const updated = await updateInquiryStatus(
       id,
-      body.status as "pending" | "in_progress" | "resolved"
+      body.status as "pending" | "in_progress"
     );
 
     if (!updated) {
