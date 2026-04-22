@@ -335,6 +335,7 @@ export function ConsultingSection({
                 const isOpen = expandedId === inquiry.id;
                 const inquiryStatus = inquiry.status as string;
                 const isResolved = inquiryStatus === "resolved" || inquiryStatus === "closed";
+                const isWaitingAnswer = inquiryStatus === "in_progress";
                 const replies = repliesMap[inquiry.id] ?? [];
                 const useChatThread = isResolved || replies.length > 0;
                 const canModify = inquiry.status === "pending" || inquiry.status === "in_progress";
@@ -344,7 +345,9 @@ export function ConsultingSection({
                 return (
                   <div
                     key={inquiry.id}
-                    className={`consulting-item${isOpen ? " expanded" : ""}`}
+                    className={`consulting-item${isOpen ? " expanded" : ""}${
+                      isWaitingAnswer ? " consulting-item-waiting" : ""
+                    }`}
                   >
                     <button
                       type="button"
@@ -439,7 +442,6 @@ export function ConsultingSection({
                         ) : (
                           <>
                             <div className="consulting-section-box">
-                              <h4>문의 내용</h4>
                               <p>{inquiry.content}</p>
                             </div>
 
@@ -545,15 +547,8 @@ export function ConsultingSection({
 
       {view === "create" && (
         <div className="consulting-create">
-          <button className="consulting-btn-back" onClick={() => setView("list")}>
-            ← 취소
-          </button>
-
-          <h3>새 문의 작성</h3>
-
           <form onSubmit={handleCreateInquiry} className="consulting-form">
             <div className="consulting-form-group">
-              <label>제목</label>
               <input
                 type="text"
                 value={formTitle}
@@ -565,7 +560,6 @@ export function ConsultingSection({
             </div>
 
             <div className="consulting-form-group">
-              <label>내용</label>
               <textarea
                 value={formContent}
                 onChange={(e) => setFormContent(e.target.value)}
@@ -578,28 +572,33 @@ export function ConsultingSection({
 
             {message && <div className="consulting-message">{message}</div>}
 
-            <button
-              type="submit"
-              className="consulting-btn-submit"
-              disabled={isSubmitting || !formTitle.trim() || !formContent.trim()}
-            >
-              {isSubmitting ? "등록 중..." : "등록"}
-            </button>
+            <div className="consulting-create-actions">
+              <button
+                type="button"
+                className="consulting-btn-cancel-create"
+                onClick={() => setView("list")}
+                disabled={isSubmitting}
+              >
+                취소
+              </button>
+              <button
+                type="submit"
+                className="consulting-btn-submit consulting-btn-submit-create"
+                disabled={isSubmitting || !formTitle.trim() || !formContent.trim()}
+              >
+                {isSubmitting ? "등록 중..." : "등록"}
+              </button>
+            </div>
           </form>
         </div>
       )}
 
       {view === "edit" && selectedInquiry && (
         <div className="consulting-create">
-          <button className="consulting-btn-back" onClick={() => setView("list")}>
-            ← 취소
-          </button>
-
           <h3>문의 수정</h3>
 
           <form onSubmit={handleEditInquiry} className="consulting-form">
             <div className="consulting-form-group">
-              <label>제목</label>
               <input
                 type="text"
                 value={editTitle}
@@ -611,7 +610,6 @@ export function ConsultingSection({
             </div>
 
             <div className="consulting-form-group">
-              <label>내용</label>
               <textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
