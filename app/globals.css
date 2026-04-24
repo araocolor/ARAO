@@ -32,8 +32,9 @@ body {
     radial-gradient(circle at top, rgba(255, 255, 255, 0.92), rgba(245, 245, 247, 0.98) 45%),
     var(--bg);
   color: var(--text);
-  font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont,
-    "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
+  /* font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont,
+    "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif; */
+  font-family: Roboto, Arial, sans-serif;
 }
 
 a {

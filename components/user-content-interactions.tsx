@@ -1036,6 +1036,7 @@ export function UserContentInteractions({
                   <span className="user-content-comment-author-badge" aria-label="작성자">작성자</span>
                 )}
               </span>
+              <span className="user-content-comment-date">{formatDate(reply.createdAt)}</span>
               <div className="user-content-comment-right">
                 {reply.isMine && !reply.isDeleted && (
                   <button
@@ -1048,7 +1049,6 @@ export function UserContentInteractions({
                 )}
               </div>
             </div>
-            <span className="user-content-comment-date">{formatDate(reply.createdAt)}</span>
             {editingId === reply.id ? (
               <div className="user-content-comment-edit-form">
                 <textarea
@@ -1142,6 +1142,7 @@ export function UserContentInteractions({
                           <span className="user-content-comment-author-badge" aria-label="작성자">작성자</span>
                         )}
                       </span>
+                      <span className="user-content-comment-date">{formatDate(comment.createdAt)}</span>
                       <div className="user-content-comment-right">
                         {comment.isMine && !comment.isDeleted && (
                           <button
@@ -1154,7 +1155,6 @@ export function UserContentInteractions({
                         )}
                       </div>
                     </div>
-                    <span className="user-content-comment-date">{formatDate(comment.createdAt)}</span>
                     {editingId === comment.id ? (
                       <div className="user-content-comment-edit-form">
                         <textarea
@@ -1250,8 +1250,8 @@ export function UserContentInteractions({
                           <span className="user-content-comment-author-badge" aria-label="작성자">작성자</span>
                         )}
                       </span>
+                      <span className="user-content-comment-date">{formatDate(activeReplyThreadParentComment.createdAt)}</span>
                     </div>
-                    <span className="user-content-comment-date">{formatDate(activeReplyThreadParentComment.createdAt)}</span>
                     <p className={`user-content-comment-text${activeReplyThreadParentComment.isDeleted ? " deleted" : ""}`}>
                       {activeReplyThreadParentComment.content}
                     </p>
