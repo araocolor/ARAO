@@ -99,6 +99,20 @@ function formatRelativeTime(isoString: string): string {
   });
 }
 
+function getPeriodLabel(isoString: string): string {
+  const now = new Date();
+  const then = new Date(isoString);
+  const diffMs = now.getTime() - then.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return "오늘";
+  if (diffDays <= 7) return "이번 주";
+  if (now.getMonth() === then.getMonth() && now.getFullYear() === then.getFullYear()) return "이번 달";
+  return "이전";
+}
+
+const PERIOD_ORDER = ["오늘", "이번 주", "이번 달", "이전"];
+
 // 알림 타입별 라벨 매핑
 const TYPE_LABEL: Record<string, string> = {
   settings: "계정 설정",
@@ -141,7 +155,7 @@ export function NotificationDrawer({
   onRollbackRead,
 }: NotificationDrawerProps) {
   const [optimisticReadIds, setOptimisticReadIds] = useState<Set<string>>(new Set());
-  const [expanded, setExpanded] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(20);
   const drawerRef = useRef<HTMLDivElement>(null);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
@@ -152,7 +166,7 @@ export function NotificationDrawer({
 
   useEffect(() => {
     if (!isOpen) {
-      setExpanded(false);
+      setVisibleCount(20);
       return;
     }
     // 알림창 열릴 때 배경 스크롤 차단
@@ -258,94 +272,104 @@ export function NotificationDrawer({
           <div className="notif-empty">알림이 없습니다.</div>
         ) : (
           <div className="notif-list">
-            {(expanded ? sortedItems : sortedItems.slice(0, 5)).map((item, idx) => {
-              const isRead = item.is_read || optimisticReadIds.has(item.id);
-              const senderName = getSenderName(item.title);
-              const senderInitial = senderName ? senderName.slice(0, 1).toUpperCase() : "?";
-              const shouldAppendTimestamp =
-                item.link.includes("commentId") &&
-                (item.type === "gallery_like" ||
-                  item.type === "gallery_reply" ||
-                  item.type === "gallery_comment_deleted");
-              let href = item.link;
-              if (href.startsWith("/user_content/")) {
-                if (!hasQueryParam(href, "commentId")) {
-                  const commentId = getCommentIdFromSourceId(item);
-                  if (commentId) href = appendQueryParam(href, "commentId", commentId);
+            {(() => {
+              const visibleItems = sortedItems.slice(0, visibleCount);
+              const grouped: Record<string, typeof sortedItems> = {};
+              for (const item of visibleItems) {
+                const label = getPeriodLabel(item.created_at);
+                if (!grouped[label]) grouped[label] = [];
+                grouped[label].push(item);
+              }
+
+              const renderItem = (item: NotificationItem) => {
+                const isRead = item.is_read || optimisticReadIds.has(item.id);
+                const senderName = getSenderName(item.title);
+                const senderInitial = senderName ? senderName.slice(0, 1).toUpperCase() : "?";
+                const shouldAppendTimestamp =
+                  item.link.includes("commentId") &&
+                  (item.type === "gallery_like" ||
+                    item.type === "gallery_reply" ||
+                    item.type === "gallery_comment_deleted");
+                let href = item.link;
+                if (href.startsWith("/user_content/")) {
+                  if (!hasQueryParam(href, "commentId")) {
+                    const commentId = getCommentIdFromSourceId(item);
+                    if (commentId) href = appendQueryParam(href, "commentId", commentId);
+                  }
+                  href = appendQueryParam(href, "from", "notification");
                 }
-                href = appendQueryParam(href, "from", "notification");
-              }
-              if (shouldAppendTimestamp) {
-                href = appendQueryParam(href, "t", String(Date.now()));
-              }
-              return (
-              <div key={item.id}>
-              {expanded && idx === 5 && (
-                <button
-                  className="notif-more-btn"
-                  onClick={() => setExpanded(false)}
-                  type="button"
-                >
-                  접기
-                </button>
-              )}
-              <Link
-                key={item.id}
-                href={href}
-                className={`notif-item ${!isRead ? "is-unread" : ""}`}
-                onClick={() => handleItemClick(item)}
-              >
-                {item.type === "consulting" ? (
-                  <img src="/apple-touch-icon.png" className="notif-sender-avatar" alt="" />
-                ) : item.sender_icon ? (
-                  <img src={item.sender_icon} className="notif-sender-avatar" alt="" />
-                ) : (
-                  <span className="notif-sender-avatar notif-sender-avatar-default">
-                    <span className="notif-sender-initial">{senderInitial}</span>
-                  </span>
-                )}
-                <div className="notif-item-body">
-                  <p className="notif-item-title">
-                    {item.type === "consulting" ? (() => {
-                      const [titlePart, rest] = item.title.split("||");
-                      return <>상담글 <strong>{titlePart}</strong> {rest}</>;
-                    })() : item.type === "settings" ? item.title : formatTitle(item.title)}
-                  </p>
-                  {item.type !== "settings" && (
-                    <p className="notif-item-time">
-                      {formatRelativeTime(item.created_at)}
-                    </p>
-                  )}
-                </div>
-                {item.type === "consulting" ? (
-                  <span className="notif-related-thumb notif-related-thumb-empty" aria-hidden="true">
-                    <MessageCircle size={20} strokeWidth={1.8} />
-                  </span>
-                ) : item.related_image ? (
-                  <img src={item.related_image} className="notif-related-thumb" alt="" loading="lazy" />
-                ) : (
-                  <span
-                    className={`notif-related-thumb notif-related-thumb-empty${
-                      item.type === "settings" ? " is-settings" : ""
-                    }`}
-                    aria-hidden="true"
+                if (shouldAppendTimestamp) {
+                  href = appendQueryParam(href, "t", String(Date.now()));
+                }
+                return (
+                  <Link
+                    key={item.id}
+                    href={href}
+                    className={`notif-item ${!isRead ? "is-unread" : "is-read"}`}
+                    onClick={() => handleItemClick(item)}
                   >
-                    {item.type === "settings" ? "A" : (TYPE_ICON[item.type] || "🔔")}
-                  </span>
-                )}
-              </Link>
-              </div>
+                    {item.type === "consulting" ? (
+                      <img src="/apple-touch-icon.png" className="notif-sender-avatar" alt="" />
+                    ) : item.sender_icon ? (
+                      <img src={item.sender_icon} className="notif-sender-avatar" alt="" />
+                    ) : (
+                      <span className="notif-sender-avatar notif-sender-avatar-default">
+                        <span className="notif-sender-initial">{senderInitial}</span>
+                      </span>
+                    )}
+                    <div className="notif-item-body">
+                      <p className="notif-item-title">
+                        {item.type === "consulting" ? (() => {
+                          const [titlePart, rest] = item.title.split("||");
+                          return <>상담글 <strong>{titlePart}</strong> {rest}</>;
+                        })() : item.type === "settings" ? item.title : formatTitle(item.title)}
+                      </p>
+                      {item.type !== "settings" && (
+                        <p className="notif-item-time">
+                          {formatRelativeTime(item.created_at)}
+                        </p>
+                      )}
+                    </div>
+                    {item.type === "consulting" ? (
+                      <span className="notif-related-thumb notif-related-thumb-empty" aria-hidden="true">
+                        <MessageCircle size={20} strokeWidth={1.8} />
+                      </span>
+                    ) : item.related_image ? (
+                      <img src={item.related_image} className="notif-related-thumb" alt="" loading="lazy" />
+                    ) : (
+                      <span
+                        className={`notif-related-thumb notif-related-thumb-empty${
+                          item.type === "settings" ? " is-settings" : ""
+                        }`}
+                        aria-hidden="true"
+                      >
+                        {item.type === "settings" ? "A" : (TYPE_ICON[item.type] || "🔔")}
+                      </span>
+                    )}
+                  </Link>
+                );
+              };
+
+              return (
+                <>
+                  {PERIOD_ORDER.filter((label) => grouped[label]).map((label) => (
+                    <div key={label} className="notif-period-group">
+                      <span className="notif-period-label">{label}</span>
+                      {grouped[label].map(renderItem)}
+                    </div>
+                  ))}
+                  {visibleCount < sortedItems.length && (
+                    <button
+                      className="notif-more-btn"
+                      onClick={() => setVisibleCount((prev) => prev + 20)}
+                      type="button"
+                    >
+                      더보기 ({sortedItems.length - visibleCount}개)
+                    </button>
+                  )}
+                </>
               );
-            })}
-            {!expanded && sortedItems.length > 5 && (
-              <button
-                className="notif-more-btn"
-                onClick={() => setExpanded(true)}
-                type="button"
-              >
-                {`더보기 (${sortedItems.length - 5}개)`}
-              </button>
-            )}
+            })()}
           </div>
         )}
 

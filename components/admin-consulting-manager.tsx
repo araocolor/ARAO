@@ -17,8 +17,8 @@ export function AdminConsultingManager({
   forceListToken = 0,
 }: AdminConsultingManagerProps) {
   const [view, setView] = useState<View>("list");
-  const [status, setStatus] = useState<string>("all");
-  const [sortField, setSortField] = useState<SortField>("updated");
+  const [status, setStatus] = useState<string>("in_progress");
+  const [sortField, setSortField] = useState<SortField>("created");
   const [sortOrder, setSortOrder] = useState<SortOrder>("normal");
   const [inquiries, setInquiries] = useState<InquiryWithProfile[]>([]);
   const [selectedInquiry, setSelectedInquiry] = useState<InquiryWithProfile | null>(
@@ -35,7 +35,7 @@ export function AdminConsultingManager({
   const [isReplyDraftSubmitting, setIsReplyDraftSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchField, setSearchField] = useState<"id" | "email" | "title" | "content">("title");
-  const [period, setPeriod] = useState<"today" | "week" | "month" | "year">("year");
+  const [period, setPeriod] = useState<"today" | "week" | "month" | "3month" | "6month" | "12month" | "year">("month");
   const detailThreadRef = useRef<HTMLDivElement | null>(null);
 
   // 목록 조회 - 초기 로드 및 타입/상태 변경 시
@@ -366,6 +366,15 @@ export function AdminConsultingManager({
       if (period === "month") {
         return now.getTime() - created.getTime() <= 30 * 24 * 60 * 60 * 1000;
       }
+      if (period === "3month") {
+        return now.getTime() - created.getTime() <= 90 * 24 * 60 * 60 * 1000;
+      }
+      if (period === "6month") {
+        return now.getTime() - created.getTime() <= 180 * 24 * 60 * 60 * 1000;
+      }
+      if (period === "12month") {
+        return now.getTime() - created.getTime() <= 365 * 24 * 60 * 60 * 1000;
+      }
       return true;
     });
 
@@ -404,63 +413,25 @@ export function AdminConsultingManager({
         <div className="admin-consulting-list">
           {/* 필터 */}
           <div className="admin-consulting-filter-line">
-              <div className="admin-consulting-filter-group admin-consulting-filter-period">
-                <select value={period} onChange={(e) => setPeriod(e.target.value as typeof period)}>
-                  <option value="today">today</option>
-                  <option value="week">week</option>
-                  <option value="month">month</option>
-                  <option value="year">year</option>
-                </select>
-              </div>
-
-              <div className="admin-consulting-filter-group admin-consulting-filter-status">
-                <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                  <option value="all">전체</option>
-                  <option value="pending">접수완료</option>
-                  <option value="resolved">답변완료</option>
-                  <option value="unread">읽지않음</option>
-                </select>
-              </div>
-
-              <div className="admin-consulting-filter-group admin-consulting-filter-progress">
-                <button
-                  type="button"
-                  className={`admin-consulting-inline-filter-btn ${
-                    status === "in_progress" ? "active" : ""
-                  }`}
-                  onClick={() =>
-                    setStatus((prev) => (prev === "in_progress" ? "all" : "in_progress"))
-                  }
-                  aria-pressed={status === "in_progress"}
-                >
-                  답변대기
-                </button>
-              </div>
-
-              <div className="admin-consulting-filter-group admin-consulting-filter-sort">
-                <div className="admin-consulting-sort-buttons">
-                  <button
-                    type="button"
-                    className={`admin-consulting-sort-btn ${
-                      sortField === "updated" ? "active" : ""
-                    }`}
-                    onClick={() => handleSortClick("updated")}
-                    aria-pressed={sortField === "updated"}
-                  >
-                    수정순 {sortField === "updated" ? (sortOrder === "normal" ? "↑" : "↓") : ""}
-                  </button>
-                  <button
-                    type="button"
-                    className={`admin-consulting-sort-btn ${
-                      sortField === "created" ? "active" : ""
-                    }`}
-                    onClick={() => handleSortClick("created")}
-                    aria-pressed={sortField === "created"}
-                  >
-                    시간순 {sortField === "created" ? (sortOrder === "normal" ? "↑" : "↓") : ""}
-                  </button>
-                </div>
-              </div>
+            {(["pending", "in_progress", "resolved", "unread"] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={`admin-consulting-filter-btn ${status === s ? "active" : ""}`}
+                onClick={() => setStatus(s)}
+              >
+                {s === "pending" ? "접수완료" : s === "in_progress" ? "답변대기" : s === "resolved" ? "답변완료" : "읽지않음"}
+              </button>
+            ))}
+            <select value={period} onChange={(e) => setPeriod(e.target.value as typeof period)} className="admin-consulting-filter-select">
+              <option value="today">오늘</option>
+              <option value="week">1주</option>
+              <option value="month">1개월</option>
+              <option value="3month">3개월</option>
+              <option value="6month">6개월</option>
+              <option value="12month">12개월</option>
+              <option value="year">전체</option>
+            </select>
           </div>
 
           <div className="admin-consulting-stats">
@@ -497,53 +468,66 @@ export function AdminConsultingManager({
                   1000;
 
                 return (
-                  <button
+                  <div
                     key={inquiry.id}
-                    className="admin-consulting-item"
-                    onClick={() => loadInquiryDetail(inquiry.id)}
+                    className={`admin-consulting-item${(inquiry.status as string) === "in_progress" ? " is-waiting" : (inquiry.status as string) === "resolved" || (inquiry.status as string) === "closed" ? " is-resolved" : ""}`}
                   >
                     <div className="admin-consulting-item-top">
                       <span className="admin-consulting-item-writer">
-                        {inquiry.profile.icon_image ? (
-                          <img
-                            src={inquiry.profile.icon_image}
-                            alt=""
-                            className="admin-consulting-item-writer-avatar"
-                          />
-                        ) : (
-                          <span className="admin-consulting-item-writer-icon">👤</span>
-                        )}
                         <span className="admin-consulting-item-writer-id">{writerId}</span>
                         <span className="admin-consulting-item-writer-sep">|</span>
-                        <span className="admin-consulting-item-writer-created">
+                        <button
+                          type="button"
+                          className="admin-consulting-item-writer-created admin-consulting-date-btn"
+                          onClick={() => handleSortClick("created")}
+                        >
                           {formatDate(inquiry.created_at)}
-                        </span>
+                        </button>
                       </span>
                       {inquiry.has_unread_reply && (
                         <span className="admin-consulting-badge">읽지않음</span>
                       )}
-                      <span
-                        className={`admin-consulting-status ${getStatusClass(
-                          inquiry.status
-                        )}`}
-                      >
-                        {getStatusLabel(inquiry.status)}
-                      </span>
-                    </div>
-
-                    <div className="admin-consulting-item-bottom">
-                      <span className="admin-consulting-item-title">
-                        {truncateTitle(inquiry.title, 20)}
-                      </span>
-                      {hasUpdatedAt && (
-                        <span className="admin-consulting-item-meta">
-                          <span className="admin-consulting-item-meta-updated">
-                            {formatDate(inquiry.updated_at)}
-                          </span>
+                      {(inquiry.status as string) !== "in_progress" && (
+                        <span
+                          className={`admin-consulting-status ${getStatusClass(
+                            inquiry.status
+                          )}`}
+                        >
+                          {getStatusLabel(inquiry.status)}
                         </span>
                       )}
                     </div>
-                  </button>
+
+                    <div className="admin-consulting-item-bottom">
+                      {inquiry.profile.icon_image ? (
+                        <img
+                          src={inquiry.profile.icon_image}
+                          alt=""
+                          className="admin-consulting-item-writer-avatar"
+                        />
+                      ) : (
+                        <span className="admin-consulting-item-writer-icon">👤</span>
+                      )}
+                      <button
+                        type="button"
+                        className="admin-consulting-item-title admin-consulting-title-btn"
+                        onClick={() => loadInquiryDetail(inquiry.id)}
+                      >
+                        {truncateTitle(inquiry.title, 20)}
+                      </button>
+                      {hasUpdatedAt && (
+                        <span className="admin-consulting-item-meta">
+                          <button
+                            type="button"
+                            className="admin-consulting-item-meta-updated admin-consulting-date-btn"
+                            onClick={() => handleSortClick("updated")}
+                          >
+                            {formatDate(inquiry.updated_at)}
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -601,10 +585,15 @@ export function AdminConsultingManager({
                   </span>
                   <span className="admin-consulting-detail-sep">|</span>
                   <span className="admin-consulting-detail-email">{selectedInquiry.profile.email}</span>
+                  {(selectedInquiry.status as string) === "in_progress" && (
+                    <span className="admin-consulting-detail-waiting-badge">답변대기</span>
+                  )}
                 </div>
-                <span className={`admin-consulting-status ${getStatusClass(selectedInquiry.status)}`}>
-                  {getStatusLabel(selectedInquiry.status)}
-                </span>
+                {(selectedInquiry.status as string) !== "in_progress" && (
+                  <span className={`admin-consulting-status ${getStatusClass(selectedInquiry.status)}`}>
+                    {getStatusLabel(selectedInquiry.status)}
+                  </span>
+                )}
               </div>
 
               {/* 2줄: 제목 + 날짜 */}
@@ -822,6 +811,20 @@ export function AdminConsultingManager({
                   })()}
                 </div>
               </div>
+            </div>
+            <div className="admin-consulting-detail-footer">
+              <button
+                type="button"
+                className="admin-consulting-list-btn"
+                onClick={() => {
+                  setView("list");
+                  setSelectedInquiry(null);
+                  setReplies([]);
+                  setMessage(null);
+                }}
+              >
+                목록
+              </button>
             </div>
           </div>
         )

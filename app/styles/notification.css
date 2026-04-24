@@ -120,6 +120,25 @@
   padding: 8px 0 16px;
 }
 
+/* 기간 그룹 */
+.notif-period-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.notif-period-label {
+  display: block;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  padding: 14px 16px 4px;
+}
+
+/* 읽은 알림 흐리게 */
+.notif-item.is-read {
+  opacity: 0.45;
+}
+
 /* 카테고리 라벨 */
 .notif-category-label {
   display: block;
