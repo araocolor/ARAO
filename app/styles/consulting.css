@@ -234,6 +234,16 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.consulting-item-hamburger {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  opacity: 0.4;
 }
 
 .consulting-status {

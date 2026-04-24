@@ -1,18 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { Pencil } from "lucide-react";
+import { Menu, Pencil } from "lucide-react";
 import { type Inquiry, type InquiryReply } from "@/lib/consulting";
 
 type ConsultingSectionProps = {
   initialInquiries?: Inquiry[];
+  openId?: string;
 };
 
 type View = "list" | "create" | "edit";
 
 export function ConsultingSection({
   initialInquiries = [],
+  openId,
 }: ConsultingSectionProps) {
   const { user } = useUser();
   const [view, setView] = useState<View>("list");
@@ -32,10 +34,27 @@ export function ConsultingSection({
   const [followupOpenId, setFollowupOpenId] = useState<string | null>(null);
   const [followupContent, setFollowupContent] = useState("");
   const [followupSubmittingId, setFollowupSubmittingId] = useState<string | null>(null);
+  const lastAdminReplyRef = useRef<HTMLDivElement>(null);
+  const didAutoOpen = useRef(false);
 
   useEffect(() => {
     loadInquiries();
   }, []);
+
+  useEffect(() => {
+    if (!openId || didAutoOpen.current || isLoading) return;
+    const target = inquiries.find((inq) => inq.id === openId);
+    if (!target) return;
+    didAutoOpen.current = true;
+    void toggleExpand(target);
+  }, [openId, inquiries, isLoading]);
+
+  useEffect(() => {
+    if (!openId || expandedId !== openId) return;
+    const replies = repliesMap[openId];
+    if (!replies) return;
+    lastAdminReplyRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [openId, expandedId, repliesMap]);
 
   async function loadInquiries() {
     try {
@@ -357,7 +376,12 @@ export function ConsultingSection({
                     >
                       <div className="consulting-item-header">
                         <div className="consulting-item-title-wrap">
-                          <h4>{inquiry.title}</h4>
+                          <h4>
+                            {inquiry.title}
+                            <span className="consulting-item-hamburger" aria-hidden="true">
+                              <Menu size={16} strokeWidth={1.8} />
+                            </span>
+                          </h4>
                           <span className="consulting-item-date">
                             {new Date(inquiry.created_at).toLocaleDateString("ko-KR")}
                           </span>
@@ -413,9 +437,14 @@ export function ConsultingSection({
                               </div>
                             </div>
 
-                            {replies.map((reply) => (
+                            {replies.map((reply, replyIdx) => {
+                              const isLastAdmin =
+                                reply.author_role === "admin" &&
+                                replies.slice(replyIdx + 1).every((r) => r.author_role !== "admin");
+                              return (
                               <div
                                 key={reply.id}
+                                ref={isLastAdmin ? lastAdminReplyRef : undefined}
                                 className={`consulting-chat-row ${
                                   reply.author_role === "admin"
                                     ? "consulting-chat-row-answer"
@@ -437,7 +466,8 @@ export function ConsultingSection({
                                   <p>{reply.content}</p>
                                 </div>
                               </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         ) : (
                           <>

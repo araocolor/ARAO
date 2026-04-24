@@ -159,7 +159,7 @@ export async function getNotificationsForProfile(
     .from("inquiries")
     .select("id, type, title, status, has_unread_reply, updated_at")
     .eq("profile_id", profileId)
-    .in("status", ["in_progress", "resolved"])
+    .in("status", ["resolved"])
     .order("updated_at", { ascending: false });
 
   if (inquiriesError) {
@@ -169,8 +169,8 @@ export async function getNotificationsForProfile(
       ...inquiries.map((inq) => ({
         id: `consulting-${inq.id}`,
         type: "consulting" as const,
-        title: "고객님이 작성한 글에 답변이 완료되었습니다",
-        link: "/account/consulting",
+        title: `${inq.title.length > 18 ? inq.title.slice(0, 18) + "…" : inq.title}||답변완료`,
+        link: `/account/consulting?id=${inq.id}`,
         source_id: inq.id,
         is_read: !inq.has_unread_reply,
         created_at: inq.updated_at,

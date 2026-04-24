@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
+import { MessageCircle } from "lucide-react";
 import { type NotificationItem } from "@/lib/notifications";
 
 type NotificationDrawerProps = {
@@ -294,7 +295,9 @@ export function NotificationDrawer({
                 className={`notif-item ${!isRead ? "is-unread" : ""}`}
                 onClick={() => handleItemClick(item)}
               >
-                {item.sender_icon ? (
+                {item.type === "consulting" ? (
+                  <img src="/apple-touch-icon.png" className="notif-sender-avatar" alt="" />
+                ) : item.sender_icon ? (
                   <img src={item.sender_icon} className="notif-sender-avatar" alt="" />
                 ) : (
                   <span className="notif-sender-avatar notif-sender-avatar-default">
@@ -303,7 +306,10 @@ export function NotificationDrawer({
                 )}
                 <div className="notif-item-body">
                   <p className="notif-item-title">
-                    {item.type === "settings" ? item.title : formatTitle(item.title)}
+                    {item.type === "consulting" ? (() => {
+                      const [titlePart, rest] = item.title.split("||");
+                      return <>상담글 <strong>{titlePart}</strong> {rest}</>;
+                    })() : item.type === "settings" ? item.title : formatTitle(item.title)}
                   </p>
                   {item.type !== "settings" && (
                     <p className="notif-item-time">
@@ -311,7 +317,11 @@ export function NotificationDrawer({
                     </p>
                   )}
                 </div>
-                {item.related_image ? (
+                {item.type === "consulting" ? (
+                  <span className="notif-related-thumb notif-related-thumb-empty" aria-hidden="true">
+                    <MessageCircle size={20} strokeWidth={1.8} />
+                  </span>
+                ) : item.related_image ? (
                   <img src={item.related_image} className="notif-related-thumb" alt="" loading="lazy" />
                 ) : (
                   <span

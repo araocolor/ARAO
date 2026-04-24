@@ -97,13 +97,18 @@ function ConsultingFaqCard() {
   );
 }
 
-export default async function AccountConsultingPage() {
+export default async function AccountConsultingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ id?: string }>;
+}) {
+  const { id: openId } = await searchParams;
   // 디자인 모드: Clerk 로그인 없이 더미 데이터 표시
   if (isDesignMode) {
     return (
       <>
         <div className="account-panel-card stack account-section-card account-section-card-consulting">
-          <ConsultingSection initialInquiries={mockInquiries} />
+          <ConsultingSection initialInquiries={mockInquiries} openId={undefined} />
         </div>
         <ConsultingFaqCard />
       </>
@@ -145,7 +150,7 @@ export default async function AccountConsultingPage() {
   return (
     <>
       <div className="account-panel-card stack account-section-card account-section-card-consulting page-slide-down">
-        <ConsultingSection initialInquiries={initialInquiries} />
+        <ConsultingSection initialInquiries={initialInquiries} openId={openId} />
       </div>
       <ConsultingFaqCard />
     </>
