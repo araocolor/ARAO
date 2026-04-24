@@ -117,21 +117,15 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
     const cached = getCached<{ comments: (GalleryComment & { user_liked?: boolean })[] }>(commentKey);
     if (cached) {
       applyComments(cached);
+      return;
     }
 
-    // 항상 서버에서 최신 user_liked 상태 백그라운드 갱신
+    // 캐시 미스 시에만 서버에서 조회
     fetch(`/api/gallery/${category}/${index}/comments`)
       .then((r) => r.json())
       .then((data) => {
         setCached(commentKey, data);
-        // 캐시 유무와 관계없이 최신 댓글 목록/좋아요 상태 동기화
-        const list: (GalleryComment & { user_liked?: boolean })[] = data.comments ?? [];
-        setComments(list);
-        const likes: Record<string, { liked: boolean; count: number }> = {};
-        list.forEach((c) => {
-          likes[c.id] = { liked: c.user_liked ?? false, count: c.like_count };
-        });
-        setCommentLikes(likes);
+        applyComments(data);
       })
       .catch(() => {})
       .finally(() => setLoading(false));

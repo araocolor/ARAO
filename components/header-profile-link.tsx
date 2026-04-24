@@ -294,22 +294,29 @@ export function HeaderProfileLink() {
     // 2차: 전체 카드 좋아요/댓글 수 묶음 1번 호출
     const cards = GALLERY_CATEGORIES.map((category, index) => ({ category, index }));
     const uncached = cards.filter((c) => !getCached(`gallery_public_${c.category}_${c.index}`));
-    if (uncached.length === 0) return;
+
+    const COMMENT_CATEGORIES = ["people", "outdoor", "indoor", "cafe"];
+    const uncachedComments = COMMENT_CATEGORIES.filter((c) => !getCached(`gallery_comments_${c}_0`));
+
+    if (uncached.length === 0 && uncachedComments.length === 0) return;
 
     fetch("/api/gallery/batch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cards: uncached }),
+      body: JSON.stringify({ cards: uncached, withComments: uncachedComments }),
     })
       .then((r) => (r.ok ? r.json() : null))
-      .then((res: { results?: Array<{ category: string; index: number; count: number; liked: boolean; firstLiker: string | null; commentCount: number }> } | null) => {
-        if (!res?.results) return;
-        for (const d of res.results) {
+      .then((res: { results?: Array<{ category: string; index: number; count: number; liked: boolean; firstLiker: string | null; commentCount: number }>; commentsList?: Record<string, unknown[]> } | null) => {
+        if (!res) return;
+        for (const d of res.results ?? []) {
           setCached(`gallery_public_${d.category}_${d.index}`, {
             count: d.count,
             firstLiker: d.firstLiker,
             commentCount: d.commentCount,
           });
+        }
+        for (const [category, comments] of Object.entries(res.commentsList ?? {})) {
+          setCached(`gallery_comments_${category}_0`, { comments });
         }
       })
       .catch(() => {});

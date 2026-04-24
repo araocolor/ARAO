@@ -2,6 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { syncProfile } from "@/lib/profiles";
+import { getGalleryComments } from "@/lib/gallery-interactions";
 
 /**
  * POST /api/gallery/batch
@@ -10,7 +11,7 @@ import { syncProfile } from "@/lib/profiles";
  */
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { cards?: unknown };
+    const body = (await request.json()) as { cards?: unknown; withComments?: string[] };
     if (!Array.isArray(body.cards) || body.cards.length === 0) {
       return NextResponse.json({ results: [] });
     }
@@ -20,6 +21,10 @@ export async function POST(request: Request) {
         typeof (c as any)?.category === "string" && typeof (c as any)?.index === "number"
       )
       .slice(0, 20);
+
+    const withComments: string[] = Array.isArray(body.withComments)
+      ? (body.withComments as unknown[]).filter((c): c is string => typeof c === "string").slice(0, 10)
+      : [];
 
     if (cards.length === 0) return NextResponse.json({ results: [] });
 
@@ -111,7 +116,18 @@ export async function POST(request: Request) {
       };
     });
 
-    return NextResponse.json({ results });
+    // 댓글 목록 병렬 조회 (withComments 카테고리, index=0 고정)
+    const commentsList: Record<string, unknown[]> = {};
+    if (withComments.length > 0) {
+      const commentResults = await Promise.all(
+        withComments.map((category) => getGalleryComments(category, 0))
+      );
+      withComments.forEach((category, i) => {
+        commentsList[category] = commentResults[i];
+      });
+    }
+
+    return NextResponse.json({ results, commentsList });
   } catch (error) {
     console.error("POST /api/gallery/batch error:", error);
     return NextResponse.json({ results: [] }, { status: 500 });
