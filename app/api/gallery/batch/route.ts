@@ -6,12 +6,15 @@ import { getGalleryComments } from "@/lib/gallery-interactions";
 
 /**
  * POST /api/gallery/batch
- * body: { cards: Array<{ category: string; index: number }> }
+ * body: {
+ *   cards: Array<{ category: string; index: number }>;
+ *   withComments?: Array<string | { category: string; index: number }>;
+ * }
  * 여러 갤러리 카드의 좋아요/댓글 수를 한 번에 반환
  */
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { cards?: unknown; withComments?: string[] };
+    const body = (await request.json()) as { cards?: unknown; withComments?: unknown };
     if (!Array.isArray(body.cards) || body.cards.length === 0) {
       return NextResponse.json({ results: [] });
     }
@@ -22,8 +25,22 @@ export async function POST(request: Request) {
       )
       .slice(0, 20);
 
-    const withComments: string[] = Array.isArray(body.withComments)
-      ? (body.withComments as unknown[]).filter((c): c is string => typeof c === "string").slice(0, 10)
+    const withComments = Array.isArray(body.withComments)
+      ? (body.withComments as unknown[])
+          .reduce<Array<{ category: string; index: number }>>((acc, item) => {
+            if (typeof item === "string") {
+              acc.push({ category: item, index: 0 });
+              return acc;
+            }
+            if (item && typeof item === "object") {
+              const target = item as { category?: unknown; index?: unknown };
+              if (typeof target.category === "string" && typeof target.index === "number") {
+                acc.push({ category: target.category, index: target.index });
+              }
+            }
+            return acc;
+          }, [])
+          .slice(0, 10)
       : [];
 
     if (cards.length === 0) return NextResponse.json({ results: [] });
@@ -116,14 +133,14 @@ export async function POST(request: Request) {
       };
     });
 
-    // 댓글 목록 병렬 조회 (withComments 카테고리, index=0 고정)
+    // 댓글 목록 병렬 조회 (요청한 category/index 쌍 기준)
     const commentsList: Record<string, unknown[]> = {};
     if (withComments.length > 0) {
       const commentResults = await Promise.all(
-        withComments.map((category) => getGalleryComments(category, 0))
+        withComments.map((target) => getGalleryComments(target.category, target.index))
       );
-      withComments.forEach((category, i) => {
-        commentsList[category] = commentResults[i];
+      withComments.forEach((target, i) => {
+        commentsList[`${target.category}:${target.index}`] = commentResults[i];
       });
     }
 

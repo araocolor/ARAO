@@ -207,7 +207,7 @@ export function GeneralSettingsForm({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ dataUrl }),
     });
-    const data = (await response.json()) as { message?: string };
+    const data = (await response.json()) as { message?: string; iconImage?: string | null };
 
     if (!response.ok) {
       setAvatarMessage(data.message ?? "아이콘 저장 중 오류가 발생했습니다.");
@@ -215,9 +215,10 @@ export function GeneralSettingsForm({
       return;
     }
 
-    setIconImage(dataUrl);
+    const nextIconImage = data.iconImage ?? dataUrl;
+    setIconImage(nextIconImage);
     clearCached(getGeneralCacheKey(email));
-    window.dispatchEvent(new CustomEvent("avatar-updated", { detail: { iconImage: dataUrl } }));
+    window.dispatchEvent(new CustomEvent("avatar-updated", { detail: { iconImage: nextIconImage } }));
 
     setIsEditingAvatar(false);
     setPreviewImage(null);
@@ -350,7 +351,7 @@ export function GeneralSettingsForm({
       img.src = cropSource;
     });
     const canvas = document.createElement("canvas");
-    const maxSize = 256;
+    const maxSize = 160;
     canvas.width = maxSize;
     canvas.height = maxSize;
     const ctx = canvas.getContext("2d");

@@ -17,6 +17,7 @@ const REVIEW_PREFETCH_LOCK_KEY = "user-review-list-prefetch-lock";
 const REVIEW_PREFETCH_LOCK_MS = 10000;
 const NOTIFICATION_CACHE_PREFIX = "header-notifications-cache-v1";
 const NOTIFICATION_REOPEN_ONCE_KEY = "header-notification-reopen-once";
+const COMMENT_PREFETCH_CATEGORIES = ["people", "outdoor", "indoor", "cafe"] as const;
 
 type NotificationPayload = {
   unreadCount: number;
@@ -32,6 +33,15 @@ type NotificationCacheSnapshot = {
   data: NotificationPayload;
   ts: number;
 };
+
+function slimGalleryCommentsForCache(input: unknown): { comments: unknown[] } {
+  const sourceComments = Array.isArray(input)
+    ? input
+    : input && typeof input === "object" && Array.isArray((input as { comments?: unknown[] }).comments)
+      ? (input as { comments: unknown[] }).comments
+      : [];
+  return { comments: sourceComments };
+}
 
 function getNotificationCacheKey(userId: string | null | undefined): string {
   return `${NOTIFICATION_CACHE_PREFIX}:${userId ?? "anon"}`;
@@ -227,7 +237,7 @@ export function HeaderProfileLink() {
             if (!getCached(commentKey)) {
               fetch(`/api/gallery/${category}/${index}/comments`)
                 .then((r) => r.json())
-                .then((d) => setCached(commentKey, d))
+                .then((d) => setCached(commentKey, slimGalleryCommentsForCache(d)))
                 .catch(() => {});
             }
           } catch {}
@@ -281,7 +291,7 @@ export function HeaderProfileLink() {
         fetch("/api/gallery/people/0/comments")
           .then((r) => r.json())
           .then((d2) => {
-            setCached(commentsKey, d2);
+            setCached(commentsKey, slimGalleryCommentsForCache(d2));
             // 1차 완료 후 2차: 나머지 전체 묶음 캐싱
             prefetchGalleryAll();
           })
@@ -295,8 +305,12 @@ export function HeaderProfileLink() {
     const cards = GALLERY_CATEGORIES.map((category, index) => ({ category, index }));
     const uncached = cards.filter((c) => !getCached(`gallery_public_${c.category}_${c.index}`));
 
-    const COMMENT_CATEGORIES = ["people", "outdoor", "indoor", "cafe"];
-    const uncachedComments = COMMENT_CATEGORIES.filter((c) => !getCached(`gallery_comments_${c}_0`));
+    const commentTargets = COMMENT_PREFETCH_CATEGORIES
+      .map((category) => ({ category, index: GALLERY_CATEGORIES.indexOf(category) }))
+      .filter((target) => target.index >= 0);
+    const uncachedComments = commentTargets.filter(
+      (target) => !getCached(`gallery_comments_${target.category}_${target.index}`)
+    );
 
     if (uncached.length === 0 && uncachedComments.length === 0) return;
 
@@ -315,8 +329,11 @@ export function HeaderProfileLink() {
             commentCount: d.commentCount,
           });
         }
-        for (const [category, comments] of Object.entries(res.commentsList ?? {})) {
-          setCached(`gallery_comments_${category}_0`, { comments });
+        for (const [targetKey, comments] of Object.entries(res.commentsList ?? {})) {
+          const [category, rawIndex] = targetKey.split(":");
+          const index = Number(rawIndex);
+          if (!category || !Number.isFinite(index)) continue;
+          setCached(`gallery_comments_${category}_${index}`, slimGalleryCommentsForCache(comments));
         }
       })
       .catch(() => {});
@@ -465,8 +482,8 @@ export function HeaderProfileLink() {
   // 아바타 업데이트 이벤트 수신
   useEffect(() => {
     function handleAvatarUpdated(e: Event) {
-      const detail = (e as CustomEvent<{ iconImage: string }>).detail;
-      setHeaderAvatar(detail.iconImage);
+      const detail = (e as CustomEvent<{ iconImage: string | null }>).detail;
+      setHeaderAvatar(detail.iconImage ?? null);
     }
     window.addEventListener("avatar-updated", handleAvatarUpdated);
     return () => window.removeEventListener("avatar-updated", handleAvatarUpdated);

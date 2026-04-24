@@ -11,6 +11,13 @@ function maskEmail(email: string): string {
   return `${local.slice(0, 2)}***${domain}`;
 }
 
+function normalizeIconImage(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed;
+}
+
 export type GalleryComment = {
   id: string;
   profile_id: string;
@@ -121,7 +128,7 @@ export async function getGalleryItemLikers(
       profile_id: like.profile_id,
       username: profile?.username ?? null,
       email: profile?.email ?? null,
-      icon_image: profile?.icon_image ?? null,
+      icon_image: normalizeIconImage(profile?.icon_image),
       created_at: profile?.created_at ?? null,
     };
   });
@@ -199,7 +206,7 @@ export async function getGalleryComments(
 
   const { data, error } = await supabase
     .from("gallery_comments")
-    .select("*, profile:profile_id(username, full_name, icon_image, email, tier)")
+    .select("*, profile:profile_id(username, full_name, email, tier, icon_image)")
     .eq("item_category", category)
     .eq("item_index", index)
     .order("created_at", { ascending: true });
@@ -213,7 +220,7 @@ export async function getGalleryComments(
     ...c,
     author_username: c.profile?.username || null,
     author_fullname: c.profile?.full_name || null,
-    author_icon_image: c.profile?.icon_image || null,
+    author_icon_image: normalizeIconImage(c.profile?.icon_image),
     author_email: c.profile?.email || null,
     author_tier: c.profile?.tier || null,
     profile: undefined,
@@ -274,7 +281,7 @@ export async function createGalleryComment(
         `${commenterName}님이 댓글을 남겼습니다`,
         `/gallery?category=${parentComment.item_category}&index=${parentComment.item_index}&commentId=${data.id}`,
         data.id,
-        profile?.icon_image ?? null
+        normalizeIconImage(profile?.icon_image)
       );
     }
   }
@@ -283,7 +290,7 @@ export async function createGalleryComment(
     ...data,
     author_username: profile?.username || null,
     author_fullname: profile?.full_name || null,
-    author_icon_image: profile?.icon_image || null,
+    author_icon_image: normalizeIconImage(profile?.icon_image),
     author_email: profile?.email || null,
     author_tier: profile?.tier || null,
   } as GalleryComment;
@@ -388,7 +395,7 @@ export async function deleteGalleryComment(
               `${deleterName}님이 댓글을 삭제하였습니다`,
               `/gallery?category=${target.item_category}&index=${target.item_index}&commentId=${commentId}`,
               `${commentId}:deleted`,
-              deleter?.icon_image ?? null
+              normalizeIconImage(deleter?.icon_image)
             )
           )
         );
@@ -508,7 +515,7 @@ export async function toggleGalleryCommentLike(
           `${likerName}님이 좋아요를 남겼습니다`,
           `/gallery?category=${commentData.item_category}&index=${commentData.item_index}&commentId=${commentId}`,
           commentId,
-          liker?.icon_image ?? null
+          normalizeIconImage(liker?.icon_image)
         );
       }
     }

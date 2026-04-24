@@ -229,14 +229,7 @@ export function GalleryCard({
               }
             })
             .catch(() => {});
-          // 댓글 미리 캐시 (댓글창 열면 즉시 표시)
-          const commentKey = `gallery_comments_${category}_${index}`;
-          if (!getCached(commentKey)) {
-            fetch(`/api/gallery/${category}/${index}/comments`)
-              .then((r) => r.json())
-              .then((data) => setCached(commentKey, data))
-              .catch(() => {});
-          }
+          // 댓글 미리 캐시 로직 제거됨 — 댓글시트 열릴 때만 서버 조회
         }
       },
       { rootMargin: "800px" }

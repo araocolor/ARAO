@@ -102,9 +102,11 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
   }, [comments, deleteConfirmId]);
 
   useEffect(() => {
+    let cancelled = false;
     const commentKey = `gallery_comments_${category}_${index}`;
 
     function applyComments(data: { comments?: (GalleryComment & { user_liked?: boolean })[] }) {
+      if (cancelled) return;
       const list = data.comments ?? [];
       setComments(list);
       const likes: Record<string, { liked: boolean; count: number }> = {};
@@ -117,18 +119,24 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
     const cached = getCached<{ comments: (GalleryComment & { user_liked?: boolean })[] }>(commentKey);
     if (cached) {
       applyComments(cached);
-      return;
     }
 
-    // 캐시 미스 시에만 서버에서 조회
+    // 캐시 유무와 상관없이 서버에서 최신값 재조회
     fetch(`/api/gallery/${category}/${index}/comments`)
       .then((r) => r.json())
       .then((data) => {
+        if (cancelled) return;
         setCached(commentKey, data);
         applyComments(data);
       })
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [category, index]);
 
   // 하이라이트 댓글로 스크롤 + flash (시트 슬라이드 + 데이터 로드 완료 후)
