@@ -1,11 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { Order } from "@/lib/orders";
+import { getCached, setCached } from "@/hooks/use-prefetch-cache";
 
 type OrdersContentProps = {
-  orders: Order[];
+  orders?: Order[];
   openOrderId?: string;
 };
 
@@ -25,7 +27,49 @@ function formatDateTime(iso: string) {
   return `${date} ${time}`;
 }
 
-export function OrdersContent({ orders, openOrderId }: OrdersContentProps) {
+export function OrdersContent({ orders: initialOrders, openOrderId }: OrdersContentProps) {
+  const [orders, setOrders] = useState<Order[]>(() => initialOrders ?? []);
+  const [loading, setLoading] = useState(!initialOrders);
+
+  useEffect(() => {
+    const cached = getCached<Order[]>("orders-list");
+    if (cached) {
+      setOrders(cached);
+      setLoading(false);
+      prefetchOrderDetails(cached);
+      return;
+    }
+    void fetch("/api/account/orders")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data: Order[] | null) => {
+        if (data) {
+          setOrders(data);
+          setCached("orders-list", data);
+          prefetchOrderDetails(data);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  function prefetchOrderDetails(orderList: Order[]) {
+    orderList.forEach((order) => {
+      const key = `order-${order.id}`;
+      if (getCached(key)) return;
+      void fetch(`/api/account/orders/${order.id}`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((data: unknown) => { if (data) setCached(key, data); });
+    });
+  }
+
+  if (loading) {
+    return (
+      <div className="account-panel-card stack account-section-card">
+        <h2>주문내역</h2>
+        <p className="muted">로딩 중...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="account-panel-card stack account-section-card" data-testid="account-orders-v2">
       <h2>주문내역</h2>

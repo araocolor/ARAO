@@ -1,9 +1,7 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import { syncProfile } from "@/lib/profiles";
-import { getInquiriesByProfile } from "@/lib/consulting";
+"use client";
+
+import { useSearchParams } from "next/navigation";
 import { isDesignMode, mockInquiries } from "@/lib/design-mock";
-import type { Inquiry } from "@/lib/consulting";
 import { ConsultingSection } from "@/components/consulting-section";
 
 const FAQ_ITEMS = [
@@ -97,13 +95,10 @@ function ConsultingFaqCard() {
   );
 }
 
-export default async function AccountConsultingPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ id?: string }>;
-}) {
-  const { id: openId } = await searchParams;
-  // 디자인 모드: Clerk 로그인 없이 더미 데이터 표시
+export default function AccountConsultingPage() {
+  const searchParams = useSearchParams();
+  const openId = searchParams.get("id") ?? undefined;
+
   if (isDesignMode) {
     return (
       <>
@@ -115,42 +110,10 @@ export default async function AccountConsultingPage({
     );
   }
 
-  const { userId } = await auth();
-
-  if (!userId) {
-    redirect("/sign-in");
-  }
-
-  const user = await currentUser();
-  const email = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses[0]?.emailAddress;
-  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || null;
-
-  let profile = null;
-  let initialInquiries: Inquiry[] = [];
-
-  try {
-    profile = await syncProfile({ email, fullName });
-    if (profile) {
-      const result = await getInquiriesByProfile(profile.id, undefined, 1, 100);
-      initialInquiries = result.inquiries;
-    }
-  } catch (error) {
-    console.error("Failed to fetch consulting data:", error);
-  }
-
-  if (!profile) {
-    return (
-      <div className="account-panel-card stack">
-        <h1>오류</h1>
-        <p className="muted">프로필 정보를 불러올 수 없습니다.</p>
-      </div>
-    );
-  }
-
   return (
     <>
       <div className="account-panel-card stack account-section-card account-section-card-consulting page-slide-down">
-        <ConsultingSection initialInquiries={initialInquiries} openId={openId} />
+        <ConsultingSection openId={openId} />
       </div>
       <ConsultingFaqCard />
     </>

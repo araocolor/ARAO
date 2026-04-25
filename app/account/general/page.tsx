@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { GeneralSettingsForm } from "@/components/general-settings-form";
 import { getCached, setCached } from "@/hooks/use-prefetch-cache";
-import { useReviewsPrefetch } from "@/hooks/use-reviews-prefetch";
 
 interface GeneralData {
   email: string;
@@ -25,8 +24,26 @@ function getGeneralCacheKey(email?: string | null) {
 }
 
 export default function AccountGeneralPage() {
-  useReviewsPrefetch();
   const { user } = useUser();
+
+  useEffect(() => {
+    const needConsulting = !getCached("consulting-list");
+    const needOrders = !getCached("orders-list");
+    if (!needConsulting && !needOrders) return;
+    const timer = setTimeout(() => {
+      if (needConsulting) {
+        void fetch("/api/account/consulting?limit=100")
+          .then((r) => r.ok ? r.json() : null)
+          .then((data: unknown) => { if (data) setCached("consulting-list", data); });
+      }
+      if (needOrders) {
+        void fetch("/api/account/orders")
+          .then((r) => r.ok ? r.json() : null)
+          .then((data: unknown) => { if (data) setCached("orders-list", data); });
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
   const [data, setData] = useState<GeneralData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

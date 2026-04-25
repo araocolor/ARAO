@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { Menu, Pencil } from "lucide-react";
 import { type Inquiry, type InquiryReply } from "@/lib/consulting";
+import { getCached, setCached } from "@/hooks/use-prefetch-cache";
 
 type ConsultingSectionProps = {
   initialInquiries?: Inquiry[];
@@ -57,8 +58,13 @@ export function ConsultingSection({
   }, [openId, expandedId, repliesMap]);
 
   async function loadInquiries() {
+    const cached = getCached<{ inquiries: Inquiry[]; total: number }>("consulting-list");
+    if (cached) {
+      setInquiries(cached.inquiries);
+      return;
+    }
+    // 캐시 없으면 빈 목록 표시 후 백그라운드에서 1회 갱신
     try {
-      setIsLoading(true);
       const response = await fetch(`/api/account/consulting?limit=100`);
       if (response.ok) {
         const data = (await response.json()) as {
@@ -66,11 +72,10 @@ export function ConsultingSection({
           total: number;
         };
         setInquiries(data.inquiries);
+        setCached("consulting-list", data);
       }
     } catch (error) {
       console.error("Failed to load inquiries:", error);
-    } finally {
-      setIsLoading(false);
     }
   }
 

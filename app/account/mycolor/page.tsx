@@ -1,21 +1,11 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
+"use client";
+
 import Link from "next/link";
-import { syncProfile } from "@/lib/profiles";
+import { useUser } from "@clerk/nextjs";
 
-export const dynamic = "force-dynamic";
-
-export default async function MyColorPage() {
-  const { userId } = await auth();
-  if (!userId) {
-    redirect("/sign-in");
-  }
-
-  const user = await currentUser();
-  const email = user?.emailAddresses?.[0]?.emailAddress ?? user?.primaryEmailAddress?.emailAddress;
-  const fullName = user?.fullName || null;
-  const profile = await syncProfile({ email, fullName });
-  const displayId = user?.username || profile?.username || profile?.email || email || "회원";
+export default function MyColorPage() {
+  const { user } = useUser();
+  const displayId = user?.username || user?.primaryEmailAddress?.emailAddress || "회원";
 
   return (
     <div className="account-panel-card stack account-section-card page-slide-down">

@@ -77,6 +77,11 @@ export function GeneralSettingsForm({
   const usernameInputRef = useRef<HTMLInputElement>(null);
   const [isUsernameFocused, setIsUsernameFocused] = useState(false);
 
+  function openAvatarPopover() {
+    setIsEditingAvatar((v) => !v);
+    setAvatarMessage(null);
+  }
+
   async function submitUsername(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSavingKey("username");
@@ -403,10 +408,7 @@ export function GeneralSettingsForm({
               <button
                 type="button"
                 className="account-username-avatar-placeholder"
-                onClick={() => {
-                  setIsEditingAvatar((v) => !v);
-                  setAvatarMessage(null);
-                }}
+                onClick={openAvatarPopover}
                 aria-label="프로필 사진 등록"
               >
                 <span className="account-username-register-fallback">
@@ -566,8 +568,7 @@ export function GeneralSettingsForm({
                 void deleteAvatar();
                 return;
               }
-              setIsEditingAvatar((v) => !v);
-              setAvatarMessage(null);
+              openAvatarPopover();
             }}
           >
             {iconImage

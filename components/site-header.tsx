@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -9,7 +9,7 @@ import { Sparkles, MousePointerClick, Tag, BookOpen, Settings2, Users, CreditCar
 import { TierBadge } from "@/components/tier-badge";
 import { useHeaderSessionStore } from "@/stores/header-session-store";
 import { REVIEW_LIST_CACHE_TTL } from "@/lib/cache-config";
-import { clearAllCachesOnLogout } from "@/hooks/use-prefetch-cache";
+import { clearAllCachesOnLogout, getCached, setCached } from "@/hooks/use-prefetch-cache";
 
 type SiteHeaderProps = {
   links: Array<{ href: string; label: string; icon?: string; divider?: boolean }>;
@@ -55,42 +55,6 @@ function isReviewPrefetchLocked(): boolean {
   } catch {
     return false;
   }
-}
-
-function createTempIdFromEmail(email: string | null): string {
-  const localPart = (email?.split("@")[0] ?? "").trim();
-  const prefix = `${localPart}xxx`.slice(0, 3);
-  const specialChars = ["*", "+", "@", "!", "#", "$", "%", "&"];
-  const letters = "abcdefghijklmnopqrstuvwxyz";
-
-  let seedSource = email ?? "guest";
-  if (!seedSource) seedSource = "guest";
-  let seed = 0;
-  for (let i = 0; i < seedSource.length; i += 1) {
-    seed = (seed * 31 + seedSource.charCodeAt(i)) >>> 0;
-  }
-
-  const nextRand = () => {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    return seed;
-  };
-
-  const tail = [
-    specialChars[nextRand() % specialChars.length],
-    specialChars[nextRand() % specialChars.length],
-    specialChars[nextRand() % specialChars.length],
-    letters[nextRand() % letters.length],
-    letters[nextRand() % letters.length],
-  ];
-
-  for (let i = tail.length - 1; i > 0; i -= 1) {
-    const j = nextRand() % (i + 1);
-    const tmp = tail[i];
-    tail[i] = tail[j];
-    tail[j] = tmp;
-  }
-
-  return `${prefix}${tail.join("")}`;
 }
 
 function resolveMenuHref(href: string, isSignedIn?: boolean): string {
@@ -143,99 +107,7 @@ export function SiteHeader({
   const email = useHeaderSessionStore((state) => state.email);
   const role = useHeaderSessionStore((state) => state.role);
   const tier = useHeaderSessionStore((state) => state.tier);
-  const setSessionUsername = useHeaderSessionStore((state) => state.setUsername);
   const hasUsername = !!(username && username.trim().length > 0);
-  const [idInputFocused, setIdInputFocused] = useState(false);
-  const [idInputValue, setIdInputValue] = useState("");
-  const [idErrorMsg, setIdErrorMsg] = useState("");
-  const [idConfirmErrorMsg, setIdConfirmErrorMsg] = useState("");
-  const [idChecking, setIdChecking] = useState(false);
-  const [idSubmitting, setIdSubmitting] = useState(false);
-  const [idConfirmOpen, setIdConfirmOpen] = useState(false);
-  const [pendingUsername, setPendingUsername] = useState("");
-
-  function getUsernameSaveError(message?: string) {
-    if (!message) return "아이디 저장 실패";
-    if (message.includes("이미 사용 중")) return "해당 아이디는 등록할 수 없어요.";
-    return message;
-  }
-
-  function getUsernameCheckError(message?: string) {
-    if (!message) return "중복 확인 실패";
-    if (message.includes("등록할 수 없어요")) return message;
-    if (message.includes("이미 사용 중")) return "해당 아이디는 등록할 수 없어요.";
-    return message;
-  }
-
-  async function submitUsername(value: string) {
-    const nextValue = value.trim();
-    if (!/^[A-Za-z0-9]{4,8}$/.test(nextValue)) {
-      setIdErrorMsg("4-8자 영어, 숫자 조합");
-      return;
-    }
-    setIdSubmitting(true);
-    try {
-      const res = await fetch("/api/account/general", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "username", username: nextValue }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setIdConfirmErrorMsg(getUsernameSaveError(data?.message));
-        return;
-      }
-      setIdErrorMsg("");
-      setIdConfirmErrorMsg("");
-      setSessionUsername(data?.username ?? nextValue);
-      setIdInputValue("");
-      setIdConfirmOpen(false);
-      setPendingUsername("");
-    } catch {
-      setIdErrorMsg("네트워크 오류");
-    } finally {
-      setIdSubmitting(false);
-    }
-  }
-
-  async function openIdConfirm() {
-    const value = idInputValue.trim();
-    if (!/^[A-Za-z0-9]{4,8}$/.test(value)) {
-      setIdErrorMsg("4-8자 영어, 숫자 조합");
-      return;
-    }
-    setIdErrorMsg("");
-    setIdConfirmErrorMsg("");
-    setIdChecking(true);
-    try {
-      const res = await fetch("/api/account/general", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "username-check", username: value }),
-      });
-      const data = (await res.json().catch(() => ({}))) as { message?: string };
-      if (!res.ok) {
-        setIdErrorMsg(getUsernameCheckError(data?.message));
-        return;
-      }
-      setPendingUsername(value);
-      setIdConfirmOpen(true);
-    } catch {
-      setIdErrorMsg("네트워크 오류");
-    } finally {
-      setIdChecking(false);
-    }
-  }
-
-  function closeIdConfirm() {
-    setIdConfirmOpen(false);
-    setPendingUsername("");
-    setIdConfirmErrorMsg("");
-  }
-  const usernameLabel = useMemo(() => {
-    if (hasUsername) return username as string;
-    return createTempIdFromEmail(email);
-  }, [hasUsername, username, email]);
 
   // 드로어 열릴 때 body 스크롤 잠금 + 커뮤니티 prefetch
   useEffect(() => {
@@ -272,7 +144,7 @@ export function SiteHeader({
 
   // 아바타 미등록 안내 토스트: 드로어 열림 1초 후 표시, 2초 후 숨김
   useEffect(() => {
-    if (!drawerOpen || !isSignedIn || avatar) {
+    if (!drawerOpen || !isSignedIn || avatar || !hasUsername) {
       setAvatarToastVisible(false);
       return;
     }
@@ -285,7 +157,19 @@ export function SiteHeader({
       clearTimeout(showTimer);
       if (hideTimer) clearTimeout(hideTimer);
     };
-  }, [drawerOpen, isSignedIn, avatar]);
+  }, [drawerOpen, isSignedIn, avatar, hasUsername]);
+
+  // 햄버거 드로어 열릴 때 account/general 프리캐싱: 캐시 없고 아이디·아바타 중 하나라도 없을 때
+  useEffect(() => {
+    if (!drawerOpen || !isSignedIn) return;
+    if (hasUsername && avatar) return;
+    if (getCached("account-general")) return;
+    void fetch("/api/account/general")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data: unknown) => {
+        if (data) setCached("account-general", data);
+      });
+  }, [drawerOpen, isSignedIn, hasUsername, avatar]);
 
   // 헤더 숨김 로직: 기본(default) / terms 스타일(빠른 상향 스크롤에서만 표시)
   useEffect(() => {
@@ -382,17 +266,9 @@ export function SiteHeader({
     closeDrawer();
     window.location.href = isSignedIn ? "/account/general" : "/sign-in";
   };
-  const handleAvatarClick = () => {
-    if (isSignedIn) {
-      closeDrawer();
-      window.location.href = "/account/general";
-    } else {
-      window.location.href = "/sign-in";
-    }
-  };
   const shouldHideHeader = fullWidth && hideOnScroll;
   const hideClassName = hideOnScrollMode === "terms" ? "header-scroll-hidden-terms" : "header-scroll-hidden";
-  const shouldShowAvatarRegisterCta = !!isSignedIn && !avatar;
+  const shouldShowAvatarRegisterCta = !!isSignedIn && hasUsername && !avatar;
   const avatarRegisterCta = (
     <div
       style={{
@@ -488,7 +364,7 @@ export function SiteHeader({
             >
               로그인
             </button>
-          ) : usernameReady && hasUsername ? (
+          ) : isSignedIn && usernameReady ? (
             <button
               type="button"
               className="nav-drawer-profile-trigger"
@@ -498,7 +374,7 @@ export function SiteHeader({
               <span className="nav-drawer-avatar-icon" data-tier={tier ?? undefined}>{mobileProfile}</span>
               <span className="nav-drawer-avatar-meta">
                 <span className="nav-drawer-avatar-label">
-                  {usernameLabel}
+                  {hasUsername ? (username as string) : <span className="nav-drawer-register-id">아이디등록</span>}
                   <TierBadge tier={tier} size={18} />
                 </span>
                 {email && <span className="nav-drawer-avatar-email">{email}</span>}
@@ -594,89 +470,13 @@ export function SiteHeader({
           })}
         </nav>
         {shouldShowAvatarRegisterCta && avatarRegisterCta}
-        <div className="nav-drawer-footer-top" style={idErrorMsg ? { color: "#e53935" } : undefined}>{idErrorMsg ? idErrorMsg : idInputFocused ? "4-8자 영어, 숫자 조합" : ""}</div>
 
         {/* 하단 로그인/로그아웃 */}
         <div className="nav-drawer-footer">
           <div className="nav-drawer-footer-row">
-            {isSignedIn && usernameReady && !hasUsername && (
-              <>
-                <button
-                  type="button"
-                  className="nav-drawer-avatar-btn"
-                  onClick={handleAvatarClick}
-                  aria-label="사용자 메뉴"
-                >
-                  {mobileProfile}
-                </button>
-                <div className="nav-drawer-avatar-meta">
-                  <div className="nav-drawer-id-input-wrap">
-                    <input
-                      type="text"
-                      className="nav-drawer-id-input"
-                      placeholder="아이디 등록"
-                      value={idInputValue}
-                      onChange={(e) => { setIdInputValue(e.target.value); setIdErrorMsg(""); }}
-                      onFocus={() => { setIdInputFocused(true); if (profilePanelOpen) setProfilePanelOpen(false); }}
-                      onBlur={() => setIdInputFocused(false)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          void openIdConfirm();
-                        }
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="nav-drawer-id-edit-btn"
-                      disabled={idChecking || idSubmitting}
-                      onClick={() => { void openIdConfirm(); }}
-                    >
-                      {idChecking ? "확인 중..." : "확인"}
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
             {mobileLeading ?? leading}
           </div>
         </div>
-
-        {idConfirmOpen && (
-          <div
-            className="nav-drawer-id-modal-backdrop"
-            onClick={closeIdConfirm}
-            aria-hidden="true"
-          >
-            <div
-              className="nav-drawer-id-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-label="아이디 확인"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <p className="nav-drawer-id-modal-text">
-                입력한 아이디가 <strong>{pendingUsername}</strong> 맞나요?
-              </p>
-              {idConfirmErrorMsg && (
-                <p className="nav-drawer-id-modal-error">{idConfirmErrorMsg}</p>
-              )}
-              <div className="nav-drawer-id-modal-actions">
-                <button type="button" className="nav-drawer-id-modal-btn nav-drawer-id-modal-btn-cancel" onClick={closeIdConfirm}>
-                  취소
-                </button>
-                <button
-                  type="button"
-                  className="nav-drawer-id-modal-btn nav-drawer-id-modal-btn-confirm"
-                  disabled={idSubmitting}
-                  onClick={() => void submitUsername(pendingUsername)}
-                >
-                  저장
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </>
   );
