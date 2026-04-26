@@ -7,6 +7,7 @@ import { AdminContentManager } from "@/components/admin-content-manager";
 import { AdminPricingManager } from "@/components/admin-pricing-manager";
 import { AdminConsultingManager } from "@/components/admin-consulting-manager";
 import { AdminCommitListPage } from "@/components/admin-commit-list-page";
+import { AdminMembersManager } from "@/components/admin-members-manager";
 
 const adminSections = [
   {
@@ -178,7 +179,7 @@ export function AdminDashboard({ email, role, landingContent }: AdminDashboardPr
         </div>
 
         <div className={panelCardClassName}>
-          {activeSection.id !== "landing" && activeSection.id !== "gallery" && activeSection.id !== "consulting" ? (
+          {activeSection.id !== "landing" && activeSection.id !== "gallery" && activeSection.id !== "consulting" && activeSection.id !== "members" ? (
             <>
               <p className="muted">{activeSection.eyebrow}</p>
               <h2>{activeSection.title}</h2>
@@ -198,6 +199,8 @@ export function AdminDashboard({ email, role, landingContent }: AdminDashboardPr
               onDetailViewChange={setIsConsultingDetail}
               forceListToken={consultingBackToken}
             />
+          ) : activeSection.id === "members" ? (
+            <AdminMembersManager key="members" />
           ) : activeSection.id === "commit-list" ? (
             <AdminCommitListPage key="commit-list" embedded />
           ) : (
