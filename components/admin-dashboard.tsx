@@ -161,6 +161,10 @@ export function AdminDashboard({ email, role, landingContent }: AdminDashboardPr
               >
                 {"<"}
               </button>
+            ) : activeSectionId === "members" ? (
+              <Link href="/" className="admin-consulting-btn-back admin-mobile-header-back-btn" aria-label="홈으로 이동">
+                {"<"}
+              </Link>
             ) : null}
 
             <select
