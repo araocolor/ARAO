@@ -1360,6 +1360,63 @@
   }
 }
 
+.account-random-avatar-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.account-random-avatar-btn {
+  font-size: 11px;
+  color: #666;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.account-random-avatar-btn:hover {
+  color: #333;
+}
+
+.account-random-avatar-confirm-btn {
+  font-size: 11px;
+  color: #fff;
+  background: #333;
+  border: none;
+  border-radius: 999px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.account-random-avatar-confirm-btn:hover:not(:disabled) {
+  background: #000;
+}
+
+.account-random-avatar-confirm-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.account-random-avatar-cancel-btn {
+  font-size: 11px;
+  color: #666;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.account-random-avatar-cancel-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
 @media (min-width: 820px) and (min-height: 600px) {
   .account-page {
     padding: 24px 0 100px;

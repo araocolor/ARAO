@@ -66,6 +66,10 @@ export function GeneralSettingsForm({
   const [isEditingAvatar, setIsEditingAvatar] = useState(false);
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
   const [iconImage, setIconImage] = useState(initialIconImage ?? "");
+  const [randomAvatarPool, setRandomAvatarPool] = useState<string[]>([]);
+  const [randomAvatarQueue, setRandomAvatarQueue] = useState<string[]>([]);
+  const [randomPreviewUrl, setRandomPreviewUrl] = useState<string | null>(null);
+  const [savingRandomAvatar, setSavingRandomAvatar] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [cropSource, setCropSource] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -324,6 +328,55 @@ export function GeneralSettingsForm({
   }
 
   useEffect(() => {
+    fetch("/api/admin/random-avatar")
+      .then((res) => res.json())
+      .then((data: { avatars?: { url: string }[] }) => {
+        const urls = (data.avatars ?? []).map((a) => a.url);
+        setRandomAvatarPool(urls);
+        setRandomAvatarQueue(shuffle(urls));
+      })
+      .catch(() => {});
+  }, []);
+
+  function shuffle(arr: string[]): string[] {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function pickNextRandom() {
+    let queue = randomAvatarQueue;
+    if (queue.length === 0) queue = shuffle(randomAvatarPool);
+    const [next, ...rest] = queue;
+    setRandomAvatarQueue(rest);
+    setRandomPreviewUrl(next ?? null);
+  }
+
+  async function confirmRandomAvatar() {
+    if (!randomPreviewUrl) return;
+    setSavingRandomAvatar(true);
+    const res = await fetch("/api/account/avatar/random", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: randomPreviewUrl }),
+    });
+    const data = (await res.json()) as { iconImage?: string; message?: string };
+    if (res.ok && data.iconImage) {
+      setIconImage(data.iconImage);
+      setRandomPreviewUrl(null);
+      clearCached(getGeneralCacheKey(email));
+      window.dispatchEvent(new CustomEvent("avatar-updated", { detail: { iconImage: data.iconImage } }));
+      setAvatarMessage("랜덤 아바타가 저장되었습니다.");
+    } else {
+      setAvatarMessage(data.message ?? "저장 실패");
+    }
+    setSavingRandomAvatar(false);
+  }
+
+  useEffect(() => {
     if (!isEditingAvatar) return;
 
     function handlePointerDown(e: PointerEvent) {
@@ -427,7 +480,9 @@ export function GeneralSettingsForm({
         </div>
         <div className="account-username-section">
           <div className="account-avatar-column">
-            {iconImage ? (
+            {randomPreviewUrl ? (
+              <img src={randomPreviewUrl} alt="랜덤 아바타 미리보기" className="account-username-avatar" />
+            ) : iconImage ? (
               <img src={iconImage} alt={username || "avatar"} className="account-username-avatar" />
             ) : (
               <button
@@ -445,6 +500,33 @@ export function GeneralSettingsForm({
                   />
                 </span>
               </button>
+            )}
+            {randomAvatarPool.length > 0 && (
+              <div className="account-random-avatar-row">
+                {!randomPreviewUrl ? (
+                  <button type="button" className="account-random-avatar-btn" onClick={pickNextRandom}>
+                    랜덤아바타
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="account-random-avatar-confirm-btn"
+                      onClick={confirmRandomAvatar}
+                      disabled={savingRandomAvatar}
+                    >
+                      {savingRandomAvatar ? "저장중..." : "확인"}
+                    </button>
+                    <button
+                      type="button"
+                      className="account-random-avatar-cancel-btn"
+                      onClick={() => setRandomPreviewUrl(null)}
+                    >
+                      취소
+                    </button>
+                  </>
+                )}
+              </div>
             )}
             {isEditingAvatar && (
               <div className="account-avatar-popover" ref={avatarPopoverRef}>
@@ -589,6 +671,10 @@ export function GeneralSettingsForm({
             style={isEditingUsername ? { display: "none" } : {}}
             disabled={savingKey === "avatar-delete" || savingKey === "avatar"}
             onClick={() => {
+              if (randomPreviewUrl) {
+                pickNextRandom();
+                return;
+              }
               if (iconImage) {
                 void deleteAvatar();
               } else {
@@ -603,9 +689,11 @@ export function GeneralSettingsForm({
               }
             }}
           >
-            {iconImage
-              ? (savingKey === "avatar-delete" ? "기본이미지로..." : "기본이미지")
-              : "프로필등록"}
+            {randomPreviewUrl
+              ? "다음 >"
+              : iconImage
+                ? (savingKey === "avatar-delete" ? "기본이미지로..." : "기본이미지")
+                : "사진올리기"}
           </button>
         </div>
         <div className={`account-username-message${usernameMsgAnim === "exit" ? " msg-exit" : usernameMsgAnim === "enter" ? " msg-enter" : ""}`} style={{ fontSize: "16px", fontWeight: "bold", color: "#4d4d4d" }}>{usernameMessage ?? ""}</div>
