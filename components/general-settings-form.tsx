@@ -58,6 +58,7 @@ export function GeneralSettingsForm({
   const [passwordInput, setPasswordInput] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [usernameMessage, setUsernameMessage] = useState<string | null>(null);
+  const [usernameMsgAnim, setUsernameMsgAnim] = useState<"enter" | "exit" | null>(null);
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
   const [phoneMessage, setPhoneMessage] = useState<string | null>(null);
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
@@ -112,7 +113,19 @@ export function GeneralSettingsForm({
       setUsernameRegisteredAt((data as { usernameRegisteredAt?: string | null }).usernameRegisteredAt ?? null);
     }
     setIsEditingUsername(false);
-    setUsernameMessage(wasFirstRegistration ? "아이디가 등록되었습니다." : "아이디가 변경되었습니다.");
+    const newCount = data.usernameChangeCount ?? usernameChangeCount + 1;
+    const finalMessage = wasFirstRegistration ? "아이디가 등록되었습니다." : newCount >= 5 ? `${newUsername} 멋진 이름이네요 👍` : "아이디가 변경되었습니다.";
+    setUsernameMessage(finalMessage);
+    setUsernameMsgAnim("enter");
+    if (!wasFirstRegistration && newCount >= 5 && !iconImage) {
+      setTimeout(() => {
+        setUsernameMsgAnim("exit");
+        setTimeout(() => {
+          setUsernameMessage("이제, 프로필 사진 추가도 가능합니다. 😜");
+          setUsernameMsgAnim("enter");
+        }, 350);
+      }, 2000);
+    }
     setSavingKey(null);
   }
 
@@ -223,6 +236,7 @@ export function GeneralSettingsForm({
       return;
     }
 
+    const isFirstAvatar = !iconImage;
     const nextIconImage = data.iconImage ?? dataUrl;
     setIconImage(nextIconImage);
     clearCached(getGeneralCacheKey(email));
@@ -234,6 +248,17 @@ export function GeneralSettingsForm({
     setCroppedAreaPixels(null);
     setSavingKey(null);
     setAvatarMessage("업로드 완료");
+    if (isFirstAvatar) {
+      setUsernameMessage("프로필 등록완료 !");
+      setUsernameMsgAnim("enter");
+      setTimeout(() => {
+        setUsernameMsgAnim("exit");
+        setTimeout(() => {
+          setUsernameMessage(null);
+          setUsernameMsgAnim(null);
+        }, 350);
+      }, 3000);
+    }
   }
 
   async function deleteAvatar() {
@@ -518,7 +543,7 @@ export function GeneralSettingsForm({
               </div>
               <div className="account-created-date">
                 가입일: {formatDate(createdAt)}
-                {canEditUsername ? ` · 아이디 수정 ${usernameChangeCount}/5회` : ""}
+                {canEditUsername ? ` · ${usernameChangeCount >= 4 ? "아이디 변경이 이번이 마지막입니다." : `24시간 유효 (${usernameChangeCount}/5)`}` : ""}
               </div>
             </div>
           ) : (
@@ -560,15 +585,22 @@ export function GeneralSettingsForm({
           <button
             ref={avatarButtonRef}
             type="button"
-            className="account-general-btn account-avatar-upload-right-btn"
+            className={`account-general-btn account-avatar-upload-right-btn${!iconImage ? " btn-breathe" : ""}`}
             style={isEditingUsername ? { display: "none" } : {}}
             disabled={savingKey === "avatar-delete" || savingKey === "avatar"}
             onClick={() => {
               if (iconImage) {
                 void deleteAvatar();
-                return;
+              } else {
+                openAvatarPopover();
               }
-              openAvatarPopover();
+              if (usernameMessage === "이제, 프로필 사진 추가도 가능합니다. 😜") {
+                setUsernameMsgAnim("exit");
+                setTimeout(() => {
+                  setUsernameMessage(null);
+                  setUsernameMsgAnim(null);
+                }, 350);
+              }
             }}
           >
             {iconImage
@@ -576,7 +608,7 @@ export function GeneralSettingsForm({
               : "사진업로드"}
           </button>
         </div>
-        {usernameMessage ? <div className="account-username-message">{usernameMessage}</div> : null}
+        <div className={`account-username-message${usernameMsgAnim === "exit" ? " msg-exit" : usernameMsgAnim === "enter" ? " msg-enter" : ""}`} style={{ fontSize: "16px", fontWeight: "bold", color: "#4d4d4d" }}>{usernameMessage ?? ""}</div>
       </div>
 
       <div className="account-settings-row">

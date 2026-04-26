@@ -36,8 +36,8 @@ export async function GET() {
     iconImage: profile.icon_image ?? null,
     role: profile.role,
     createdAt: profile.created_at,
-    usernameChangeCount: (profile as { username_change_count?: number }).username_change_count ?? 0,
-    usernameRegisteredAt: (profile as { username_registered_at?: string | null }).username_registered_at ?? null,
+    usernameChangeCount: profile.username_change_count,
+    usernameRegisteredAt: profile.username_registered_at,
   });
 }
 
@@ -128,8 +128,8 @@ export async function POST(request: Request) {
   }
 
   if (body.action === "username") {
-    const currentCount = (profile as { username_change_count?: number }).username_change_count ?? 0;
-    const registeredAt = (profile as { username_registered_at?: string | null }).username_registered_at ?? null;
+    const currentCount = profile.username_change_count;
+    const registeredAt = profile.username_registered_at;
     const isFirstRegistration = !profile.username;
 
     if (!isFirstRegistration) {
@@ -160,10 +160,9 @@ export async function POST(request: Request) {
     const updatePayload: { username: string; username_change_count?: number; username_registered_at?: string } = {
       username: usernameResult.value,
     };
+    updatePayload.username_change_count = currentCount + 1;
     if (isFirstRegistration) {
       updatePayload.username_registered_at = new Date().toISOString();
-    } else {
-      updatePayload.username_change_count = currentCount + 1;
     }
 
     const { error } = await supabase
@@ -179,7 +178,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       username: usernameResult.value,
-      usernameChangeCount: isFirstRegistration ? currentCount : currentCount + 1,
+      usernameChangeCount: currentCount + 1,
       usernameRegisteredAt: isFirstRegistration ? updatePayload.username_registered_at : registeredAt,
     });
   }

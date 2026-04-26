@@ -13,6 +13,8 @@ export type Profile = {
   password_hash: string | null;
   icon_image: string | null;
   created_at: string;
+  username_registered_at: string | null;
+  username_change_count: number;
 };
 
 type SyncProfileInput = {
@@ -21,9 +23,9 @@ type SyncProfileInput = {
 };
 
 const PROFILE_SELECT_COLUMNS =
-  "id, email, role, tier, notification_enabled, full_name, phone, username, password_hash, icon_image, created_at";
+  "id, email, role, tier, notification_enabled, full_name, phone, username, password_hash, icon_image, created_at, username_registered_at, username_change_count";
 const PROFILE_SELECT_COLUMNS_LEGACY =
-  "id, email, role, full_name, phone, username, password_hash, icon_image, created_at";
+  "id, email, role, full_name, phone, username, password_hash, icon_image, created_at, username_registered_at, username_change_count";
 
 function normalizeProfile(row: any): Profile {
   return {
@@ -38,6 +40,8 @@ function normalizeProfile(row: any): Profile {
     password_hash: row.password_hash ?? null,
     icon_image: row.icon_image ?? null,
     created_at: row.created_at,
+    username_registered_at: row.username_registered_at ?? null,
+    username_change_count: row.username_change_count ?? 0,
   };
 }
 

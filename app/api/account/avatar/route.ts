@@ -45,6 +45,22 @@ function parseAvatarDataUrl(dataUrl: string): { mimeType: string; buffer: Buffer
   return { mimeType, buffer };
 }
 
+function getStoragePathFromPublicUrl(iconImage: string | null | undefined): string | null {
+  if (!iconImage) return null;
+
+  try {
+    const url = new URL(iconImage);
+    const publicPrefix = `/storage/v1/object/public/${AVATAR_BUCKET}/`;
+    const index = url.pathname.indexOf(publicPrefix);
+    if (index < 0) return null;
+    const encodedPath = url.pathname.slice(index + publicPrefix.length);
+    if (!encodedPath) return null;
+    return decodeURIComponent(encodedPath);
+  } catch {
+    return null;
+  }
+}
+
 export async function GET() {
   const { userId } = await auth();
   if (!userId) {
@@ -155,6 +171,19 @@ export async function DELETE() {
 
   try {
     const supabase = createSupabaseAdminClient();
+    const avatarPath = getStoragePathFromPublicUrl(profile.icon_image);
+
+    if (avatarPath) {
+      const { error: storageDeleteError } = await supabase.storage
+        .from(AVATAR_BUCKET)
+        .remove([avatarPath]);
+
+      if (storageDeleteError) {
+        console.error("Avatar storage delete error:", storageDeleteError);
+        return NextResponse.json({ message: "스토리지 이미지 삭제 중 오류가 발생했습니다." }, { status: 400 });
+      }
+    }
+
     const { error } = await supabase
       .from("profiles")
       .update({ icon_image: null })

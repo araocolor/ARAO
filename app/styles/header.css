@@ -618,6 +618,21 @@
   font-size: 18px;
 }
 
+.nav-drawer-register-id {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 15px !important;
+  font-weight: 600;
+  line-height: 1;
+}
+
 .nav-drawer-header .nav-drawer-profile-trigger {
   flex-direction: column;
   align-items: flex-start;
