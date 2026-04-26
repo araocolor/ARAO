@@ -1255,7 +1255,8 @@
 }
 
 .account-created-date {
-  font-size: 11px;
+  font-size: 13px;
+  font-style: italic;
   color: var(--muted);
 }
 

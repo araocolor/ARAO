@@ -529,7 +529,7 @@ export function GeneralSettingsForm({
             <div className="account-username-info">
               <div className="account-username-row">
                 <div className="account-setting-static account-username-static">{username}</div>
-                <div className="account-user-role">{role === "admin" ? "관리자" : "사용자"}</div>
+                <div className="account-user-role" style={{ fontSize: "15px", backgroundColor: "#e8e8e8", padding: "4px 12px", borderRadius: "12px", display: "inline-block" }}>{role === "admin" ? "관리자" : "member"}</div>
                 {canEditUsername && (
                   <button
                     type="button"
@@ -542,7 +542,7 @@ export function GeneralSettingsForm({
                 )}
               </div>
               <div className="account-created-date">
-                가입일: {formatDate(createdAt)}
+                등록일 {formatDate(createdAt)}
                 {canEditUsername ? ` · ${usernameChangeCount >= 4 ? "아이디 변경이 이번이 마지막입니다." : `24시간 유효 (${usernameChangeCount}/5)`}` : ""}
               </div>
             </div>
