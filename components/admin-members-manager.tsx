@@ -55,7 +55,13 @@ export function AdminMembersManager() {
     const res = await fetch("/api/admin/random-avatar");
     if (!res.ok) return;
     const data = (await res.json()) as { avatars: { name: string; url: string }[] };
-    setRandomAvatarList(data.avatars ?? []);
+    const avatars = data.avatars ?? [];
+    setRandomAvatarList(avatars);
+    if (avatars.length > 0) {
+      const last = avatars[avatars.length - 1].name;
+      const match = last.match(/(\d+)/);
+      if (match) setRandomAvatarIndex(parseInt(match[1]) + 1);
+    }
   }
 
   function handleSort(field: SortField) {
