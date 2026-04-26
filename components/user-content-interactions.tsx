@@ -1219,11 +1219,11 @@ export function UserContentInteractions({
           <div className="user-content-reply-thread-backdrop" onClick={closeReplyThread} />
           <section className="user-content-reply-thread-sheet" role="dialog" aria-modal="true" aria-label="대댓글 목록">
             <header className="user-content-reply-thread-head">
-              <span className="user-content-reply-thread-head-spacer" aria-hidden="true" />
-              <p className="user-content-reply-thread-head-title">답글</p>
               <button type="button" className="user-content-reply-thread-head-btn" onClick={closeReplyThread} aria-label="닫기">
                 x
               </button>
+              <p className="user-content-reply-thread-head-title">답글</p>
+              <span className="user-content-reply-thread-head-spacer" aria-hidden="true" />
             </header>
             <div className="user-content-reply-thread-body">
               <div className="user-content-reply-thread-parent-wrap">

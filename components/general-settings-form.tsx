@@ -605,7 +605,7 @@ export function GeneralSettingsForm({
           >
             {iconImage
               ? (savingKey === "avatar-delete" ? "초기화 중..." : "사진초기화")
-              : "사진업로드"}
+              : "프로필사진"}
           </button>
         </div>
         <div className={`account-username-message${usernameMsgAnim === "exit" ? " msg-exit" : usernameMsgAnim === "enter" ? " msg-enter" : ""}`} style={{ fontSize: "16px", fontWeight: "bold", color: "#4d4d4d" }}>{usernameMessage ?? ""}</div>
