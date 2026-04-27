@@ -1,3 +1,4 @@
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -18,6 +19,17 @@ function isMissingProductCodeColumn(error: { code?: string; message?: string } |
 
 export async function GET(request: Request) {
   try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ available: false, message: "Unauthorized" }, { status: 401 });
+
+    const user = await currentUser();
+    const email = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses[0]?.emailAddress;
+    if (!email) return NextResponse.json({ available: false, message: "이메일 정보가 없습니다." }, { status: 401 });
+
+    const supabaseAuth = createSupabaseAdminClient();
+    const { data: profile } = await supabaseAuth.from("profiles").select("role").eq("email", email.toLowerCase()).maybeSingle();
+    if (profile?.role !== "admin") return NextResponse.json({ available: false, message: "권한이 없습니다." }, { status: 403 });
+
     const url = new URL(request.url);
     const rawCode = url.searchParams.get("code");
     const excludeId = (url.searchParams.get("excludeId") ?? "").trim();

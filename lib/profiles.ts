@@ -23,9 +23,9 @@ type SyncProfileInput = {
 };
 
 const PROFILE_SELECT_COLUMNS =
-  "id, email, role, tier, notification_enabled, full_name, phone, username, password_hash, icon_image, created_at, username_registered_at, username_change_count, last_visited_at, visit_count";
+  "id, email, role, tier, notification_enabled, full_name, phone, username, icon_image, created_at, username_registered_at, username_change_count, last_visited_at, visit_count";
 const PROFILE_SELECT_COLUMNS_LEGACY =
-  "id, email, role, full_name, phone, username, password_hash, icon_image, created_at, username_registered_at, username_change_count";
+  "id, email, role, full_name, phone, username, icon_image, created_at, username_registered_at, username_change_count";
 
 function normalizeProfile(row: any): Profile {
   return {
