@@ -1061,6 +1061,7 @@
 
 .account-username-avatar.avatar-breathe {
   animation: avatar-breathe 1.4s ease-in-out infinite;
+  border: 2px solid white;
 }
 
 .account-username-avatar-placeholder {
