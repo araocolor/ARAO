@@ -1030,9 +1030,24 @@
   position: relative;
 }
 
+.account-avatar-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.account-random-avatar-buttons-overlay {
+  position: absolute;
+  bottom: -30px;
+  left: 100%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+
 .account-username-avatar {
-  width: 45px;
-  height: 45px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   border: 2px solid var(--line);
   object-fit: cover;
@@ -1044,11 +1059,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 45px;
-  height: 45px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   background: transparent;
-  border: 1px solid transparent;
+  border: 2px solid transparent;
   flex-shrink: 0;
   padding: 0;
   cursor: pointer;
@@ -1360,16 +1375,12 @@
   }
 }
 
-.account-random-avatar-row {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-}
-
 .account-random-avatar-btn {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: block;
   font-size: 11px;
   color: #666;
   background: none;
@@ -1378,6 +1389,15 @@
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
+  margin-top: 4px;
+  white-space: nowrap;
+}
+
+.account-random-avatar-buttons-row {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .account-random-avatar-btn:hover {
