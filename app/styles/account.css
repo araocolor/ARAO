@@ -1038,7 +1038,7 @@
 .account-random-avatar-buttons-overlay {
   position: absolute;
   bottom: -30px;
-  left: 100%;
+  left: 120%;
   transform: translateX(-50%);
   display: flex;
   gap: 6px;
@@ -1046,8 +1046,8 @@
 }
 
 .account-username-avatar {
-  width: 50px;
-  height: 50px;
+  width: 55px;
+  height: 55px;
   border-radius: 50%;
   border: 2px solid var(--line);
   object-fit: cover;
@@ -1414,12 +1414,12 @@
 }
 
 .account-random-avatar-confirm-btn {
-  font-size: 11px;
+  font-size: 12px;
   color: #fff;
   background: #808080;
   border: none;
   border-radius: 999px;
-  padding: 3px 10px;
+  padding: 6px 10px;
   cursor: pointer;
 }
 

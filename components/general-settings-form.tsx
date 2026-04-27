@@ -531,15 +531,16 @@ export function GeneralSettingsForm({
                     onClick={pickPrevRandom}
                     disabled={randomAvatarIndex <= 0}
                   >
-                    &lt;
+                    ◀
                   </button>
                   <button
                     type="button"
                     className="account-random-avatar-confirm-btn"
                     onClick={pickNextRandom}
                   >
-                    &gt;
+                    ▶
                   </button>
+                  &nbsp;&nbsp;
                   <button
                     type="button"
                     className="account-random-avatar-cancel-btn"
