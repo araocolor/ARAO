@@ -23,7 +23,7 @@ type SyncProfileInput = {
 };
 
 const PROFILE_SELECT_COLUMNS =
-  "id, email, role, tier, notification_enabled, full_name, phone, username, password_hash, icon_image, created_at, username_registered_at, username_change_count";
+  "id, email, role, tier, notification_enabled, full_name, phone, username, password_hash, icon_image, created_at, username_registered_at, username_change_count, last_visited_at, visit_count";
 const PROFILE_SELECT_COLUMNS_LEGACY =
   "id, email, role, full_name, phone, username, password_hash, icon_image, created_at, username_registered_at, username_change_count";
 
@@ -76,22 +76,25 @@ export async function syncProfile({ email, fullName }: SyncProfileInput) {
   }
 
   if (existingProfile) {
+    const updatePayload: Record<string, unknown> = {
+      last_visited_at: new Date().toISOString(),
+      visit_count: (existingProfile.visit_count ?? 0) + 1,
+    };
     if (fullName && existingProfile.full_name !== fullName) {
-      const { data: updatedProfile, error: updateError } = await supabase
-        .from("profiles")
-        .update({ full_name: fullName })
-        .eq("id", existingProfile.id)
-        .select(hasNotificationColumn ? PROFILE_SELECT_COLUMNS : PROFILE_SELECT_COLUMNS_LEGACY)
-        .single<any>();
+      updatePayload.full_name = fullName;
+    }
+    const { data: updatedProfile, error: updateError } = await supabase
+      .from("profiles")
+      .update(updatePayload)
+      .eq("id", existingProfile.id)
+      .select(hasNotificationColumn ? PROFILE_SELECT_COLUMNS : PROFILE_SELECT_COLUMNS_LEGACY)
+      .single<any>();
 
-      if (updateError) {
-        throw updateError;
-      }
-
-      return normalizeProfile(updatedProfile);
+    if (updateError) {
+      throw updateError;
     }
 
-    return normalizeProfile(existingProfile);
+    return normalizeProfile(updatedProfile);
   }
 
   const insertPayload: Record<string, unknown> = {

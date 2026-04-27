@@ -1054,6 +1054,15 @@
   flex-shrink: 0;
 }
 
+@keyframes avatar-breathe {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,0,0,0.12); }
+  50%       { transform: scale(1.06); box-shadow: 0 0 0 5px rgba(0,0,0,0); }
+}
+
+.account-username-avatar.avatar-breathe {
+  animation: avatar-breathe 1.4s ease-in-out infinite;
+}
+
 .account-username-avatar-placeholder {
   position: relative;
   display: flex;
@@ -1407,7 +1416,7 @@
 .account-random-avatar-confirm-btn {
   font-size: 11px;
   color: #fff;
-  background: #333;
+  background: #808080;
   border: none;
   border-radius: 999px;
   padding: 3px 10px;

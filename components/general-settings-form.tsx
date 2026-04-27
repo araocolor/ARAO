@@ -68,7 +68,8 @@ export function GeneralSettingsForm({
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
   const [iconImage, setIconImage] = useState(initialIconImage ?? "");
   const [randomAvatarPool, setRandomAvatarPool] = useState<string[]>([]);
-  const [randomAvatarQueue, setRandomAvatarQueue] = useState<string[]>([]);
+  const [randomAvatarShuffled, setRandomAvatarShuffled] = useState<string[]>([]);
+  const [randomAvatarIndex, setRandomAvatarIndex] = useState<number>(-1);
   const [profileModalTarget, setProfileModalTarget] = useState<UserProfileModalTarget | null>(null);
   const [randomPreviewUrl, setRandomPreviewUrl] = useState<string | null>(null);
   const [savingRandomAvatar, setSavingRandomAvatar] = useState(false);
@@ -335,7 +336,8 @@ export function GeneralSettingsForm({
       .then((data: { avatars?: { url: string }[] }) => {
         const urls = (data.avatars ?? []).map((a) => a.url);
         setRandomAvatarPool(urls);
-        setRandomAvatarQueue(shuffle(urls));
+        const shuffled = shuffle(urls);
+        setRandomAvatarShuffled(shuffled);
       })
       .catch(() => {});
   }, []);
@@ -350,11 +352,16 @@ export function GeneralSettingsForm({
   }
 
   function pickNextRandom() {
-    let queue = randomAvatarQueue;
-    if (queue.length === 0) queue = shuffle(randomAvatarPool);
-    const [next, ...rest] = queue;
-    setRandomAvatarQueue(rest);
-    setRandomPreviewUrl(next ?? null);
+    const nextIndex = randomAvatarIndex + 1 >= randomAvatarShuffled.length ? 0 : randomAvatarIndex + 1;
+    setRandomAvatarIndex(nextIndex);
+    setRandomPreviewUrl(randomAvatarShuffled[nextIndex] ?? null);
+  }
+
+  function pickPrevRandom() {
+    if (randomAvatarIndex <= 0) return;
+    const prevIndex = randomAvatarIndex - 1;
+    setRandomAvatarIndex(prevIndex);
+    setRandomPreviewUrl(randomAvatarShuffled[prevIndex] ?? null);
   }
 
   async function confirmRandomAvatar() {
@@ -485,7 +492,7 @@ export function GeneralSettingsForm({
           <div className="account-avatar-column">
             <div className="account-avatar-wrapper">
               {randomPreviewUrl ? (
-                <img src={randomPreviewUrl} alt="랜덤 아바타 미리보기" className="account-username-avatar" />
+                <img src={randomPreviewUrl} alt="랜덤 아바타 미리보기" className="account-username-avatar avatar-breathe" />
               ) : iconImage ? (
                 <img
                   src={iconImage}
@@ -521,14 +528,22 @@ export function GeneralSettingsForm({
                   <button
                     type="button"
                     className="account-random-avatar-confirm-btn"
+                    onClick={pickPrevRandom}
+                    disabled={randomAvatarIndex <= 0}
+                  >
+                    &lt;
+                  </button>
+                  <button
+                    type="button"
+                    className="account-random-avatar-confirm-btn"
                     onClick={pickNextRandom}
                   >
-                    다음 &gt;
+                    &gt;
                   </button>
                   <button
                     type="button"
                     className="account-random-avatar-cancel-btn"
-                    onClick={() => setRandomPreviewUrl(null)}
+                    onClick={() => { setRandomPreviewUrl(null); setRandomAvatarIndex(-1); }}
                   >
                     취소
                   </button>

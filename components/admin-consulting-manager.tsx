@@ -35,7 +35,7 @@ export function AdminConsultingManager({
   const [isReplyDraftSubmitting, setIsReplyDraftSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchField, setSearchField] = useState<"id" | "email" | "title" | "content">("title");
-  const [period, setPeriod] = useState<"today" | "week" | "month" | "3month" | "6month" | "12month" | "year">("month");
+  const [period, setPeriod] = useState<"today" | "week" | "month" | "3month" | "6month" | "12month" | "year">("year");
   const detailThreadRef = useRef<HTMLDivElement | null>(null);
 
   // 목록 조회 - 초기 로드 및 타입/상태 변경 시

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Eye, ArrowUp, ArrowDown } from "lucide-react";
 import { TierBadge } from "@/components/tier-badge";
 import Cropper, { Area } from "react-easy-crop";
@@ -13,6 +14,8 @@ interface Member {
   created_at: string;
   tier: string | null;
   role: string;
+  last_visited_at: string | null;
+  visit_count: number | null;
 }
 
 type SortField = "username" | "email" | "created_at" | "tier";
@@ -44,6 +47,8 @@ export function AdminMembersManager() {
   const randomFileInputRef = useRef<HTMLInputElement>(null);
   const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ url: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [memberOrders, setMemberOrders] = useState<string[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
 
   useEffect(() => {
     loadMembers();
@@ -108,24 +113,38 @@ export function AdminMembersManager() {
     return sorted;
   }
 
-  async function loadMembers() {
+  function getMembersCacheKey() {
+    return `admin-members:${searchQuery}:${searchField}:${offset}:${sortField}:${sortOrder}`;
+  }
+
+  async function loadMembers(forceRefresh = false) {
+    const cacheKey = getMembersCacheKey();
+    if (!forceRefresh) {
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          const { members: cachedMembers, total: cachedTotal } = JSON.parse(cached) as { members: Member[]; total: number };
+          setMembers(cachedMembers);
+          setTotal(cachedTotal);
+          return;
+        }
+      } catch {}
+    }
     try {
       setIsLoading(true);
       let url = `/api/admin/members?limit=${limit}&offset=${offset}`;
-
       if (searchQuery) {
         url += `&search=${encodeURIComponent(searchQuery)}&searchField=${searchField}`;
       }
-
       const response = await fetch(url);
       if (response.ok) {
-        const data = (await response.json()) as {
-          members: Member[];
-          total: number;
-        };
+        const data = (await response.json()) as { members: Member[]; total: number };
         const sortedMembers = sortMembers(data.members);
         setMembers(sortedMembers);
         setTotal(data.total);
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify({ members: sortedMembers, total: data.total }));
+        } catch {}
       } else {
         setMembers([]);
       }
@@ -146,12 +165,23 @@ export function AdminMembersManager() {
     }
   }
 
-  function handleMemberClick(member: Member) {
+  async function handleMemberClick(member: Member) {
     setSelectedMember(member);
+    setMemberOrders([]);
+    setIsLoadingOrders(true);
+    try {
+      const res = await fetch(`/api/admin/members/orders?userId=${member.id}`);
+      if (res.ok) {
+        const data = (await res.json()) as { products: string[] };
+        setMemberOrders(data.products ?? []);
+      }
+    } catch {}
+    setIsLoadingOrders(false);
   }
 
   function handleCloseModal() {
     setSelectedMember(null);
+    setMemberOrders([]);
   }
 
   function handleRandomFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -269,6 +299,14 @@ export function AdminMembersManager() {
           }}
           className="admin-members-search-input"
         />
+        <button
+          type="button"
+          className="admin-members-refresh-btn"
+          onClick={() => loadMembers(true)}
+          disabled={isLoading}
+        >
+          {isLoading ? "로딩중..." : "갱신"}
+        </button>
       </div>
 
       <div className="admin-members-table-wrap">
@@ -295,7 +333,7 @@ export function AdminMembersManager() {
                 )}
               </th>
               <th className="admin-members-role">Role</th>
-              <th>상세</th>
+              <th className="admin-members-visit">방문</th>
             </tr>
           </thead>
           <tbody className="admin-members-table-body">
@@ -311,14 +349,26 @@ export function AdminMembersManager() {
               members.map((member) => (
                 <tr key={member.id} className="admin-members-table-row">
                   <td className="admin-members-avatar-cell">
-                    {member.icon_image ? (
-                      <img src={member.icon_image} alt={member.username || "avatar"} className="admin-members-avatar" />
-                    ) : (
-                      <div className="admin-members-avatar-placeholder" />
-                    )}
+                    <button
+                      type="button"
+                      className="admin-members-avatar-btn"
+                      onClick={() => handleMemberClick(member)}
+                      aria-label="상세보기"
+                    >
+                      {member.icon_image ? (
+                        <img src={member.icon_image} alt={member.username || "avatar"} className="admin-members-avatar" />
+                      ) : (
+                        <div className="admin-members-avatar-placeholder" />
+                      )}
+                    </button>
                   </td>
                   <td className="admin-members-username">{member.username || "-"}</td>
-                  <td className="admin-members-date">{formatDate(member.created_at)}</td>
+                  <td className="admin-members-date">
+                    <div>{formatDate(member.created_at)}</div>
+                    {member.last_visited_at && (
+                      <div className="admin-members-last-visited">{formatDate(member.last_visited_at)}</div>
+                    )}
+                  </td>
                   <td className="admin-members-tier">
                     <TierBadge tier={member.tier} size={16} marginLeft={0} />
                     {!member.tier || (member.tier !== "pro" && member.tier !== "premium") ? (member.tier === "general" ? "." : (member.tier || "-")) : null}
@@ -326,16 +376,7 @@ export function AdminMembersManager() {
                   <td className="admin-members-role">
                     {member.role === "admin" ? "admin" : "mem"}
                   </td>
-                  <td className="admin-members-action">
-                    <button
-                      type="button"
-                      className="admin-members-detail-btn"
-                      onClick={() => handleMemberClick(member)}
-                      aria-label="상세보기"
-                    >
-                      <Eye width={18} height={18} />
-                    </button>
-                  </td>
+                  <td className="admin-members-visit">{member.visit_count ?? 0}</td>
                 </tr>
               ))
             )}
@@ -368,7 +409,7 @@ export function AdminMembersManager() {
         </div>
       </div>
 
-      {selectedMember && (
+      {selectedMember && typeof document !== "undefined" && createPortal(
         <div className="admin-members-modal-overlay" onClick={handleCloseModal}>
           <div className="admin-members-modal" onClick={(e) => e.stopPropagation()}>
             <button type="button" className="admin-members-modal-close" onClick={handleCloseModal}>✕</button>
@@ -400,12 +441,27 @@ export function AdminMembersManager() {
                 <span className="admin-members-label">Role</span>
                 <span className="admin-members-value">{selectedMember.role === "admin" ? "admin" : "mem"}</span>
               </div>
+              <div className="admin-members-detail-row">
+                <span className="admin-members-label">최근방문</span>
+                <span className="admin-members-value">{selectedMember.last_visited_at ? formatDate(selectedMember.last_visited_at) : "-"}</span>
+              </div>
+              <div className="admin-members-detail-row">
+                <span className="admin-members-label">방문횟수</span>
+                <span className="admin-members-value">{selectedMember.visit_count ?? 0}회</span>
+              </div>
+              <div className="admin-members-detail-row">
+                <span className="admin-members-label">상품구매</span>
+                <span className="admin-members-value">
+                  {isLoadingOrders ? "조회중..." : memberOrders.length > 0 ? memberOrders.join(", ") : "해당없음"}
+                </span>
+              </div>
             </div>
             <div className="admin-members-modal-footer">
               <button type="button" className="admin-members-modal-confirm" onClick={handleCloseModal}>확인</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* 랜덤 아바타 업로드 섹션 */}
