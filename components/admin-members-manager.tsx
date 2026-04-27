@@ -40,8 +40,10 @@ export function AdminMembersManager() {
   const [randomCroppedAreaPixels, setRandomCroppedAreaPixels] = useState<Area | null>(null);
   const [randomUploading, setRandomUploading] = useState(false);
   const [randomMessage, setRandomMessage] = useState<string | null>(null);
-  const [randomAvatarList, setRandomAvatarList] = useState<{ name: string; url: string }[]>([]);
+  const [randomAvatarList, setRandomAvatarList] = useState<{ url: string }[]>([]);
   const randomFileInputRef = useRef<HTMLInputElement>(null);
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ url: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadMembers();
@@ -54,14 +56,10 @@ export function AdminMembersManager() {
   async function loadRandomAvatars() {
     const res = await fetch("/api/admin/random-avatar");
     if (!res.ok) return;
-    const data = (await res.json()) as { avatars: { name: string; url: string }[] };
+    const data = (await res.json()) as { avatars: { url: string }[] };
     const avatars = data.avatars ?? [];
     setRandomAvatarList(avatars);
-    if (avatars.length > 0) {
-      const last = avatars[avatars.length - 1].name;
-      const match = last.match(/(\d+)/);
-      if (match) setRandomAvatarIndex(parseInt(match[1]) + 1);
-    }
+    setRandomAvatarIndex(avatars.length + 1);
   }
 
   function handleSort(field: SortField) {
@@ -220,18 +218,29 @@ export function AdminMembersManager() {
       setRandomCropSource(null);
       setRandomCroppedAreaPixels(null);
       if (randomFileInputRef.current) randomFileInputRef.current.value = "";
-      setRandomAvatarIndex((prev) => prev + 1);
-      if (data.name && data.url) {
-        setRandomAvatarList((prev) => {
-          const exists = prev.findIndex((a) => a.name === data.name);
-          if (exists >= 0) {
-            const next = [...prev];
-            next[exists] = { name: data.name!, url: data.url! };
-            return next.sort((a, b) => a.name.localeCompare(b.name));
-          }
-          return [...prev, { name: data.name!, url: data.url! }].sort((a, b) => a.name.localeCompare(b.name));
-        });
+      await loadRandomAvatars();
+    }
+  }
+
+  async function deleteRandomAvatar(url: string) {
+    setIsDeleting(true);
+    try {
+      const res = await fetch("/api/admin/random-avatar", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = (await res.json()) as { message?: string };
+      setRandomMessage(data.message ?? "삭제 실패");
+      if (res.ok) {
+        await loadRandomAvatars();
       }
+    } catch (error) {
+      setRandomMessage("삭제 중 오류 발생");
+      console.error(error);
+    } finally {
+      setIsDeleting(false);
+      setDeleteConfirmModal(null);
     }
   }
 
@@ -412,7 +421,6 @@ export function AdminMembersManager() {
             onChange={(e) => setRandomAvatarIndex(Number(e.target.value))}
             className="random-avatar-index-input"
           />
-          <span className="random-avatar-index-hint">→ random_{String(randomAvatarIndex).padStart(2, "0")}.jpg</span>
         </div>
 
         {randomCropSource && (
@@ -490,8 +498,43 @@ export function AdminMembersManager() {
         {randomAvatarList.length > 0 && (
           <div className="random-avatar-grid">
             {randomAvatarList.map((item) => (
-              <img key={item.name} src={item.url} alt={item.name} className="random-avatar-grid-item" title={item.name} />
+              <div key={item.url} className="random-avatar-grid-item-wrapper">
+                <img src={item.url} alt="" className="random-avatar-grid-item" />
+                <button
+                  className="random-avatar-delete-btn"
+                  onClick={() => setDeleteConfirmModal({ url: item.url })}
+                  type="button"
+                  aria-label="삭제"
+                >
+                  ✕
+                </button>
+              </div>
             ))}
+          </div>
+        )}
+
+        {deleteConfirmModal && (
+          <div className="random-avatar-modal-overlay" onClick={() => setDeleteConfirmModal(null)}>
+            <div className="random-avatar-modal" onClick={(e) => e.stopPropagation()}>
+              <p className="random-avatar-modal-text">이 아바타를 삭제하시겠습니까?</p>
+              <div className="random-avatar-modal-buttons">
+                <button
+                  className="random-avatar-modal-btn cancel"
+                  onClick={() => setDeleteConfirmModal(null)}
+                  type="button"
+                >
+                  취소
+                </button>
+                <button
+                  className="random-avatar-modal-btn delete"
+                  onClick={() => deleteRandomAvatar(deleteConfirmModal.url)}
+                  type="button"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "삭제 중..." : "삭제"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

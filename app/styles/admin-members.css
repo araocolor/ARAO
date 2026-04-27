@@ -97,16 +97,16 @@
 }
 
 .admin-members-avatar {
-  width: 35px;
-  height: 35px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   object-fit: cover;
   display: inline-block;
 }
 
 .admin-members-avatar-placeholder {
-  width: 35px;
-  height: 35px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: #e8e8e8;
   display: inline-block;
@@ -511,9 +511,101 @@
   gap: 10px;
 }
 
+.random-avatar-grid-item-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+}
+
 .random-avatar-grid-item {
   width: 100%;
   aspect-ratio: 1;
   border-radius: 50%;
   object-fit: cover;
+}
+
+.random-avatar-delete-btn {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.random-avatar-delete-btn:hover {
+  background: #c0392b;
+  transform: scale(1.1);
+}
+
+.random-avatar-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+}
+
+.random-avatar-modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 32px 24px;
+  max-width: 300px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.random-avatar-modal-text {
+  font-size: 14px;
+  color: #333;
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+.random-avatar-modal-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.random-avatar-modal-btn {
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.random-avatar-modal-btn.cancel {
+  background: #eee;
+  color: #333;
+}
+
+.random-avatar-modal-btn.cancel:hover {
+  background: #ddd;
+}
+
+.random-avatar-modal-btn.delete {
+  background: #e74c3c;
+  color: #fff;
+}
+
+.random-avatar-modal-btn.delete:hover:not(:disabled) {
+  background: #c0392b;
+}
+
+.random-avatar-modal-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

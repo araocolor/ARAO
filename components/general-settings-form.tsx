@@ -5,6 +5,7 @@ import { UserRound } from "lucide-react";
 import Cropper, { Area } from "react-easy-crop";
 import { clearCached } from "@/hooks/use-prefetch-cache";
 import { useHeaderSessionStore } from "@/stores/header-session-store";
+import { UserProfileModal, type UserProfileModalTarget } from "@/components/user-profile-modal";
 
 type GeneralSettingsFormProps = {
   email: string;
@@ -68,6 +69,7 @@ export function GeneralSettingsForm({
   const [iconImage, setIconImage] = useState(initialIconImage ?? "");
   const [randomAvatarPool, setRandomAvatarPool] = useState<string[]>([]);
   const [randomAvatarQueue, setRandomAvatarQueue] = useState<string[]>([]);
+  const [profileModalTarget, setProfileModalTarget] = useState<UserProfileModalTarget | null>(null);
   const [randomPreviewUrl, setRandomPreviewUrl] = useState<string | null>(null);
   const [savingRandomAvatar, setSavingRandomAvatar] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -369,7 +371,7 @@ export function GeneralSettingsForm({
       setRandomPreviewUrl(null);
       clearCached(getGeneralCacheKey(email));
       window.dispatchEvent(new CustomEvent("avatar-updated", { detail: { iconImage: data.iconImage } }));
-      setAvatarMessage("랜덤 아바타가 저장되었습니다.");
+      setAvatarMessage("선택한 캐릭터가 저장되었습니다.");
     } else {
       setAvatarMessage(data.message ?? "저장 실패");
     }
@@ -462,6 +464,7 @@ export function GeneralSettingsForm({
   const avatarNotice = avatarMessage ?? "프로필 사진을 등록하세요";
 
   return (
+    <>
     <div className="account-settings stack">
       <div className="account-settings-row">
         <div className="account-settings-copy">
@@ -480,53 +483,62 @@ export function GeneralSettingsForm({
         </div>
         <div className="account-username-section">
           <div className="account-avatar-column">
-            {randomPreviewUrl ? (
-              <img src={randomPreviewUrl} alt="랜덤 아바타 미리보기" className="account-username-avatar" />
-            ) : iconImage ? (
-              <img src={iconImage} alt={username || "avatar"} className="account-username-avatar" />
-            ) : (
-              <button
-                type="button"
-                className="account-username-avatar-placeholder"
-                onClick={openAvatarPopover}
-                aria-label="아바타 사진 등록"
-              >
-                <span className="account-username-register-fallback">
-                  <UserRound
-                    className="account-username-register-fallback-icon"
-                    width={20}
-                    height={20}
-                    strokeWidth={1.8}
-                  />
-                </span>
-              </button>
-            )}
-            {randomAvatarPool.length > 0 && (
-              <div className="account-random-avatar-row">
-                {!randomPreviewUrl ? (
-                  <button type="button" className="account-random-avatar-btn" onClick={pickNextRandom}>
-                    캐릭터선택
+            <div className="account-avatar-wrapper">
+              {randomPreviewUrl ? (
+                <img src={randomPreviewUrl} alt="랜덤 아바타 미리보기" className="account-username-avatar" />
+              ) : iconImage ? (
+                <img
+                  src={iconImage}
+                  alt={username || "avatar"}
+                  className="account-username-avatar"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setProfileModalTarget({
+                    authorId: username || email,
+                    authorEmail: email,
+                    authorTier: role,
+                    iconImage: iconImage,
+                  })}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="account-username-avatar-placeholder"
+                  onClick={openAvatarPopover}
+                  aria-label="아바타 사진 등록"
+                >
+                  <span className="account-username-register-fallback">
+                    <UserRound
+                      className="account-username-register-fallback-icon"
+                      width={20}
+                      height={20}
+                      strokeWidth={1.8}
+                    />
+                  </span>
+                </button>
+              )}
+              {randomAvatarPool.length > 0 && randomPreviewUrl && (
+                <div className="account-random-avatar-buttons-overlay">
+                  <button
+                    type="button"
+                    className="account-random-avatar-confirm-btn"
+                    onClick={pickNextRandom}
+                  >
+                    다음 &gt;
                   </button>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className="account-random-avatar-confirm-btn"
-                      onClick={confirmRandomAvatar}
-                      disabled={savingRandomAvatar}
-                    >
-                      {savingRandomAvatar ? "저장중..." : "확인"}
-                    </button>
-                    <button
-                      type="button"
-                      className="account-random-avatar-cancel-btn"
-                      onClick={() => setRandomPreviewUrl(null)}
-                    >
-                      취소
-                    </button>
-                  </>
-                )}
-              </div>
+                  <button
+                    type="button"
+                    className="account-random-avatar-cancel-btn"
+                    onClick={() => setRandomPreviewUrl(null)}
+                  >
+                    취소
+                  </button>
+                </div>
+              )}
+            </div>
+            {randomAvatarPool.length > 0 && !randomPreviewUrl && (
+              <button type="button" className="account-random-avatar-btn" onClick={pickNextRandom}>
+                캐릭터변경
+              </button>
             )}
             {isEditingAvatar && (
               <div className="account-avatar-popover" ref={avatarPopoverRef}>
@@ -669,10 +681,10 @@ export function GeneralSettingsForm({
             type="button"
             className={`account-general-btn account-avatar-upload-right-btn${!iconImage ? " btn-breathe" : ""}`}
             style={isEditingUsername ? { display: "none" } : {}}
-            disabled={savingKey === "avatar-delete" || savingKey === "avatar"}
+            disabled={savingKey === "avatar-delete" || savingKey === "avatar" || (!!randomPreviewUrl && savingRandomAvatar)}
             onClick={() => {
               if (randomPreviewUrl) {
-                pickNextRandom();
+                void confirmRandomAvatar();
                 return;
               }
               if (iconImage) {
@@ -690,7 +702,7 @@ export function GeneralSettingsForm({
             }}
           >
             {randomPreviewUrl
-              ? "다음 >"
+              ? (savingRandomAvatar ? "저장중..." : "캐릭터선택")
               : iconImage
                 ? (savingKey === "avatar-delete" ? "기본이미지로..." : "기본이미지")
                 : "사진올리기"}
@@ -869,5 +881,13 @@ export function GeneralSettingsForm({
       </div>
 
     </div>
+    <UserProfileModal
+      target={profileModalTarget}
+      isSignedIn={true}
+      viewerRole={role}
+      onRequestSignIn={() => {}}
+      onClose={() => setProfileModalTarget(null)}
+    />
+    </>
   );
 }
