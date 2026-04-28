@@ -30,7 +30,7 @@ export async function GET(
 
   const { data, error } = await supabase
     .from("user_review_comments")
-    .select("id, content, created_at, is_deleted, parent_id, profile_id, like_count, profile:profile_id(username, email, icon_image, tier)")
+    .select("id, content, created_at, is_deleted, parent_id, profile_id, like_count, profile:profile_id(username, email, icon_image, tier, deleted_at)")
     .eq("review_id", id)
     .order("created_at", { ascending: true });
 
@@ -69,6 +69,7 @@ export async function GET(
       authorEmail,
       authorTier: p?.tier ?? null,
       iconImage: p?.icon_image ?? null,
+      authorDeleted: !!p?.deleted_at,
       isMine: viewerProfileId ? viewerProfileId === row.profile_id : false,
       likeCount: row.like_count ?? 0,
       liked: likedSet.has(row.id),

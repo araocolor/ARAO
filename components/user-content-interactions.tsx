@@ -7,6 +7,8 @@ import { useMutation } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { TierBadge } from "@/components/tier-badge";
 import { UserProfileModal, type UserProfileModalTarget } from "@/components/user-profile-modal";
+import { DeletedUserNoticeModal } from "@/components/deleted-user-notice-modal";
+import { UserRound } from "lucide-react";
 
 type Comment = {
   id: string;
@@ -18,6 +20,7 @@ type Comment = {
   authorEmail?: string | null;
   authorTier?: string | null;
   iconImage: string | null;
+  authorDeleted?: boolean;
   isMine?: boolean;
   likeCount: number;
   liked: boolean;
@@ -293,6 +296,7 @@ export function UserContentInteractions({
   const [commentsLoaded, setCommentsLoaded] = useState(cachedComments !== null);
   const [viewerRole, setViewerRole] = useState<string | null>(null);
   const [profileModalTarget, setProfileModalTarget] = useState<UserProfileModalTarget | null>(null);
+  const [deletedNoticeOpen, setDeletedNoticeOpen] = useState(false);
   const [activeReplyThreadParentId, setActiveReplyThreadParentId] = useState<string | null>(null);
   const COMMENT_HIGHLIGHT_DURATION_MS = 2000;
   const signedInEmail =
@@ -807,6 +811,7 @@ export function UserContentInteractions({
           authorEmail: rawComment.authorEmail ?? null,
           authorTier: rawComment.authorTier ?? null,
           iconImage: rawComment.iconImage ?? null,
+          authorDeleted: rawComment.authorDeleted ?? false,
           isMine: rawComment.isMine ?? true,
           likeCount: sanitizeCount(rawComment.likeCount) ?? 0,
           liked: rawComment.liked ?? false,
@@ -861,6 +866,7 @@ export function UserContentInteractions({
         authorEmail: rawComment.authorEmail ?? null,
         authorTier: rawComment.authorTier ?? null,
         iconImage: rawComment.iconImage ?? null,
+        authorDeleted: rawComment.authorDeleted ?? false,
         isMine: rawComment.isMine ?? true,
         likeCount: sanitizeCount(rawComment.likeCount) ?? 0,
         liked: rawComment.liked ?? false,
@@ -950,6 +956,10 @@ export function UserContentInteractions({
   }
 
   function handleAvatarClick(target: Comment) {
+    if (target.authorDeleted) {
+      setDeletedNoticeOpen(true);
+      return;
+    }
     if (!isSignedIn) {
       router.push("/sign-in");
       return;
@@ -1018,7 +1028,9 @@ export function UserContentInteractions({
             aria-label={`${reply.authorId} 회원 정보 보기`}
           >
             <span className="user-content-comment-avatar">
-              {reply.iconImage
+              {reply.authorDeleted
+                ? <span className="user-content-comment-avatar-default" aria-hidden="true"><UserRound width={16} height={16} color="#9ca3af" strokeWidth={2} /></span>
+                : reply.iconImage
                 ? <img src={reply.iconImage} alt="" className="user-content-comment-avatar-img" />
                 : <span className="user-content-comment-avatar-default">{reply.authorId.slice(0, 1).toUpperCase()}</span>
               }
@@ -1026,13 +1038,16 @@ export function UserContentInteractions({
           </button>
           <div className="user-content-comment-body">
             <div className="user-content-comment-author-row">
-              <span className="user-content-comment-author">
+              <span
+                className="user-content-comment-author"
+                style={reply.authorDeleted ? { color: "#9ca3af" } : undefined}
+              >
                 {reply.authorId}
                 {parentAuthorId && (
                   <span className="user-content-comment-author-parent-ref">{` > @${parentAuthorId}`}</span>
                 )}
-                <TierBadge tier={reply.authorTier} />
-                {isReviewAuthor(reply.authorId) && (
+                {!reply.authorDeleted && <TierBadge tier={reply.authorTier} />}
+                {!reply.authorDeleted && isReviewAuthor(reply.authorId) && (
                   <span className="user-content-comment-author-badge" aria-label="작성자">작성자</span>
                 )}
               </span>
@@ -1127,7 +1142,9 @@ export function UserContentInteractions({
                     aria-label={`${comment.authorId} 회원 정보 보기`}
                   >
                     <span className="user-content-comment-avatar">
-                      {comment.iconImage
+                      {comment.authorDeleted
+                        ? <span className="user-content-comment-avatar-default" aria-hidden="true"><UserRound width={16} height={16} color="#9ca3af" strokeWidth={2} /></span>
+                        : comment.iconImage
                         ? <img src={comment.iconImage} alt="" className="user-content-comment-avatar-img" />
                         : <span className="user-content-comment-avatar-default">{comment.authorId.slice(0, 1).toUpperCase()}</span>
                       }
@@ -1135,10 +1152,13 @@ export function UserContentInteractions({
                   </button>
                   <div className="user-content-comment-body">
                     <div className="user-content-comment-author-row">
-                      <span className="user-content-comment-author">
+                      <span
+                        className="user-content-comment-author"
+                        style={comment.authorDeleted ? { color: "#9ca3af" } : undefined}
+                      >
                         {comment.authorId}
-                        <TierBadge tier={comment.authorTier} />
-                        {isReviewAuthor(comment.authorId) && (
+                        {!comment.authorDeleted && <TierBadge tier={comment.authorTier} />}
+                        {!comment.authorDeleted && isReviewAuthor(comment.authorId) && (
                           <span className="user-content-comment-author-badge" aria-label="작성자">작성자</span>
                         )}
                       </span>
@@ -1368,6 +1388,10 @@ export function UserContentInteractions({
         viewerRole={viewerRole}
         onRequestSignIn={() => router.push("/sign-in")}
         onClose={() => setProfileModalTarget(null)}
+      />
+      <DeletedUserNoticeModal
+        open={deletedNoticeOpen}
+        onClose={() => setDeletedNoticeOpen(false)}
       />
 
       {/* 댓글 메뉴 바텀시트 */}

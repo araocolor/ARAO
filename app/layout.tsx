@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import Script from "next/script";
 import { AppQueryProvider } from "@/components/query-provider";
+import { DeletionGuard } from "@/components/deletion-guard";
 import "./globals.css";
 import "./styles/header.css";
 import "./styles/layout.css";
@@ -48,7 +49,9 @@ export default function RootLayout({
     >
       <html lang="ko">
         <body>
-          <AppQueryProvider>{children}</AppQueryProvider>
+          <AppQueryProvider>
+            <DeletionGuard>{children}</DeletionGuard>
+          </AppQueryProvider>
           <Script id="perf-probe" strategy="afterInteractive">
             {`
               (() => {

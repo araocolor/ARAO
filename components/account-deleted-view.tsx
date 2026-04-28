@@ -8,6 +8,7 @@ type AccountDeletedViewProps = {
   deletedAt: string | null;
   deleteScheduledAt: string | null;
   email: string;
+  onRestored?: () => void;
 };
 
 function formatDays(scheduled: string | null): number {
@@ -16,7 +17,7 @@ function formatDays(scheduled: string | null): number {
   return Math.max(0, Math.ceil(remainMs / (24 * 60 * 60 * 1000)));
 }
 
-export function AccountDeletedView({ deleteScheduledAt, email }: AccountDeletedViewProps) {
+export function AccountDeletedView({ deleteScheduledAt, email, onRestored }: AccountDeletedViewProps) {
   const [restoring, setRestoring] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const { signOut } = useClerk();
@@ -34,8 +35,9 @@ export function AccountDeletedView({ deleteScheduledAt, email }: AccountDeletedV
       setMessage(data.message ?? "복구 실패");
       return;
     }
-    router.push("/account/general");
-    router.refresh();
+    onRestored?.();
+    alert("계정 복구가 완료되었습니다.");
+    router.push("/");
   }
 
   async function leave() {

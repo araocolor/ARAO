@@ -39,7 +39,7 @@ export function AccountDeleteModal({ open, email, onClose }: AccountDeleteModalP
       return;
     }
     setStep("code");
-    setMessage(`${email}로 인증번호를 보냈습니다.`);
+    setMessage(null);
   }
 
   async function confirmDelete() {
@@ -55,12 +55,13 @@ export function AccountDeleteModal({ open, email, onClose }: AccountDeleteModalP
       body: JSON.stringify({ code }),
     });
     const data = (await res.json().catch(() => ({}))) as { message?: string };
-    setSubmitting(false);
     if (!res.ok) {
+      setSubmitting(false);
       setMessage(data.message ?? "탈퇴 처리에 실패했습니다.");
       return;
     }
     setStep("done");
+    setSubmitting(false);
   }
 
   async function finishAndLeave() {
@@ -69,11 +70,11 @@ export function AccountDeleteModal({ open, email, onClose }: AccountDeleteModalP
   }
 
   return (
-    <div className="account-delete-modal-backdrop" onClick={close}>
+    <div className="account-delete-modal-backdrop" onClick={step === "intro" ? close : undefined}>
       <div className="account-delete-modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="account-delete-modal-header">
           <h3>회원탈퇴</h3>
-          {step !== "done" && (
+          {step === "intro" && (
             <button type="button" className="account-delete-modal-close" onClick={close} aria-label="닫기">×</button>
           )}
         </div>
@@ -94,7 +95,7 @@ export function AccountDeleteModal({ open, email, onClose }: AccountDeleteModalP
             <div className="account-delete-modal-actions">
               <button type="button" className="account-delete-modal-cancel" onClick={close}>취소</button>
               <button type="button" className="account-delete-modal-primary" onClick={sendCode} disabled={sending}>
-                {sending ? "발송 중..." : "인증번호 받기"}
+                {sending ? "처리 중..." : "회원탈퇴"}
               </button>
             </div>
           </div>
@@ -102,6 +103,11 @@ export function AccountDeleteModal({ open, email, onClose }: AccountDeleteModalP
 
         {step === "code" && (
           <div className="account-delete-modal-body">
+            <p className="account-delete-modal-desc">
+              <span style={{ fontSize: 15, fontWeight: 700 }}>{email}</span>
+              <span>로 인증번호를 보냈습니다.</span>
+            </p>
+            {message && <div className="account-delete-modal-msg">{message}</div>}
             <p className="account-delete-modal-desc">
               메일로 받은 6자리 인증번호를 입력하세요. (10분 유효)
             </p>
@@ -114,7 +120,6 @@ export function AccountDeleteModal({ open, email, onClose }: AccountDeleteModalP
               placeholder="6자리 숫자"
               className="account-delete-modal-input"
             />
-            {message && <div className="account-delete-modal-msg">{message}</div>}
             <div className="account-delete-modal-actions">
               <button type="button" className="account-delete-modal-cancel" onClick={close}>취소</button>
               <button type="button" className="account-delete-modal-primary danger" onClick={confirmDelete} disabled={submitting}>

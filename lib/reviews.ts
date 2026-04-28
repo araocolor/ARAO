@@ -26,6 +26,7 @@ export type ReviewReply = {
   created_at: string;
   author_username: string | null;
   author_tier: string | null;
+  author_deleted: boolean;
 };
 
 /**
@@ -87,7 +88,7 @@ export async function getReviewById(id: string): Promise<{ review: ReviewWithAut
       .single(),
     supabase
       .from("review_replies")
-      .select("*, profile:profile_id(username, tier)")
+      .select("*, profile:profile_id(username, tier, deleted_at)")
       .eq("review_id", id)
       .order("created_at", { ascending: true }),
   ]);
@@ -109,6 +110,7 @@ export async function getReviewById(id: string): Promise<{ review: ReviewWithAut
     ...r,
     author_username: r.profile?.username || null,
     author_tier: r.profile?.tier || null,
+    author_deleted: !!r.profile?.deleted_at,
     profile: undefined,
   })) as ReviewReply[];
 
@@ -330,7 +332,7 @@ export async function createReviewReply(
     );
   }
 
-  return data as ReviewReply;
+  return { ...data, author_deleted: false } as ReviewReply;
 }
 
 /**
@@ -341,7 +343,7 @@ export async function getReviewReplies(reviewId: string): Promise<ReviewReply[]>
 
   const { data, error } = await supabase
     .from("review_replies")
-    .select("*, profile:profile_id(username, tier)")
+    .select("*, profile:profile_id(username, tier, deleted_at)")
     .eq("review_id", reviewId)
     .order("created_at", { ascending: true });
 
@@ -354,6 +356,7 @@ export async function getReviewReplies(reviewId: string): Promise<ReviewReply[]>
     ...r,
     author_username: r.profile?.username || null,
     author_tier: r.profile?.tier || null,
+    author_deleted: !!r.profile?.deleted_at,
     profile: undefined,
   })) as ReviewReply[];
 }

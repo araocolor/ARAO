@@ -10,6 +10,8 @@ import { buildSignInHrefFromCurrentLocation } from "@/lib/auth-redirect";
 import { TierBadge } from "@/components/tier-badge";
 import { CommentSheetFrame } from "@/components/comment-sheet-frame";
 import { UserProfileModal, type UserProfileModalTarget } from "@/components/user-profile-modal";
+import { DeletedUserNoticeModal } from "@/components/deleted-user-notice-modal";
+import { UserRound } from "lucide-react";
 
 function maskEmail(email: string): string {
   const atIndex = email.indexOf("@");
@@ -80,6 +82,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
   const [replyTo, setReplyTo] = useState<ReplyContext | null>(null);
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [profileModalTarget, setProfileModalTarget] = useState<UserProfileModalTarget | null>(null);
+  const [deletedNoticeOpen, setDeletedNoticeOpen] = useState(false);
   const highlightRef = useRef<HTMLDivElement>(null);
   const commentsRef = useRef<GalleryComment[]>([]);
   const myEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase() ?? null;
@@ -282,6 +285,7 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
       // 임시 댓글에서는 이메일 fallback을 숨겨 아이디로만 표시되게 유지
       author_email: null,
       author_tier: null,
+      author_deleted: false,
     };
 
     // 즉시 UI 반영
@@ -416,16 +420,26 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
         <button
           type="button"
           className="gallery-comment-avatar-btn"
-          onClick={() => setProfileModalTarget({
-            authorId: c.author_username ?? c.author_email ?? "익명",
-            authorEmail: c.author_email ?? null,
-            authorTier: c.author_tier ?? null,
-            iconImage: c.author_icon_image ?? null,
-          })}
+          onClick={() => {
+            if (c.author_deleted) {
+              setDeletedNoticeOpen(true);
+              return;
+            }
+            setProfileModalTarget({
+              authorId: c.author_username ?? c.author_email ?? "익명",
+              authorEmail: c.author_email ?? null,
+              authorTier: c.author_tier ?? null,
+              iconImage: c.author_icon_image ?? null,
+            });
+          }}
           aria-label={`${displayName} 회원 정보 보기`}
         >
           <div className="gallery-comment-avatar">
-            {c.author_icon_image ? (
+            {c.author_deleted ? (
+              <span className="gallery-comment-avatar-default" aria-hidden="true">
+                <UserRound width={16} height={16} color="#9ca3af" strokeWidth={2} />
+              </span>
+            ) : c.author_icon_image ? (
               <img src={c.author_icon_image} className="gallery-comment-avatar-img" alt="" />
             ) : (
               <span className="gallery-comment-avatar-default">
@@ -436,9 +450,12 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
         </button>
         <div className="gallery-comment-body">
           <span className="gallery-comment-author-row">
-            <span className="gallery-comment-author">
+            <span
+              className="gallery-comment-author"
+              style={c.author_deleted ? { color: "#9ca3af" } : undefined}
+            >
               {displayName}
-              <TierBadge tier={c.author_tier} />
+              {!c.author_deleted && <TierBadge tier={c.author_tier} />}
             </span>
           </span>
           {relativeTime && <span className="gallery-comment-time">{relativeTime}</span>}
@@ -526,6 +543,10 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
         viewerRole={viewerRole}
         onRequestSignIn={() => router.push(buildSignInHrefFromCurrentLocation())}
         onClose={() => setProfileModalTarget(null)}
+      />
+      <DeletedUserNoticeModal
+        open={deletedNoticeOpen}
+        onClose={() => setDeletedNoticeOpen(false)}
       />
       <div className="gallery-sheet-comments">
         {loading && <p className="gallery-sheet-empty">불러오는 중...</p>}

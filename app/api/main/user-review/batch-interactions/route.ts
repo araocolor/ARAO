@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     // 댓글 한 번에 조회
     const { data: commentRows } = await supabase
       .from("user_review_comments")
-      .select("id, review_id, content, created_at, is_deleted, parent_id, profile_id, like_count, profile:profile_id(username, email, icon_image)")
+      .select("id, review_id, content, created_at, is_deleted, parent_id, profile_id, like_count, profile:profile_id(username, email, icon_image, deleted_at)")
       .in("review_id", ids)
       .order("created_at", { ascending: true });
 
@@ -101,6 +101,7 @@ export async function POST(request: Request) {
         parentId: string | null;
         authorId: string;
         iconImage: string | null;
+        authorDeleted: boolean;
         isMine: boolean;
         likeCount: number;
         liked: boolean;
@@ -125,6 +126,7 @@ export async function POST(request: Request) {
             parentId: row.parent_id ?? null,
             authorId,
             iconImage: p?.icon_image ?? null,
+            authorDeleted: !!p?.deleted_at,
             isMine: viewerProfileId ? viewerProfileId === row.profile_id : false,
             likeCount: row.like_count ?? 0,
             liked: commentLikedSet.has(row.id),

@@ -160,7 +160,10 @@ export default function ReviewDetailPage({
             {replies.map((reply) => (
               <div key={reply.id} className="reply-item">
                 <div className="reply-header">
-                  <strong>{reply.author_username || "익명"}<TierBadge tier={reply.author_tier} /></strong>
+                  <strong style={reply.author_deleted ? { color: "#9ca3af" } : undefined}>
+                    {reply.author_username || "익명"}
+                    {!reply.author_deleted && <TierBadge tier={reply.author_tier} />}
+                  </strong>
                   <span className="reply-time">
                     {new Date(reply.created_at).toLocaleDateString("ko-KR")}
                   </span>

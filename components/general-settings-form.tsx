@@ -132,10 +132,15 @@ export function GeneralSettingsForm({
     }
     setIsEditingUsername(false);
     const newCount = data.usernameChangeCount ?? usernameChangeCount + 1;
-    const finalMessage = wasFirstRegistration ? "아이디가 등록되었습니다." : newCount >= 5 ? `${newUsername} 멋진 이름이네요 👍` : "아이디가 변경되었습니다.";
+    const finalMessage = wasFirstRegistration ? "아이디 등록완료!" : newCount >= 5 ? `${newUsername} 멋진 이름이네요 👍` : "아이디가 변경되었습니다.";
     setUsernameMessage(finalMessage);
     setUsernameMsgAnim("enter");
-    if (!wasFirstRegistration && newCount >= 5 && !iconImage) {
+    if (wasFirstRegistration) {
+      setTimeout(() => {
+        setUsernameMsgAnim("exit");
+        setTimeout(() => setUsernameMessage(null), 350);
+      }, 2000);
+    } else if (!wasFirstRegistration && newCount >= 5 && !iconImage) {
       setTimeout(() => {
         setUsernameMsgAnim("exit");
         setTimeout(() => {

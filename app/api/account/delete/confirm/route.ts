@@ -1,4 +1,4 @@
-import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -88,14 +88,6 @@ export async function POST(request: Request) {
   await supabase.from("reviews").delete().eq("profile_id", profile.id);
 
   await supabase.from("account_delete_codes").delete().eq("id", codeRow.id);
-
-  try {
-    const client = await clerkClient();
-    await client.users.deleteUser(userId);
-  } catch (e) {
-    // Clerk 삭제 실패해도 Supabase 탈퇴는 이미 처리됨. 로그만 남김.
-    console.error("[account-delete] Clerk user delete failed", e);
-  }
 
   return NextResponse.json({ ok: true });
 }

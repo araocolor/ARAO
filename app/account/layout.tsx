@@ -14,7 +14,12 @@ export default async function AccountLayout({ children }: { children: React.Reac
     redirect("/sign-in");
   }
 
-  const user = await currentUser();
+  let user: Awaited<ReturnType<typeof currentUser>> | null = null;
+  try {
+    user = await currentUser();
+  } catch {
+    user = null;
+  }
   const email = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses[0]?.emailAddress;
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || null;
   let profile = null;
