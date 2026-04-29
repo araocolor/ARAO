@@ -5,6 +5,7 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { LOGOUT_EVENT_NAME } from "@/hooks/use-prefetch-cache";
 import { TierBadge } from "@/components/tier-badge";
 import { UserProfileModal, type UserProfileModalTarget } from "@/components/user-profile-modal";
 import { DeletedUserNoticeModal } from "@/components/deleted-user-notice-modal";
@@ -686,7 +687,14 @@ export function UserContentInteractions({
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    const teardown = () => {
+      void supabase.removeChannel(channel);
+    };
+    window.addEventListener(LOGOUT_EVENT_NAME, teardown);
+    return () => {
+      window.removeEventListener(LOGOUT_EVENT_NAME, teardown);
+      teardown();
+    };
   }, [reviewId]);
 
   // visibilitychange: 앱 복귀 시 백그라운드로 캐시 갱신

@@ -5,11 +5,13 @@
  */
 
 import { PREFETCH_CACHE_TTL } from "@/lib/cache-config";
+import { useHeaderSessionStore } from "@/stores/header-session-store";
 
 const CACHE_PREFIX = "arao_prefetch_";
 const CACHE_TTL = PREFETCH_CACHE_TTL;
 const MAX_PREFETCH_CACHE_BYTES = 150 * 1024; // 150KB
 const PRUNE_BATCH_SIZE = 30;
+const LOGOUT_EVENT_NAME = "app-logout";
 
 // prunePrefetchCache가 정리 대상으로 포함할 프리픽스 없는 캐시 키 패턴
 // 직접 sessionStorage.setItem으로 저장하는 모든 캐시를 여기에 등록할 것
@@ -192,16 +194,48 @@ export function clearAllPrefetchCache(): void {
 }
 
 /**
- * 로그아웃 시 전체 sessionStorage 캐시 정리
- * - arao_prefetch_ 프리픽스 캐시
- * - 프리픽스 없는 커뮤니티/갤러리 캐시 (user-review-list-cache, gallery_* 등)
+ * 로그아웃 시 세션/개인 캐시 정리
+ * - 남길 것: 갤러리 하트/댓글 수 캐시, 커뮤니티 목록 캐시
+ * - 지울 것: 나머지 sessionStorage + 사용자 localStorage 캐시
  */
 export function clearAllCachesOnLogout(): void {
   if (typeof window === "undefined") return;
 
   try {
-    sessionStorage.clear();
+    const keepSessionPrefixes = [
+      `${CACHE_PREFIX}gallery_public_`,
+      `${CACHE_PREFIX}gallery_comments_`,
+      "gallery_public_",
+      "gallery_comments_",
+      "user-review-list-cache",
+    ];
+    const shouldKeepSessionKey = (key: string) => keepSessionPrefixes.some((prefix) => key.startsWith(prefix));
+    const sessionKeys = Object.keys(sessionStorage);
+    sessionKeys.forEach((key) => {
+      if (shouldKeepSessionKey(key)) return;
+      sessionStorage.removeItem(key);
+    });
+
+    const personalLocalStoragePrefixes = [
+      "header-badge-count:",
+      "header-avatar:",
+      "header-username:",
+      "header-email:",
+      "header-role:",
+      "header-tier:",
+    ];
+    const shouldRemoveLocalKey = (key: string) => personalLocalStoragePrefixes.some((prefix) => key.startsWith(prefix));
+    const localKeys = Object.keys(localStorage);
+    localKeys.forEach((key) => {
+      if (!shouldRemoveLocalKey(key)) return;
+      localStorage.removeItem(key);
+    });
+
+    useHeaderSessionStore.getState().clearActiveUserCache();
+    window.dispatchEvent(new Event(LOGOUT_EVENT_NAME));
   } catch (error) {
-    console.error("[Cache Error] Failed to clear session storage on logout:", error);
+    console.error("[Cache Error] Failed to clear caches on logout:", error);
   }
 }
+
+export { LOGOUT_EVENT_NAME };

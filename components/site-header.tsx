@@ -180,7 +180,7 @@ export function SiteHeader({
     const defaultMinScrollTop = 72;
     const termsShowTopY = 12;
     const termsHideDownDelta = 4;
-    const termsFastUpwardSpeed = 3.5; // px/ms
+    const termsFastUpwardSpeed = 2.0; // px/ms
 
     const applyByScroll = () => {
       const currentY = window.scrollY;

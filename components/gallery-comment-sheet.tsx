@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import type { GalleryComment } from "@/lib/gallery-interactions";
-import { getCached, setCached } from "@/hooks/use-prefetch-cache";
+import { LOGOUT_EVENT_NAME, getCached, setCached } from "@/hooks/use-prefetch-cache";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { buildSignInHrefFromCurrentLocation } from "@/lib/auth-redirect";
 import { TierBadge } from "@/components/tier-badge";
@@ -188,7 +188,14 @@ export function GalleryCommentSheet({ category, index, onClose, onCommentAdded, 
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    const teardown = () => {
+      void supabase.removeChannel(channel);
+    };
+    window.addEventListener(LOGOUT_EVENT_NAME, teardown);
+    return () => {
+      window.removeEventListener(LOGOUT_EVENT_NAME, teardown);
+      teardown();
+    };
   }, [category, index]);
 
   // visibilitychange: 앱 복귀 시 백그라운드로 캐시 갱신

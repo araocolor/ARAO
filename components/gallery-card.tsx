@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { GalleryHeroItem } from "@/components/gallery-hero-item";
 import type { GalleryExtraImage } from "@/lib/landing-content";
 import { GalleryCommentSheet } from "@/components/gallery-comment-sheet";
-import { getCached, setCached } from "@/hooks/use-prefetch-cache";
+import { LOGOUT_EVENT_NAME, getCached, setCached } from "@/hooks/use-prefetch-cache";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { buildSignInHrefFromCurrentLocation } from "@/lib/auth-redirect";
 
@@ -268,7 +268,14 @@ export function GalleryCard({
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    const teardown = () => {
+      void supabase.removeChannel(channel);
+    };
+    window.addEventListener(LOGOUT_EVENT_NAME, teardown);
+    return () => {
+      window.removeEventListener(LOGOUT_EVENT_NAME, teardown);
+      teardown();
+    };
   }, [category, index]);
 
   const handleLike = async () => {
