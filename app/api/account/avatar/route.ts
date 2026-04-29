@@ -61,6 +61,10 @@ function getStoragePathFromPublicUrl(iconImage: string | null | undefined): stri
   }
 }
 
+function isUserOwnedAvatarPath(path: string, profileId: string): boolean {
+  return path.startsWith(`avatars/${profileId}/`);
+}
+
 export async function GET() {
   const { userId } = await auth();
   if (!userId) {
@@ -173,7 +177,7 @@ export async function DELETE() {
     const supabase = createSupabaseAdminClient();
     const avatarPath = getStoragePathFromPublicUrl(profile.icon_image);
 
-    if (avatarPath) {
+    if (avatarPath && isUserOwnedAvatarPath(avatarPath, profile.id)) {
       const { error: storageDeleteError } = await supabase.storage
         .from(AVATAR_BUCKET)
         .remove([avatarPath]);
