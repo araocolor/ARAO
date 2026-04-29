@@ -24,6 +24,8 @@ type GeneralSettingsFormProps = {
   previousUsername?: string | null;
 };
 
+const RANDOM_AVATAR_PREFETCH_KEY = "random-avatar-prefetched-v1";
+
 function getGeneralCacheKey(email?: string | null) {
   return email ? `general_${email.toLowerCase()}` : "general";
 }
@@ -97,6 +99,40 @@ export function GeneralSettingsForm({
   const phoneEditFormRef = useRef<HTMLFormElement>(null);
   const usernameInputRef = useRef<HTMLInputElement>(null);
   const [isUsernameFocused, setIsUsernameFocused] = useState(false);
+  const hasTriggeredRandomPrefetchRef = useRef(false);
+
+  function prefetchRandomAvatarsOnce(urls: string[]) {
+    if (typeof window === "undefined" || urls.length === 0) return;
+    if (hasTriggeredRandomPrefetchRef.current) return;
+    hasTriggeredRandomPrefetchRef.current = true;
+
+    try {
+      if (sessionStorage.getItem(RANDOM_AVATAR_PREFETCH_KEY) === "1") return;
+      sessionStorage.setItem(RANDOM_AVATAR_PREFETCH_KEY, "1");
+    } catch {
+      // Ignore storage errors and continue with best effort prefetch.
+    }
+
+    const runPrefetch = () => {
+      for (const url of urls) {
+        if (!url) continue;
+        const img = new Image();
+        img.decoding = "async";
+        img.src = url;
+      }
+    };
+
+    const requestIdle = (globalThis as typeof globalThis & {
+      requestIdleCallback?: (cb: () => void, options?: { timeout: number }) => void;
+    }).requestIdleCallback;
+
+    if (requestIdle) {
+      requestIdle(runPrefetch, { timeout: 1500 });
+      return;
+    }
+
+    globalThis.setTimeout(runPrefetch, 0);
+  }
 
   function openAvatarPopover() {
     setIsEditingAvatar((v) => !v);
@@ -349,6 +385,10 @@ export function GeneralSettingsForm({
   }
 
   useEffect(() => {
+    setIconImage(initialIconImage ?? "");
+  }, [initialIconImage]);
+
+  useEffect(() => {
     fetch("/api/admin/random-avatar")
       .then((res) => res.json())
       .then((data: { avatars?: { url: string }[] }) => {
@@ -356,6 +396,7 @@ export function GeneralSettingsForm({
         setRandomAvatarPool(urls);
         const shuffled = shuffle(urls);
         setRandomAvatarShuffled(shuffled);
+        prefetchRandomAvatarsOnce(urls);
       })
       .catch(() => {});
   }, []);

@@ -15,13 +15,13 @@ import { GALLERY_CATEGORIES } from "@/lib/gallery-categories";
 const REVIEW_PREFETCH_LOCK_KEY = "user-review-list-prefetch-lock";
 const REVIEW_PREFETCH_LOCK_MS = 10000;
 const NOTIFICATION_CACHE_PREFIX = "header-notifications-cache-v1";
+const NOTIFICATION_INITIAL_LOAD_PREFIX = "header-notifications-initial-loaded-v1";
 const NOTIFICATION_REOPEN_ONCE_KEY = "header-notification-reopen-once";
 const COMMENT_PREFETCH_CATEGORIES = ["people", "outdoor", "indoor", "cafe"] as const;
 
 type NotificationPayload = {
   unreadCount: number;
   items: NotificationItem[];
-  iconImage?: string | null;
   username?: string | null;
   email?: string | null;
   notificationEnabled?: boolean;
@@ -59,6 +59,10 @@ function readNotificationCache(cacheKey: string): NotificationPayload | null {
   }
 }
 
+function getNotificationInitialLoadKey(userId: string | null | undefined): string {
+  return `${NOTIFICATION_INITIAL_LOAD_PREFIX}:${userId ?? "anon"}`;
+}
+
 function writeNotificationCache(cacheKey: string, payload: NotificationPayload): void {
   try {
     const snapshot: NotificationCacheSnapshot = { data: payload, ts: Date.now() };
@@ -71,6 +75,16 @@ function clearNotificationCacheAll(): void {
     for (let i = sessionStorage.length - 1; i >= 0; i -= 1) {
       const key = sessionStorage.key(i);
       if (!key || !key.startsWith(NOTIFICATION_CACHE_PREFIX)) continue;
+      sessionStorage.removeItem(key);
+    }
+  } catch {}
+}
+
+function clearNotificationInitialLoadAll(): void {
+  try {
+    for (let i = sessionStorage.length - 1; i >= 0; i -= 1) {
+      const key = sessionStorage.key(i);
+      if (!key || !key.startsWith(NOTIFICATION_INITIAL_LOAD_PREFIX)) continue;
       sessionStorage.removeItem(key);
     }
   } catch {}
@@ -116,7 +130,6 @@ export function HeaderProfileLink() {
   useAdminPendingCount(isSignedIn ?? false);
   const notificationCacheKey = getNotificationCacheKey(user?.id);
   const badgeCount = useHeaderSessionStore((state) => state.badgeCount);
-  const iconImage = useHeaderSessionStore((state) => state.avatar);
   const hydrateHeaderSession = useHeaderSessionStore((state) => state.hydrateForUser);
   const setHeaderBadgeCount = useHeaderSessionStore((state) => state.setBadgeCount);
   const setHeaderAvatar = useHeaderSessionStore((state) => state.setAvatar);
@@ -157,10 +170,6 @@ export function HeaderProfileLink() {
     const nextNotificationEnabled = payload.notificationEnabled ?? true;
     setItems(nextItems);
     setHeaderBadgeCount(unread);
-    if (payload.iconImage !== undefined) {
-      const img = payload.iconImage ?? null;
-      setHeaderAvatar(img);
-    }
     if (payload.username !== undefined) {
       const nextUsername = payload.username ?? null;
       setUsername(nextUsername);
@@ -176,7 +185,6 @@ export function HeaderProfileLink() {
       writeNotificationCache(notificationCacheKey, {
         unreadCount: unread,
         items: nextItems,
-        iconImage: payload.iconImage,
         username: payload.username,
         email: payload.email,
         notificationEnabled: nextNotificationEnabled,
@@ -227,7 +235,7 @@ export function HeaderProfileLink() {
       .slice(0, 3);
   }
 
-  async function fetchNotificationItems(options?: { showLoading?: boolean }) {
+  async function fetchNotificationItems(options?: { showLoading?: boolean }): Promise<boolean> {
     const showLoading = options?.showLoading ?? items.length === 0;
     if (showLoading) setIsLoadingNotifications(true);
     try {
@@ -236,12 +244,14 @@ export function HeaderProfileLink() {
         const data = (await response.json()) as NotificationPayload;
         const hasUnread = getTop3UnreadItems(data.items ?? []).length > 0;
         applyNotificationPayload({ ...data, unreadCount: drawerOpenedRef.current ? 0 : (hasUnread ? 1 : 0) });
+        return true;
       }
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
     } finally {
       setIsLoadingNotifications(false);
     }
+    return false;
   }
 
   function prefetchGalleryFirst() {
@@ -426,13 +436,20 @@ export function HeaderProfileLink() {
   }, [isSignedIn, pathname, notificationCacheKey]);
 
 
-  // 초기 로드: 캐시 없을 때만 API 호출 / 로그아웃 시 캐시 제거
+  // 초기 로드: 로그인 확정 시 알림목록 1회 강제 조회 / 로그아웃 시 캐시 제거
   useEffect(() => {
-    if (isSignedIn) {
-      const notifCached = readNotificationCache(notificationCacheKey);
-      if (!notifCached) {
-        void fetchAvatar();
-        void fetchNotificationItems({ showLoading: false });
+    if (isSignedIn && user?.id) {
+      void fetchAvatar();
+
+      const initialLoadKey = getNotificationInitialLoadKey(user.id);
+      const alreadyLoaded = sessionStorage.getItem(initialLoadKey) === "1";
+      if (!alreadyLoaded) {
+        void fetchNotificationItems({ showLoading: false }).then((ok) => {
+          if (!ok) return;
+          try {
+            sessionStorage.setItem(initialLoadKey, "1");
+          } catch {}
+        });
       }
     } else if (isSignedIn === false) {
       drawerOpenedRef.current = false;
@@ -441,12 +458,13 @@ export function HeaderProfileLink() {
       setUsername(null);
       setEmail(null);
       clearNotificationCacheAll();
+      clearNotificationInitialLoadAll();
       try {
         sessionStorage.removeItem("header-notification-sticky-ids-v1");
         sessionStorage.removeItem("header-notification-drawer-opened");
       } catch {}
     }
-  }, [isSignedIn, clearActiveHeaderSession]);
+  }, [isSignedIn, user?.id, notificationCacheKey, clearActiveHeaderSession]);
 
   // 아바타 업데이트 이벤트 수신
   useEffect(() => {
@@ -519,7 +537,6 @@ export function HeaderProfileLink() {
     writeNotificationCache(notificationCacheKey, {
       unreadCount: 0,
       items: nextItems,
-      iconImage,
       username,
       email,
       notificationEnabled,
@@ -571,7 +588,6 @@ export function HeaderProfileLink() {
     writeNotificationCache(notificationCacheKey, {
       unreadCount: 0,
       items: nextItems,
-      iconImage,
       username,
       email,
       notificationEnabled,

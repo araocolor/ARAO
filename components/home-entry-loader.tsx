@@ -7,15 +7,14 @@ import { useHeaderSessionStore } from "@/stores/header-session-store";
 type HomeEntryLoaderProps = {
   children: ReactNode;
 };
-const ENTRY_LOADER_MS = 2000;
-const MEMBER_READY_LOADER_MS = 3000;
+const ENTRY_LOADER_MS = 1000;
+const MEMBER_READY_LOADER_MS = 2000;
 const NOTIFICATION_CACHE_PREFIX = "header-notifications-cache-v1";
 const LOGIN_LOADER_DONE_PREFIX = "arao-login-loader-done";
 
 type NotificationCachePayload = {
   unreadCount: number;
   items: unknown[];
-  iconImage?: string | null;
   username?: string | null;
   email?: string | null;
   notificationEnabled: boolean;
@@ -174,7 +173,6 @@ export function HomeEntryLoader({ children }: HomeEntryLoaderProps) {
               data: {
                 unreadCount,
                 items: [],
-                iconImage: data.iconImage ?? null,
                 username: data.username ?? null,
                 email: data.email ?? null,
                 notificationEnabled: data.notificationEnabled,
