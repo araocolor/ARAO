@@ -71,6 +71,9 @@ export const mockGeneralProfile = {
   hasPassword: true,
   phone: '01012345678',
   notificationEnabled: true,
+  iconImage: null,
   role: 'customer',
+  tier: 'general',
+  unreadCount: 0,
   createdAt: '2026-03-01T00:00:00Z',
 };

@@ -1,5 +1,12 @@
 # update_stack_mini.md
 
+## 사용자 필수 규칙 반드시!!!
+
+답변은 전문기술용어 사용금지, 페이지파일표시금지
+홈페이지 방문자 입장에서 이해할수 있게 쉽게설명 
+함수이름을 설명할때는 사용자가이해할수 있는 이름으로 설명
+
+
 ## Goal
 Keep current project and improve real-time UX + perceived speed with minimal process.
 - Top priority: preserve smooth loading/transition and strong real-time feedback; no new feature should degrade these.

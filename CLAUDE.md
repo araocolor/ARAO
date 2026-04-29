@@ -2,20 +2,15 @@
 
 ## 스킬 규칙 (최우선)
 - `using-superpowers` 스킬 사용 금지
+- 플레이라이트  사용시 허락요청
 
-## 코드 검색 규칙 (최우선, 거짓말 방지)
 
-검색 시 첫 번째 결과를 정답으로 단정하지 말 것.
-
-1. 동일한 텍스트/기능을 가진 요소가 몇 개인지 **전체 검색 먼저 수행**
-2. 모든 후보를 나열한 후 정확한 요소를 특정
-3. CSS 클래스명 확인 시 해당 클래스가 실제로 적용된 요소까지 추적
-
-**Why:** 동일 텍스트("프로필사진")가 여러 버튼에 존재할 수 있어, 첫 번째 검색 결과만 보고 단정하면 거짓말이 됨.
 
 ## 메모리 규칙 (최우선)
 
 모든 답변 전에 `/Users/chalres/.claude/projects/-Users-chalres-Projects-test-codex/memory/MEMORY.md`의 메모리 규칙을 먼저 읽고 적용할 것. 사용자가 별도로 언급하지 않아도 항상 적용.
+
+
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. See **frontend.md**, **backend.md**, and **share.md** for detailed specifications.
 Also follow **AGENTS.md** for shared agent workflow and verification rules.
@@ -30,12 +25,12 @@ npm run build                  # Build for production
 npm run start                  # Start production server
 ```
 
-## 토큰 사용량 규칙 (최우선)
 
+## 사용자에게 메세지 전달규치 
 
-**Why:** 작업 중간에 토큰 한도 초과로 중단되는 것을 방지하기 위한 사용자 규칙.
+영어 파일명/기술 영어/표 금지, 쉬운 설명으로 5줄 이내
+사용자 친화적 설명: 기술 용어 없이 결과 중심으로
 
-**How to apply:** 작업 전 토큰 여유 확인. 90% 이상이거나 작업량 대비 토큰이 부족할 것 같으면 시작하지 말 것. /compact 언급 금지.
 
 > **레이아웃 수정 요청 시 반드시 아래 순서를 따를 것 (생략 금지):**
 > 1. **LAYOUT_MAP.md** 를 먼저 참조하여 해당 구역의 파일과 클래스를 확인
@@ -100,25 +95,3 @@ export async function GET(
 1. `npm run build` — 최소 게이트 (`npm run lint`는 현재 Next.js 15.5.15 환경에서 실패함)
 2. Dev 서버에서 수동 확인 사용자에게 물어볼것.
 
-
-
-## Language Rules (Core)
-
-### 소통 원칙
-- **톤앤매너**: 감정 배제, 짧고 간결한 전문가 어조, 이모지/은유 금지.
-- **포맷**: 분석/정리는 무조건 **표(Table)** 사용.
-
-
-## Common Gotchas
-
-| Issue | Solution |
-|-------|----------|
-| "Type not assignable to Promise" | `await params` in dynamic routes |
-| Cache corruption in dev | `.next/` 삭제 후 재시작 |
-| Dev 서버 중복 실행 | `lsof -nP -iTCP:3000 -sTCP:LISTEN` 확인, 1개만 유지 |
-| Hydration error | `.next/` 삭제 — SSR/클라이언트 불일치 |
-| iOS input zoom | `<input>` font-size >= 16px 필수 |
-| Gallery 좋아요 하트 사라짐 | IntersectionObserver 응답이 클릭 후 덮어씀 → `userInteractedRef` 차단 |
-| 알림 재클릭 미동작 | 링크에 `&t=${Date.now()}` 추가해 강제 재이동 |
-| 갤러리 댓글창 재오픈 안 됨 | `openTimestamp` prop 의존성에 추가해 `t` 변경으로 재실행 |
-| RLS policy errors | Supabase Row-Level Security 정책 확인 |

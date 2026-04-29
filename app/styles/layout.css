@@ -25,9 +25,20 @@
 }
 
 .landing-entry-loader-bar-fill {
-  width: 100%;
+  display: block;
+  width: 0%;
   height: 100%;
   background: #facc15;
+  animation: landing-entry-loader-fill 1s linear forwards;
+}
+
+@keyframes landing-entry-loader-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
 }
 
 #intro,

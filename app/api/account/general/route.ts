@@ -5,6 +5,39 @@ import { hashPassword, validateEnglishNumberPassword } from "@/lib/password";
 import { syncProfile } from "@/lib/profiles";
 import { isDesignMode, mockGeneralProfile } from "@/lib/design-mock";
 
+async function getUnreadCount(profileId: string): Promise<number> {
+  const supabase = createSupabaseAdminClient();
+  let total = 0;
+
+  const { count: dbUnreadCount, error: dbUnreadError } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("profile_id", profileId)
+    .neq("type", "consulting")
+    .eq("is_read", false);
+
+  if (dbUnreadError) {
+    console.error("general unread count notifications error:", dbUnreadError);
+  } else if (typeof dbUnreadCount === "number") {
+    total += dbUnreadCount;
+  }
+
+  const { count: inquiryUnreadCount, error: inquiryUnreadError } = await supabase
+    .from("inquiries")
+    .select("id", { count: "exact", head: true })
+    .eq("profile_id", profileId)
+    .in("status", ["resolved"])
+    .eq("has_unread_reply", true);
+
+  if (inquiryUnreadError) {
+    console.error("general unread count inquiries error:", inquiryUnreadError);
+  } else if (typeof inquiryUnreadCount === "number") {
+    total += inquiryUnreadCount;
+  }
+
+  return total;
+}
+
 export async function GET() {
   // 디자인 모드: Clerk 로그인 없이 더미 데이터 반환
   if (isDesignMode) {
@@ -25,6 +58,7 @@ export async function GET() {
   if (!profile) {
     return NextResponse.json({ message: "회원 정보를 찾을 수 없습니다." }, { status: 404 });
   }
+  const unreadCount = await getUnreadCount(profile.id);
 
   return NextResponse.json({
     email: profile.email,
@@ -35,6 +69,8 @@ export async function GET() {
     notificationEnabled: profile.notification_enabled ?? true,
     iconImage: profile.icon_image ?? null,
     role: profile.role,
+    tier: profile.tier ?? "general",
+    unreadCount,
     createdAt: profile.created_at,
     usernameChangeCount: profile.username_change_count,
     usernameRegisteredAt: profile.username_registered_at,
