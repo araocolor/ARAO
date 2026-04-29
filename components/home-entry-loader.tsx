@@ -7,7 +7,8 @@ import { useHeaderSessionStore } from "@/stores/header-session-store";
 type HomeEntryLoaderProps = {
   children: ReactNode;
 };
-const ENTRY_LOADER_MS = 1000;
+const ENTRY_LOADER_MS = 2000;
+const MEMBER_READY_LOADER_MS = 3000;
 const NOTIFICATION_CACHE_PREFIX = "header-notifications-cache-v1";
 
 type NotificationCachePayload = {
@@ -47,9 +48,9 @@ function hasLandingCache(): boolean {
   }
 }
 
-function hasValueInLocalStorage(key: string): boolean {
+function hasValueInSessionStorage(key: string): boolean {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = sessionStorage.getItem(key);
     return typeof raw === "string" && raw.trim().length > 0;
   } catch {
     return false;
@@ -58,11 +59,11 @@ function hasValueInLocalStorage(key: string): boolean {
 
 function hasMemberCache(userId: string): boolean {
   return (
-    hasValueInLocalStorage(`header-avatar:${userId}`) &&
-    hasValueInLocalStorage(`header-email:${userId}`) &&
-    hasValueInLocalStorage(`header-role:${userId}`) &&
-    hasValueInLocalStorage(`header-tier:${userId}`) &&
-    hasValueInLocalStorage(`header-username:${userId}`)
+    hasValueInSessionStorage(`header-avatar:${userId}`) &&
+    hasValueInSessionStorage(`header-email:${userId}`) &&
+    hasValueInSessionStorage(`header-role:${userId}`) &&
+    hasValueInSessionStorage(`header-tier:${userId}`) &&
+    hasValueInSessionStorage(`header-username:${userId}`)
   );
 }
 
@@ -108,11 +109,14 @@ export function HomeEntryLoader({ children }: HomeEntryLoaderProps) {
   const setHeaderBadgeCount = useHeaderSessionStore((state) => state.setBadgeCount);
 
   useEffect(() => {
-    const cached = hasLandingCache();
-    const delay = cached ? ENTRY_LOADER_MS : ENTRY_LOADER_MS;
+    const memberReadyCached = sessionStorage.getItem("arao-member-ready") === "1";
+    const landingCached = hasLandingCache();
+    const delay = isSignedIn
+      ? (memberReadyCached ? MEMBER_READY_LOADER_MS : ENTRY_LOADER_MS)
+      : (landingCached ? 0 : ENTRY_LOADER_MS);
     const timer = window.setTimeout(() => setReady(true), delay);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [isSignedIn]);
 
   useEffect(() => {
     if (!isSignedIn || !user?.id) return;
@@ -128,7 +132,10 @@ export function HomeEntryLoader({ children }: HomeEntryLoaderProps) {
         const cachedUnreadCount = getCachedUnreadCount(userId);
         if (cachedUnreadCount !== null) setHeaderBadgeCount(cachedUnreadCount);
       }
-      if (memberCached && notificationCached) return;
+      if (memberCached && notificationCached) {
+        try { sessionStorage.setItem("arao-member-ready", "1"); } catch {}
+        return;
+      }
 
       try {
         const response = await fetch("/api/account/general", { cache: "no-store" });
@@ -160,6 +167,7 @@ export function HomeEntryLoader({ children }: HomeEntryLoaderProps) {
             sessionStorage.setItem(getNotificationCacheKey(userId), JSON.stringify(snapshot));
           } catch {}
         }
+        try { sessionStorage.setItem("arao-member-ready", "1"); } catch {}
       } catch {}
     }
 

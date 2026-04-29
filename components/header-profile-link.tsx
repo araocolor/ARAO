@@ -426,11 +426,14 @@ export function HeaderProfileLink() {
   }, [isSignedIn, pathname, notificationCacheKey]);
 
 
-  // 초기 로드: 아바타 먼저 → 알림 / 로그아웃 시 캐시 제거
+  // 초기 로드: 캐시 없을 때만 API 호출 / 로그아웃 시 캐시 제거
   useEffect(() => {
     if (isSignedIn) {
-      void fetchAvatar();
-      void fetchNotificationItems({ showLoading: false });
+      const notifCached = readNotificationCache(notificationCacheKey);
+      if (!notifCached) {
+        void fetchAvatar();
+        void fetchNotificationItems({ showLoading: false });
+      }
     } else if (isSignedIn === false) {
       drawerOpenedRef.current = false;
       clearActiveHeaderSession();
