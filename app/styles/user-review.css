@@ -1745,11 +1745,11 @@
 }
 
 .user-content-profile-modal-backdrop {
-  z-index: 1200;
+  z-index: 39;
 }
 
 .user-content-profile-full-backdrop {
-  z-index: 1210;
+  z-index: 39;
 }
 
 .user-content-profile-modal {
