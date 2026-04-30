@@ -9,15 +9,16 @@ import { NotificationDrawer } from "@/components/notification-drawer";
 import type { NotificationItem } from "@/lib/notifications";
 import { getCached, setCached } from "@/hooks/use-prefetch-cache";
 import { useHeaderSessionStore } from "@/stores/header-session-store";
-import { REVIEW_LIST_CACHE_TTL, NOTIFICATION_CACHE_TTL } from "@/lib/cache-config";
+import { REVIEW_LIST_CACHE_TTL } from "@/lib/cache-config";
 import { GALLERY_CATEGORIES } from "@/lib/gallery-categories";
 
 const REVIEW_PREFETCH_LOCK_KEY = "user-review-list-prefetch-lock";
 const REVIEW_PREFETCH_LOCK_MS = 10000;
 const NOTIFICATION_CACHE_PREFIX = "header-notifications-cache-v1";
-const NOTIFICATION_INITIAL_LOAD_PREFIX = "header-notifications-initial-loaded-v1";
+const NOTIFICATION_INITIAL_LOAD_PREFIX = "header-notifications-initial-loaded-v2";
 const NOTIFICATION_REOPEN_ONCE_KEY = "header-notification-reopen-once";
 const COMMENT_PREFETCH_CATEGORIES = ["people", "outdoor", "indoor", "cafe"] as const;
+const NOTIFICATION_CACHE_SKIP_THRESHOLD = 13;
 
 type NotificationPayload = {
   unreadCount: number;
@@ -26,6 +27,7 @@ type NotificationPayload = {
   email?: string | null;
   notificationEnabled?: boolean;
   role?: string | null;
+  isFullData?: boolean;
 };
 
 type NotificationCacheSnapshot = {
@@ -57,6 +59,11 @@ function readNotificationCache(cacheKey: string): NotificationPayload | null {
   } catch {
     return null;
   }
+}
+
+function hasEnoughCachedNotificationItems(payload: NotificationPayload | null): boolean {
+  if (!payload || !Array.isArray(payload.items)) return false;
+  return payload.items.length >= NOTIFICATION_CACHE_SKIP_THRESHOLD;
 }
 
 function getNotificationInitialLoadKey(userId: string | null | undefined): string {
@@ -149,6 +156,8 @@ export function HeaderProfileLink() {
   const [email, setEmail] = useState<string | null>(null);
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasFullNotificationsRef = useRef(false);
+  const fullLoadPromiseRef = useRef<Promise<boolean> | null>(null);
   const drawerOpenedRef = useRef(
     typeof window !== "undefined" && sessionStorage.getItem("header-notification-drawer-opened") === "1"
   );
@@ -162,12 +171,14 @@ export function HeaderProfileLink() {
     itemsRef.current = items;
   }, [items]);
 
-  function applyNotificationPayload(payload: NotificationPayload, options?: { persist?: boolean }) {
+  function applyNotificationPayload(payload: NotificationPayload, options?: { persist?: boolean; isFullData?: boolean }) {
     const nextItems = Array.isArray(payload.items) ? payload.items : [];
     const unread = Number.isFinite(payload.unreadCount)
       ? payload.unreadCount
       : nextItems.filter((item) => !item.is_read).length;
     const nextNotificationEnabled = payload.notificationEnabled ?? true;
+    const isFullData = options?.isFullData ?? payload.isFullData ?? hasFullNotificationsRef.current;
+    hasFullNotificationsRef.current = isFullData;
     setItems(nextItems);
     setHeaderBadgeCount(unread);
     if (payload.username !== undefined) {
@@ -188,6 +199,7 @@ export function HeaderProfileLink() {
         username: payload.username,
         email: payload.email,
         notificationEnabled: nextNotificationEnabled,
+        isFullData,
       });
     }
   }
@@ -235,15 +247,20 @@ export function HeaderProfileLink() {
       .slice(0, 3);
   }
 
-  async function fetchNotificationItems(options?: { showLoading?: boolean }): Promise<boolean> {
+  async function fetchNotificationItems(options?: { showLoading?: boolean; mode?: "initial13" | "full" }): Promise<boolean> {
     const showLoading = options?.showLoading ?? items.length === 0;
+    const mode = options?.mode ?? "full";
     if (showLoading) setIsLoadingNotifications(true);
     try {
-      const response = await fetch("/api/account/notifications");
+      const query = mode === "initial13" ? "?mode=initial13" : "";
+      const response = await fetch(`/api/account/notifications${query}`);
       if (response.ok) {
         const data = (await response.json()) as NotificationPayload;
         const hasUnread = getTop3UnreadItems(data.items ?? []).length > 0;
-        applyNotificationPayload({ ...data, unreadCount: drawerOpenedRef.current ? 0 : (hasUnread ? 1 : 0) });
+        applyNotificationPayload(
+          { ...data, unreadCount: drawerOpenedRef.current ? 0 : (hasUnread ? 1 : 0) },
+          { isFullData: mode === "full" }
+        );
         return true;
       }
     } catch (error) {
@@ -413,7 +430,7 @@ export function HeaderProfileLink() {
     if (!isSignedIn) return;
     const cached = readNotificationCache(notificationCacheKey);
     if (!cached) return;
-    applyNotificationPayload(cached, { persist: false });
+    applyNotificationPayload(cached, { persist: false, isFullData: cached.isFullData === true });
   }, [isSignedIn, notificationCacheKey]);
 
   // 알림 경유 본문에서 리스트로 복귀했을 때 알림창 자동 재오픈
@@ -428,11 +445,13 @@ export function HeaderProfileLink() {
     if (!shouldReopen) return;
     const cached = readNotificationCache(notificationCacheKey);
     if (cached) {
-      applyNotificationPayload(cached, { persist: false });
+      applyNotificationPayload(cached, { persist: false, isFullData: cached.isFullData === true });
     }
     setDrawerMounted(true);
     setDrawerOpen(true);
-    void fetchNotificationItems({ showLoading: !cached });
+    if (!hasEnoughCachedNotificationItems(cached)) {
+      void fetchNotificationItems({ showLoading: !cached, mode: "full" });
+    }
   }, [isSignedIn, pathname, notificationCacheKey]);
 
 
@@ -444,7 +463,7 @@ export function HeaderProfileLink() {
       const initialLoadKey = getNotificationInitialLoadKey(user.id);
       const alreadyLoaded = sessionStorage.getItem(initialLoadKey) === "1";
       if (!alreadyLoaded) {
-        void fetchNotificationItems({ showLoading: false }).then((ok) => {
+        void fetchNotificationItems({ showLoading: false, mode: "initial13" }).then((ok) => {
           if (!ok) return;
           try {
             sessionStorage.setItem(initialLoadKey, "1");
@@ -453,6 +472,8 @@ export function HeaderProfileLink() {
       }
     } else if (isSignedIn === false) {
       drawerOpenedRef.current = false;
+      hasFullNotificationsRef.current = false;
+      fullLoadPromiseRef.current = null;
       clearActiveHeaderSession();
       setItems([]);
       setUsername(null);
@@ -498,10 +519,16 @@ export function HeaderProfileLink() {
 
     const cached = readNotificationCache(notificationCacheKey);
     if (cached) {
-      applyNotificationPayload({ ...cached, unreadCount: 0 });
+      applyNotificationPayload(
+        { ...cached, unreadCount: 0 },
+        { isFullData: cached.isFullData === true }
+      );
     }
     setDrawerMounted(true);
     setDrawerOpen(true);
+    if (!hasEnoughCachedNotificationItems(cached)) {
+      void fetchNotificationItems({ showLoading: !cached, mode: "full" });
+    }
 
     // 드로어 열리는 순간 빨간점 OFF (로그아웃 전까지 유지)
     drawerOpenedRef.current = true;
@@ -540,6 +567,7 @@ export function HeaderProfileLink() {
       username,
       email,
       notificationEnabled,
+      isFullData: hasFullNotificationsRef.current,
     });
 
     if (notificationIds.length > 0) {
@@ -591,7 +619,22 @@ export function HeaderProfileLink() {
       username,
       email,
       notificationEnabled,
+      isFullData: hasFullNotificationsRef.current,
     });
+  }
+
+  async function ensureFullNotificationsLoaded() {
+    if (hasFullNotificationsRef.current) return;
+    if (fullLoadPromiseRef.current) {
+      await fullLoadPromiseRef.current;
+      return;
+    }
+    fullLoadPromiseRef.current = fetchNotificationItems({ showLoading: false, mode: "full" });
+    try {
+      await fullLoadPromiseRef.current;
+    } finally {
+      fullLoadPromiseRef.current = null;
+    }
   }
 
   const isCommunityListPage = mounted && pathname === "/user_review";
@@ -634,6 +677,7 @@ export function HeaderProfileLink() {
           isLoading={isLoadingNotifications}
           username={username}
           email={email}
+          onRequestFullLoad={ensureFullNotificationsLoaded}
           onClose={closeDrawer}
           onMarkRead={(id) => applyReadStateToNotificationItem(id, true)}
           onRollbackRead={(id) => applyReadStateToNotificationItem(id, false)}

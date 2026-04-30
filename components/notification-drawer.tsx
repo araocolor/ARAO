@@ -16,6 +16,7 @@ type NotificationDrawerProps = {
   onClose: () => void;
   onMarkRead: (id: string) => void;
   onRollbackRead: (id: string) => void;
+  onRequestFullLoad?: () => Promise<void>;
 };
 
 function appendQueryParam(link: string, key: string, value: string): string {
@@ -153,9 +154,11 @@ export function NotificationDrawer({
   onClose,
   onMarkRead,
   onRollbackRead,
+  onRequestFullLoad,
 }: NotificationDrawerProps) {
   const [optimisticReadIds, setOptimisticReadIds] = useState<Set<string>>(new Set());
-  const [moreLoadsCount, setMoreLoadsCount] = useState(0);
+  const [showAllRecentSevenDays, setShowAllRecentSevenDays] = useState(false);
+  const [recentThirtyLoadSteps, setRecentThirtyLoadSteps] = useState(0);
   const drawerRef = useRef<HTMLDivElement>(null);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
@@ -166,7 +169,8 @@ export function NotificationDrawer({
 
   useEffect(() => {
     if (!isOpen) {
-      setMoreLoadsCount(0);
+      setShowAllRecentSevenDays(false);
+      setRecentThirtyLoadSteps(0);
       return;
     }
     document.body.style.overflow = "hidden";
@@ -198,44 +202,25 @@ export function NotificationDrawer({
     onClose();
   };
 
-  // 알림 우선순위 점수 계산 (중요알림 섹션 정렬용)
-  const getPriorityScore = (item: NotificationItem): number => {
-    if (item.type === "consulting") return 3000;
-    if (item.type === "review_comment") return 2000;
-    if (item.type === "review_reply") return 1000;
-    return 0;
+  // 중요알림 우선순위
+  const getImportantPriority = (item: NotificationItem): number => {
+    if (item.type === "consulting") return 0;
+    if (item.type === "review_comment") return 1;
+    if (item.type === "gallery_reply") return 1;
+    if (item.type === "review_reply") return 2;
+    if (item.type === "gallery_comment_deleted") return 2;
+    return 99;
   };
 
-  // 중요알림 섹션 구성: sessionStorage에 저장된 sticky IDs가 있으면 그걸 우선
-  // 없으면 1주일 이내 + 안읽은 글 최신순 3개를 캡처해서 저장
-  const STICKY_KEY = "header-notification-sticky-ids-v1";
-  const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-
-  let stickyIds: string[] = [];
-  try {
-    const raw = sessionStorage.getItem(STICKY_KEY);
-    if (raw) stickyIds = JSON.parse(raw) as string[];
-  } catch {}
-
-  let importantItems: NotificationItem[];
-  if (stickyIds.length > 0) {
-    const itemMap = new Map(sortedItems.map((i) => [i.id, i]));
-    importantItems = stickyIds
-      .map((id) => itemMap.get(id))
-      .filter((i): i is NotificationItem => Boolean(i));
-  } else {
-    importantItems = sortedItems
-      .filter(
-        (i) => !i.is_read && new Date(i.created_at).getTime() >= oneWeekAgo
-      )
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 3);
-    if (importantItems.length > 0) {
-      try {
-        sessionStorage.setItem(STICKY_KEY, JSON.stringify(importantItems.map((i) => i.id)));
-      } catch {}
-    }
-  }
+  const importantItems = sortedItems
+    .filter((item) => item.type !== "settings")
+    .sort((a, b) => {
+      const pa = getImportantPriority(a);
+      const pb = getImportantPriority(b);
+      if (pa !== pb) return pa - pb;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    })
+    .slice(0, 3);
 
   // 중요알림 이후 항목 (최근7일)
   const importantIds = new Set(importantItems.map((i) => i.id));
@@ -246,23 +231,39 @@ export function NotificationDrawer({
   const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
   const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
 
-  const recentSevenDays = remainingItems.filter(
+  const allRecentSevenDays = remainingItems.filter(
     (i) => new Date(i.created_at).getTime() >= sevenDaysAgo
   );
-  const recentThirtyDays = remainingItems.filter(
+  const allRecentThirtyDays = remainingItems.filter(
     (i) =>
       new Date(i.created_at).getTime() < sevenDaysAgo &&
       new Date(i.created_at).getTime() >= thirtyDaysAgo
   );
 
-  // 최근7일 섹션: 최대 5개
-  const recentItems = recentSevenDays.slice(0, 5);
-  const recentIds = new Set(recentItems.map((i) => i.id));
+  // 최근7일 섹션: 기본 5개, 더보기 클릭 시 7일 전체
+  const recentSevenVisibleItems = showAllRecentSevenDays
+    ? allRecentSevenDays
+    : allRecentSevenDays.slice(0, 5);
 
-  // 최근30일 섹션: 7일 초과 ~ 30일 이내
-  const older = recentThirtyDays;
-  const maxMoreItems = 10 + moreLoadsCount * 30;
-  const moreItems = older.slice(0, maxMoreItems);
+  // 최근30일(8일~30일): 기본 5개, 더보기 클릭 시 30개씩 추가
+  const recentThirtyVisibleCount = 5 + recentThirtyLoadSteps * 30;
+  const recentThirtyVisibleItems = allRecentThirtyDays.slice(0, recentThirtyVisibleCount);
+
+  async function handleExpandRecentSevenDays() {
+    if (isLoading) return;
+    if (onRequestFullLoad) {
+      await onRequestFullLoad();
+    }
+    setShowAllRecentSevenDays(true);
+  }
+
+  async function handleExpandRecentThirtyDays() {
+    if (isLoading) return;
+    if (onRequestFullLoad) {
+      await onRequestFullLoad();
+    }
+    setRecentThirtyLoadSteps((prev) => prev + 1);
+  }
 
   return createPortal((
     <>
@@ -389,34 +390,43 @@ export function NotificationDrawer({
 
               return (
                 <>
-                  {/* 최신알림 섹션 (3개 고정) */}
+                  {/* 중요알림 섹션 (3개 고정) */}
                   {importantItems.length > 0 && (
                     <div className="notif-section">
-                      <span className="notif-section-title">최신알림</span>
+                      <span className="notif-section-title">중요알림</span>
                       {importantItems.map((item) => renderItem(item, !item.is_read))}
                     </div>
                   )}
 
                   {/* 최근7일 섹션 (5개 고정) */}
-                  {recentItems.length > 0 && (
+                  {allRecentSevenDays.length > 0 && (
                     <div className="notif-section">
                       <span className="notif-section-title">최근 7일</span>
-                      {recentItems.map((item) => renderItem(item))}
+                      {recentSevenVisibleItems.map((item) => renderItem(item))}
+                      {!showAllRecentSevenDays && allRecentSevenDays.length > recentSevenVisibleItems.length && (
+                        <button
+                          className="notif-more-btn"
+                          onClick={() => { void handleExpandRecentSevenDays(); }}
+                          type="button"
+                        >
+                          더 많은 알람 ({allRecentSevenDays.length - recentSevenVisibleItems.length}개)
+                        </button>
+                      )}
                     </div>
                   )}
 
                   {/* 최근 30일 섹션 */}
-                  {older.length > 0 && (
+                  {allRecentThirtyDays.length > 0 && (
                     <div className="notif-section">
                       <span className="notif-section-title">최근 30일</span>
-                      {moreItems.map((item) => renderItem(item))}
-                      {older.length > moreItems.length && (
+                      {recentThirtyVisibleItems.map((item) => renderItem(item))}
+                      {allRecentThirtyDays.length > recentThirtyVisibleItems.length && (
                         <button
                           className="notif-more-btn"
-                          onClick={() => setMoreLoadsCount((prev) => prev + 1)}
+                          onClick={() => { void handleExpandRecentThirtyDays(); }}
                           type="button"
                         >
-                          더 많은 알림 ({older.length - moreItems.length}개)
+                          더 많은 알람 ({allRecentThirtyDays.length - recentThirtyVisibleItems.length}개)
                         </button>
                       )}
                     </div>
