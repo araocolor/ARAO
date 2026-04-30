@@ -8,7 +8,8 @@ type HomeEntryLoaderProps = {
   children: ReactNode;
 };
 const ENTRY_LOADER_MS = 1000;
-const MEMBER_READY_LOADER_MS = 2000;
+const GUEST_ENTRY_LOADER_MS = 0;
+const MEMBER_READY_LOADER_MS = 1000;
 const NOTIFICATION_CACHE_PREFIX = "header-notifications-cache-v1";
 const LOGIN_LOADER_DONE_PREFIX = "arao-login-loader-done";
 
@@ -104,6 +105,8 @@ function getCachedUnreadCount(userId: string): number | null {
 export function HomeEntryLoader({ children }: HomeEntryLoaderProps) {
   const [ready, setReady] = useState(false);
   const { isSignedIn, user } = useUser();
+  const loaderFillDuration = "1s";
+  const showSignedInLoaderBar = isSignedIn === true;
   const hydrateHeaderSession = useHeaderSessionStore((state) => state.hydrateForUser);
   const setHeaderAvatar = useHeaderSessionStore((state) => state.setAvatar);
   const setHeaderUsername = useHeaderSessionStore((state) => state.setUsername);
@@ -123,7 +126,7 @@ export function HomeEntryLoader({ children }: HomeEntryLoaderProps) {
       : false;
     const delay = isSignedIn
       ? (loginLoaderDoneCached ? 0 : (memberReadyCached ? MEMBER_READY_LOADER_MS : ENTRY_LOADER_MS))
-      : (landingCached ? 0 : ENTRY_LOADER_MS);
+      : (landingCached ? 0 : GUEST_ENTRY_LOADER_MS);
     const timer = window.setTimeout(() => {
       setReady(true);
       if (isSignedIn && user?.id) {
@@ -206,9 +209,11 @@ export function HomeEntryLoader({ children }: HomeEntryLoaderProps) {
   if (!ready) {
     return (
       <main className="landing-entry-loader" aria-label="로딩">
-        <div className="landing-entry-loader-bar-track" aria-hidden="true">
-          <span className="landing-entry-loader-bar-fill" />
-        </div>
+        {showSignedInLoaderBar ? (
+          <div className="landing-entry-loader-bar-track" aria-hidden="true">
+            <span className="landing-entry-loader-bar-fill" style={{ animationDuration: loaderFillDuration }} />
+          </div>
+        ) : null}
       </main>
     );
   }
