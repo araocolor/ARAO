@@ -1719,6 +1719,16 @@
   align-items: center;
   gap: 14px;
 }
+.account-deleted-image-wrap {
+  display: flex;
+  justify-content: center;
+}
+.account-deleted-image {
+  width: 150px;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
 .account-deleted-view h1 {
   margin: 0;
   font-size: 22px;

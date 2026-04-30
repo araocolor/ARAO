@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 type AccountDeletedViewProps = {
   deletedAt: string | null;
@@ -47,6 +48,16 @@ export function AccountDeletedView({ deleteScheduledAt, email, onRestored }: Acc
 
   return (
     <section className="account-deleted-view">
+      <div className="account-deleted-image-wrap" aria-hidden="true">
+        <Image
+          src="/images/goodbye_icon.jpg"
+          alt=""
+          width={96}
+          height={96}
+          className="account-deleted-image"
+          priority
+        />
+      </div>
       <h1>회원탈퇴 진행 중</h1>
       <p className="account-deleted-email">{email}</p>
       <p className="account-deleted-desc">
