@@ -35,6 +35,13 @@ function getGeneralCacheKey(email?: string | null) {
   return email ? `general_${email.toLowerCase()}` : "general";
 }
 
+function clearAvatarRelatedSessionCache(userId: string | null | undefined) {
+  if (!userId || typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(`header-avatar:${userId}`);
+  } catch {}
+}
+
 export function GeneralSettingsForm({
   email,
   fullName: initialFullName,
@@ -353,6 +360,7 @@ export function GeneralSettingsForm({
     const isFirstAvatar = !iconImage;
     const nextIconImage = data.iconImage ?? dataUrl;
     setIconImage(nextIconImage);
+    clearAvatarRelatedSessionCache(user?.id ?? null);
     syncHeaderAvatarCache(nextIconImage);
     clearCached(getGeneralCacheKey(email));
     window.dispatchEvent(new CustomEvent("avatar-updated", { detail: { iconImage: nextIconImage } }));
@@ -392,6 +400,7 @@ export function GeneralSettingsForm({
     }
 
     setIconImage("");
+    clearAvatarRelatedSessionCache(user?.id ?? null);
     syncHeaderAvatarCache(null);
     setPreviewImage(null);
     setIsEditingAvatar(false);
@@ -558,6 +567,7 @@ export function GeneralSettingsForm({
     const data = (await res.json()) as { iconImage?: string; message?: string };
     if (res.ok && data.iconImage) {
       setIconImage(data.iconImage);
+      clearAvatarRelatedSessionCache(user?.id ?? null);
       syncHeaderAvatarCache(data.iconImage);
       setRandomPreviewUrl(null);
       clearCached(getGeneralCacheKey(email));

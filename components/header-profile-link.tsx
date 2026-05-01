@@ -207,7 +207,7 @@ export function HeaderProfileLink() {
   // 아바타/아이디 먼저 조회 (빠른 업데이트)
   async function fetchAvatar() {
     try {
-      const response = await fetch("/api/account/avatar");
+      const response = await fetch("/api/account/avatar", { cache: "no-store" });
       if (response.ok) {
         const data = (await response.json()) as {
           iconImage?: string | null;
