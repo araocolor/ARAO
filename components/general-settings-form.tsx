@@ -3,7 +3,7 @@
 import { FormEvent, useState, useRef, useEffect, useCallback } from "react";
 import { UserRound } from "lucide-react";
 import Cropper, { Area } from "react-easy-crop";
-import { clearCached } from "@/hooks/use-prefetch-cache";
+import { clearCached, getCached, setCached } from "@/hooks/use-prefetch-cache";
 import { useHeaderSessionStore } from "@/stores/header-session-store";
 import { UserProfileModal, type UserProfileModalTarget } from "@/components/user-profile-modal";
 import { TierBadge } from "@/components/tier-badge";
@@ -16,6 +16,7 @@ type GeneralSettingsFormProps = {
   username: string | null;
   hasPassword: boolean;
   phone: string | null;
+  bio?: string | null;
   notificationEnabled: boolean;
   iconImage?: string;
   role: string;
@@ -39,6 +40,7 @@ export function GeneralSettingsForm({
   username: initialUsername,
   hasPassword: initialHasPassword,
   phone: initialPhone,
+  bio: initialBio = null,
   notificationEnabled: initialNotificationEnabled,
   iconImage: initialIconImage,
   role,
@@ -71,6 +73,7 @@ export function GeneralSettingsForm({
   const [hasPassword, setHasPassword] = useState(initialHasPassword);
   const [phone, setPhone] = useState(initialPhone ?? "");
   const [notificationEnabled, setNotificationEnabled] = useState(initialNotificationEnabled);
+  const [profileBio, setProfileBio] = useState(initialBio ?? "");
   const [phoneInput, setPhoneInput] = useState("");
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [usernameInput, setUsernameInput] = useState("");
@@ -110,6 +113,10 @@ export function GeneralSettingsForm({
   const usernameInputRef = useRef<HTMLInputElement>(null);
   const [isUsernameFocused, setIsUsernameFocused] = useState(false);
   const hasTriggeredRandomPrefetchRef = useRef(false);
+
+  useEffect(() => {
+    setProfileBio(initialBio ?? "");
+  }, [initialBio]);
 
   function prefetchRandomAvatarsOnce(urls: string[]) {
     if (typeof window === "undefined" || urls.length === 0) return;
@@ -221,6 +228,28 @@ export function GeneralSettingsForm({
     setHasPassword(true);
     setPasswordInput("");
     setSavingKey(null);
+  }
+
+  async function saveProfileBio(nextBio: string): Promise<{ ok: boolean; message?: string; bio?: string }> {
+    const response = await fetch("/api/account/general", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "bio", bio: nextBio }),
+    });
+    const data = (await response.json()) as { message?: string; bio?: string | null };
+
+    if (!response.ok) {
+      return { ok: false, message: data.message ?? "자기소개 저장 중 오류가 발생했습니다." };
+    }
+
+    const saved = (data.bio ?? "").toString();
+    setProfileBio(saved);
+
+    const cacheKey = getGeneralCacheKey(email);
+    const cachedGeneral = getCached<Record<string, unknown>>(cacheKey) ?? {};
+    setCached(cacheKey, { ...cachedGeneral, bio: saved });
+
+    return { ok: true, bio: saved };
   }
 
   async function submitPhone(event: FormEvent<HTMLFormElement>) {
@@ -675,6 +704,7 @@ export function GeneralSettingsForm({
                     authorEmail: email,
                     authorTier: role,
                     iconImage: iconImage,
+                    bio: profileBio,
                   })}
                 />
               ) : (
@@ -1111,6 +1141,9 @@ export function GeneralSettingsForm({
       isSignedIn={true}
       viewerRole={role}
       onRequestSignIn={() => {}}
+      allowProfileEdit={true}
+      initialBio={profileBio}
+      onSaveBio={saveProfileBio}
       onClose={() => setProfileModalTarget(null)}
     />
     </>

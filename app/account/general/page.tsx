@@ -11,6 +11,7 @@ interface GeneralData {
   username: string | null;
   hasPassword: boolean;
   phone: string | null;
+  bio?: string | null;
   notificationEnabled?: boolean;
   iconImage?: string;
   role: string;
@@ -113,6 +114,7 @@ export default function AccountGeneralPage() {
         username={data.username}
         hasPassword={data.hasPassword}
         phone={data.phone}
+        bio={data.bio ?? null}
         notificationEnabled={data.notificationEnabled ?? true}
         iconImage={data.iconImage}
         role={data.role}

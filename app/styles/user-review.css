@@ -56,7 +56,7 @@
   align-items: center;
   justify-content: center;
   color: #9ca3af;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.08em;
 }
@@ -1759,6 +1759,7 @@
   transform: translate(-50%, -50%);
   width: min(300px, calc(100vw - 24px));
   height: auto;
+  min-height: 320px;
   max-height: calc(100dvh - 24px);
   background: var(--surface);
   border-radius: 14px;
@@ -1766,6 +1767,11 @@
   z-index: 1201;
   display: flex;
   flex-direction: column;
+  transition: min-height 0.2s ease;
+}
+
+.user-content-profile-modal.is-editing {
+  min-height: 430px;
 }
 
 .user-content-profile-modal-body {
@@ -1781,6 +1787,14 @@
   align-items: center;
   gap: 8px;
   padding: 0 12px 12px;
+}
+
+.user-content-profile-modal-error {
+  margin: 0 12px 12px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #dc2626;
+  text-align: center;
 }
 
 .user-content-profile-modal-btn {
@@ -1946,6 +1960,92 @@
   font-size: 15px;
   line-height: 1.4;
   color: rgba(17, 17, 17, 0.5);
+  word-break: break-word;
+}
+
+.user-content-profile-bio-edit-wrap {
+  width: 100%;
+}
+
+.user-content-profile-bio-sections {
+  width: 100%;
+}
+
+.user-content-profile-bio-top {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.user-content-profile-bio-bottom {
+  width: 100%;
+  margin-top: 2px;
+  margin-bottom: 16px;
+}
+
+.user-content-profile-bio-link-row {
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.user-content-profile-bio-link-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.user-content-profile-bio-link {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 400;
+  font-style: italic;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.user-content-profile-bio-link:hover {
+  text-decoration: underline;
+}
+
+.user-content-profile-bio-link-icon {
+  margin-right: 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.user-content-profile-bio-input {
+  width: 100%;
+  min-height: 120px;
+  border-radius: 10px;
+  border: 1px solid rgba(17, 17, 17, 0.18);
+  background: #fff;
+  padding: 10px 11px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text);
+  resize: none;
+  font-family: inherit;
+}
+
+.user-content-profile-bio-input:focus {
+  outline: none;
+  border-color: #111;
+}
+
+.user-content-profile-bio-count {
+  margin: 6px 2px 0 0;
+  text-align: right;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--muted);
 }
 
 .user-content-profile-contact {

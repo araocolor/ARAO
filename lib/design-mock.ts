@@ -72,6 +72,7 @@ export const mockGeneralProfile = {
   phone: '01012345678',
   notificationEnabled: true,
   iconImage: null,
+  bio: "안녕하세요. 디자인 모드 자기소개입니다.",
   role: 'customer',
   tier: 'general',
   unreadCount: 0,

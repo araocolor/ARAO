@@ -6,6 +6,8 @@ import { syncProfile } from "@/lib/profiles";
 import { getWithdrawRestrictionDaysLeft } from "@/lib/account-delete-policy";
 import { isDesignMode, mockGeneralProfile } from "@/lib/design-mock";
 
+const BIO_MAX_LENGTH = 200;
+
 async function getUnreadCount(profileId: string): Promise<number> {
   const supabase = createSupabaseAdminClient();
   let total = 0;
@@ -73,6 +75,12 @@ export async function GET() {
   const withdrawRestrictionDaysLeft = getWithdrawRestrictionDaysLeft(withdrawRestrictedUntil);
 
   const unreadCount = await getUnreadCount(profile.id);
+  const { data: bioRow, error: bioError } = await supabase
+    .from("profiles")
+    .select("bio")
+    .eq("id", profile.id)
+    .maybeSingle<{ bio: string | null }>();
+  const bio = bioError?.code === "42703" ? null : (bioRow?.bio ?? null);
 
   return NextResponse.json({
     email: profile.email,
@@ -84,6 +92,7 @@ export async function GET() {
     iconImage: profile.icon_image ?? null,
     role: profile.role,
     tier: profile.tier ?? "general",
+    bio,
     unreadCount,
     createdAt: profile.created_at,
     usernameChangeCount: profile.username_change_count,
@@ -137,6 +146,21 @@ function normalizePhone(phone: string) {
   return { value: digits };
 }
 
+function normalizeBio(rawBio: string) {
+  const normalized = rawBio.replace(/\r\n/g, "\n");
+  const trimmed = normalized.trim();
+
+  if (trimmed.length > BIO_MAX_LENGTH) {
+    return { error: `자기소개는 ${BIO_MAX_LENGTH}자 이하로 입력해주세요.` };
+  }
+
+  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(trimmed)) {
+    return { error: "입력할 수 없는 문자가 포함되어 있습니다." };
+  }
+
+  return { value: trimmed };
+}
+
 export async function POST(request: Request) {
   const { userId } = await auth();
 
@@ -159,6 +183,7 @@ export async function POST(request: Request) {
     password?: string;
     phone?: string;
     enabled?: boolean;
+    bio?: string;
   };
   const supabase = createSupabaseAdminClient();
 
@@ -288,6 +313,27 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ notificationEnabled: enabled });
+  }
+
+  if (body.action === "bio") {
+    const bioResult = normalizeBio(body.bio ?? "");
+    if ("error" in bioResult) {
+      return NextResponse.json({ message: bioResult.error }, { status: 400 });
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ bio: bioResult.value || null })
+      .eq("id", profile.id);
+
+    if (error) {
+      if (error.code === "42703") {
+        return NextResponse.json({ message: "자기소개 저장 칼럼이 아직 준비되지 않았습니다." }, { status: 400 });
+      }
+      return NextResponse.json({ message: "자기소개 저장 중 오류가 발생했습니다." }, { status: 400 });
+    }
+
+    return NextResponse.json({ bio: bioResult.value || "" });
   }
 
   return NextResponse.json({ message: "지원하지 않는 요청입니다." }, { status: 400 });
