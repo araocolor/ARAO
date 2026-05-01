@@ -18,7 +18,7 @@ const NOTIFICATION_CACHE_PREFIX = "header-notifications-cache-v1";
 const NOTIFICATION_INITIAL_LOAD_PREFIX = "header-notifications-initial-loaded-v2";
 const NOTIFICATION_REOPEN_ONCE_KEY = "header-notification-reopen-once";
 const COMMENT_PREFETCH_CATEGORIES = ["people", "outdoor", "indoor", "cafe"] as const;
-const NOTIFICATION_CACHE_SKIP_THRESHOLD = 13;
+const NOTIFICATION_CACHE_SKIP_THRESHOLD = 1;
 
 type NotificationPayload = {
   unreadCount: number;

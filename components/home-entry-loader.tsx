@@ -14,6 +14,26 @@ const MEMBER_READY_LOADER_MS = 1000;
 const NOTIFICATION_CACHE_PREFIX = "header-notifications-cache-v1";
 const LOGIN_LOADER_DONE_PREFIX = "arao-login-loader-done";
 const LOADER_GENERAL_CACHE_KEY = "loader-account-general";
+const NOTIFICATION_DRAWER_OPENED_KEY = "header-notification-drawer-opened";
+
+function isDrawerOpenedAlready(): boolean {
+  try {
+    return sessionStorage.getItem(NOTIFICATION_DRAWER_OPENED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function readExistingNotificationItems(userId: string): unknown[] {
+  try {
+    const raw = sessionStorage.getItem(getNotificationCacheKey(userId));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as NotificationCacheSnapshot;
+    return Array.isArray(parsed?.data?.items) ? parsed.data.items : [];
+  } catch {
+    return [];
+  }
+}
 
 type NotificationCachePayload = {
   unreadCount: number;
@@ -154,7 +174,9 @@ export function HomeEntryLoader({ children }: HomeEntryLoaderProps) {
       const generalCached = !!getCached("account-general");
       if (notificationCached) {
         const cachedUnreadCount = getCachedUnreadCount(userId);
-        if (cachedUnreadCount !== null) setHeaderBadgeCount(cachedUnreadCount);
+        if (cachedUnreadCount !== null) {
+          setHeaderBadgeCount(isDrawerOpenedAlready() ? 0 : cachedUnreadCount);
+        }
       }
       if (memberCached && notificationCached && generalCached) {
         try { sessionStorage.setItem("arao-member-ready", "1"); } catch {}
@@ -173,15 +195,18 @@ export function HomeEntryLoader({ children }: HomeEntryLoaderProps) {
         if (data.email !== undefined) setHeaderEmail(data.email ?? null);
         if (data.role !== undefined) setHeaderRole(data.role ?? null);
         if (data.tier !== undefined) setHeaderTier(data.tier ?? null);
-        const unreadCount = Number.isFinite(data.unreadCount) ? Math.max(0, Math.trunc(Number(data.unreadCount))) : 0;
-        setHeaderBadgeCount(unreadCount);
+        const rawUnreadCount = Number.isFinite(data.unreadCount) ? Math.max(0, Math.trunc(Number(data.unreadCount))) : 0;
+        const drawerOpenedAlready = isDrawerOpenedAlready();
+        const effectiveUnread = drawerOpenedAlready ? 0 : rawUnreadCount;
+        setHeaderBadgeCount(effectiveUnread);
 
         if (typeof data.notificationEnabled === "boolean") {
           try {
+            const preservedItems = readExistingNotificationItems(userId);
             const snapshot: NotificationCacheSnapshot = {
               data: {
-                unreadCount,
-                items: [],
+                unreadCount: effectiveUnread,
+                items: preservedItems,
                 username: data.username ?? null,
                 email: data.email ?? null,
                 notificationEnabled: data.notificationEnabled,
