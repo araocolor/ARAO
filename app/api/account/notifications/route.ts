@@ -91,6 +91,8 @@ export async function GET(request: Request) {
       username: profile.username ?? null,
       email: profile.email ?? null,
       notificationEnabled: profile.notification_enabled ?? true,
+      notificationCommentEnabled: profile.notif_comment_enabled ?? true,
+      notificationLikeEnabled: profile.notif_like_enabled ?? true,
       role: profile.role ?? null,
     });
   } catch (error) {

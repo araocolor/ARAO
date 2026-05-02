@@ -13,6 +13,8 @@ create table if not exists profiles (
 alter table profiles add column if not exists username text;
 alter table profiles add column if not exists password_hash text;
 alter table profiles add column if not exists notification_enabled boolean not null default true;
+alter table profiles add column if not exists notif_comment_enabled boolean not null default true;
+alter table profiles add column if not exists notif_like_enabled boolean not null default true;
 create unique index if not exists profiles_username_key on profiles (username) where username is not null;
 
 create table if not exists products (

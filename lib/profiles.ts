@@ -7,6 +7,8 @@ export type Profile = {
   role: string;
   tier: string;
   notification_enabled: boolean;
+  notif_comment_enabled: boolean;
+  notif_like_enabled: boolean;
   full_name: string | null;
   phone: string | null;
   username: string | null;
@@ -26,6 +28,8 @@ type SyncProfileInput = {
 };
 
 const PROFILE_SELECT_COLUMNS =
+  "id, email, role, tier, notification_enabled, notif_comment_enabled, notif_like_enabled, full_name, phone, username, icon_image, created_at, username_registered_at, username_change_count, last_visited_at, visit_count, deleted_at, delete_scheduled_at, previous_username";
+const PROFILE_SELECT_COLUMNS_NO_DETAIL =
   "id, email, role, tier, notification_enabled, full_name, phone, username, icon_image, created_at, username_registered_at, username_change_count, last_visited_at, visit_count, deleted_at, delete_scheduled_at, previous_username";
 const PROFILE_SELECT_COLUMNS_LEGACY =
   "id, email, role, full_name, phone, username, icon_image, created_at, username_registered_at, username_change_count";
@@ -37,6 +41,8 @@ function normalizeProfile(row: any): Profile {
     role: row.role,
     tier: row.tier ?? "general",
     notification_enabled: row.notification_enabled ?? true,
+    notif_comment_enabled: row.notif_comment_enabled ?? true,
+    notif_like_enabled: row.notif_like_enabled ?? true,
     full_name: row.full_name ?? null,
     phone: row.phone ?? null,
     username: row.username ?? null,
@@ -59,6 +65,7 @@ export async function syncProfile({ email, fullName }: SyncProfileInput) {
   const supabase = createSupabaseAdminClient();
   const normalizedEmail = email.toLowerCase();
   let hasNotificationColumn = true;
+  let hasNotificationDetailColumns = true;
 
   let { data: existingProfile, error: fetchError } = await supabase
     .from("profiles")
@@ -67,14 +74,24 @@ export async function syncProfile({ email, fullName }: SyncProfileInput) {
     .maybeSingle<any>();
 
   if (fetchError?.code === "42703") {
-    hasNotificationColumn = false;
+    hasNotificationDetailColumns = false;
     const legacy = await supabase
       .from("profiles")
-      .select(PROFILE_SELECT_COLUMNS_LEGACY)
+      .select(PROFILE_SELECT_COLUMNS_NO_DETAIL)
       .eq("email", normalizedEmail)
       .maybeSingle<any>();
     existingProfile = legacy.data;
     fetchError = legacy.error;
+    if (fetchError?.code === "42703") {
+      hasNotificationColumn = false;
+      const legacyColumns = await supabase
+        .from("profiles")
+        .select(PROFILE_SELECT_COLUMNS_LEGACY)
+        .eq("email", normalizedEmail)
+        .maybeSingle<any>();
+      existingProfile = legacyColumns.data;
+      fetchError = legacyColumns.error;
+    }
   }
 
   if (fetchError) {
@@ -87,7 +104,11 @@ export async function syncProfile({ email, fullName }: SyncProfileInput) {
         .from("profiles")
         .update({ full_name: fullName })
         .eq("id", existingProfile.id)
-        .select(hasNotificationColumn ? PROFILE_SELECT_COLUMNS : PROFILE_SELECT_COLUMNS_LEGACY)
+        .select(
+          hasNotificationColumn
+            ? (hasNotificationDetailColumns ? PROFILE_SELECT_COLUMNS : PROFILE_SELECT_COLUMNS_NO_DETAIL)
+            : PROFILE_SELECT_COLUMNS_LEGACY
+        )
         .single<any>();
 
       if (updateError) {
@@ -108,17 +129,42 @@ export async function syncProfile({ email, fullName }: SyncProfileInput) {
   };
   if (hasNotificationColumn) {
     insertPayload.notification_enabled = true;
+    if (hasNotificationDetailColumns) {
+      insertPayload.notif_comment_enabled = true;
+      insertPayload.notif_like_enabled = true;
+    }
   }
 
   let { data: createdProfile, error: insertError } = await supabase
     .from("profiles")
     .insert(insertPayload)
-    .select(hasNotificationColumn ? PROFILE_SELECT_COLUMNS : PROFILE_SELECT_COLUMNS_LEGACY)
+    .select(
+      hasNotificationColumn
+        ? (hasNotificationDetailColumns ? PROFILE_SELECT_COLUMNS : PROFILE_SELECT_COLUMNS_NO_DETAIL)
+        : PROFILE_SELECT_COLUMNS_LEGACY
+    )
     .single<any>();
+
+  if (insertError?.code === "42703" && hasNotificationColumn && hasNotificationDetailColumns) {
+    hasNotificationDetailColumns = false;
+    const fallbackCreatedNoDetail = await supabase
+      .from("profiles")
+      .insert({
+        id: insertPayload.id,
+        email: normalizedEmail,
+        role: "member",
+        full_name: fullName ?? null,
+        notification_enabled: true,
+      })
+      .select(PROFILE_SELECT_COLUMNS_NO_DETAIL)
+      .single<any>();
+    createdProfile = fallbackCreatedNoDetail.data;
+    insertError = fallbackCreatedNoDetail.error;
+  }
 
   if (insertError?.code === "42703" && hasNotificationColumn) {
     hasNotificationColumn = false;
-    const fallbackCreated = await supabase
+    const fallbackCreatedLegacy = await supabase
       .from("profiles")
       .insert({
         id: insertPayload.id,
@@ -128,8 +174,8 @@ export async function syncProfile({ email, fullName }: SyncProfileInput) {
       })
       .select(PROFILE_SELECT_COLUMNS_LEGACY)
       .single<any>();
-    createdProfile = fallbackCreated.data;
-    insertError = fallbackCreated.error;
+    createdProfile = fallbackCreatedLegacy.data;
+    insertError = fallbackCreatedLegacy.error;
   }
 
   if (insertError) {

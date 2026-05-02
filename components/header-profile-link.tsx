@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { Heart, UserRound } from "lucide-react";
 import { useAdminPendingCount } from "@/hooks/use-admin-pending-count";
-import { NotificationDrawer } from "@/components/notification-drawer";
+import { NotificationDrawer, type NotificationSettings } from "@/components/notification-drawer";
 import type { NotificationItem } from "@/lib/notifications";
 import { getCached, setCached } from "@/hooks/use-prefetch-cache";
 import { useHeaderSessionStore } from "@/stores/header-session-store";
@@ -16,7 +16,10 @@ const REVIEW_PREFETCH_LOCK_KEY = "user-review-list-prefetch-lock";
 const REVIEW_PREFETCH_LOCK_MS = 10000;
 const NOTIFICATION_CACHE_PREFIX = "header-notifications-cache-v1";
 const NOTIFICATION_INITIAL_LOAD_PREFIX = "header-notifications-initial-loaded-v2";
+const NOTIFICATION_FILTER_CACHE_PREFIX = "header-notifications-filter-cache-v1";
+const NOTIFICATION_FILTER_PREFETCH_ONCE_PREFIX = "header-notifications-filter-prefetch-once-v1";
 const NOTIFICATION_REOPEN_ONCE_KEY = "header-notification-reopen-once";
+const NOTIFICATION_SETTINGS_SESSION_PREFIX = "header-notification-settings-v1";
 const COMMENT_PREFETCH_CATEGORIES = ["people", "outdoor", "indoor", "cafe"] as const;
 const NOTIFICATION_CACHE_SKIP_THRESHOLD = 1;
 
@@ -26,9 +29,13 @@ type NotificationPayload = {
   username?: string | null;
   email?: string | null;
   notificationEnabled?: boolean;
+  notificationCommentEnabled?: boolean;
+  notificationLikeEnabled?: boolean;
   role?: string | null;
   isFullData?: boolean;
 };
+
+type NotificationFilterTab = "comment" | "like";
 
 type NotificationCacheSnapshot = {
   data: NotificationPayload;
@@ -97,6 +104,39 @@ function clearNotificationInitialLoadAll(): void {
   } catch {}
 }
 
+function getNotificationFilterCacheKey(userId: string | null | undefined, tab: NotificationFilterTab): string {
+  return `${NOTIFICATION_FILTER_CACHE_PREFIX}:${userId ?? "anon"}:${tab}`;
+}
+
+function getNotificationFilterPrefetchOnceKey(userId: string | null | undefined): string {
+  return `${NOTIFICATION_FILTER_PREFETCH_ONCE_PREFIX}:${userId ?? "anon"}`;
+}
+
+function isCommentNotificationType(type: string): boolean {
+  return type === "review_comment" || type === "review_reply" || type === "gallery_reply";
+}
+
+function isLikeNotificationType(type: string): boolean {
+  return type === "gallery_like" || type === "review_like" || type === "review_comment_like";
+}
+
+function getNotificationSettingsSessionKey(userId: string | null | undefined): string {
+  return `${NOTIFICATION_SETTINGS_SESSION_PREFIX}:${userId ?? "anon"}`;
+}
+
+function normalizeNotificationSettings(raw?: {
+  allEnabled?: boolean;
+  commentEnabled?: boolean;
+  likeEnabled?: boolean;
+}): NotificationSettings {
+  return {
+    allEnabled: raw?.allEnabled ?? true,
+    commentEnabled: raw?.commentEnabled ?? true,
+    likeEnabled: raw?.likeEnabled ?? true,
+    orderConsultingEnabled: true,
+  };
+}
+
 function canPrefetchReviewList(): boolean {
   if (typeof document !== "undefined" && document.visibilityState !== "visible") return false;
   const connection = (navigator as Navigator & {
@@ -155,6 +195,11 @@ export function HeaderProfileLink() {
   const [username, setUsername] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [notificationEnabled, setNotificationEnabled] = useState(true);
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(
+    normalizeNotificationSettings()
+  );
+  const notificationSettingsRef = useRef<NotificationSettings>(normalizeNotificationSettings());
+  const notificationSettingsDirtyRef = useRef(false);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasFullNotificationsRef = useRef(false);
   const fullLoadPromiseRef = useRef<Promise<boolean> | null>(null);
@@ -170,6 +215,32 @@ export function HeaderProfileLink() {
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
+
+  useEffect(() => {
+    notificationSettingsRef.current = notificationSettings;
+  }, [notificationSettings]);
+
+  function persistNotificationSettingsToSession(nextSettings: NotificationSettings) {
+    if (!user?.id) return;
+    try {
+      sessionStorage.setItem(getNotificationSettingsSessionKey(user.id), JSON.stringify(nextSettings));
+    } catch {}
+  }
+
+  function readNotificationSettingsFromSession(): NotificationSettings | null {
+    if (!user?.id) return null;
+    try {
+      const raw = sessionStorage.getItem(getNotificationSettingsSessionKey(user.id));
+      if (!raw) return null;
+      return normalizeNotificationSettings(JSON.parse(raw) as {
+        allEnabled?: boolean;
+        commentEnabled?: boolean;
+        likeEnabled?: boolean;
+      });
+    } catch {
+      return null;
+    }
+  }
 
   function applyNotificationPayload(payload: NotificationPayload, options?: { persist?: boolean; isFullData?: boolean }) {
     const nextItems = Array.isArray(payload.items) ? payload.items : [];
@@ -192,6 +263,20 @@ export function HeaderProfileLink() {
     }
     if (payload.role !== undefined) setHeaderRole(payload.role ?? null);
     setNotificationEnabled(nextNotificationEnabled);
+    if (
+      payload.notificationEnabled !== undefined ||
+      payload.notificationCommentEnabled !== undefined ||
+      payload.notificationLikeEnabled !== undefined
+    ) {
+      const fromServer = normalizeNotificationSettings({
+        allEnabled: payload.notificationEnabled ?? true,
+        commentEnabled: payload.notificationCommentEnabled ?? true,
+        likeEnabled: payload.notificationLikeEnabled ?? true,
+      });
+      const sessionOverride = readNotificationSettingsFromSession();
+      const merged = sessionOverride ?? fromServer;
+      setNotificationSettings(merged);
+    }
     if (options?.persist !== false) {
       writeNotificationCache(notificationCacheKey, {
         unreadCount: unread,
@@ -199,6 +284,8 @@ export function HeaderProfileLink() {
         username: payload.username,
         email: payload.email,
         notificationEnabled: nextNotificationEnabled,
+        notificationCommentEnabled: payload.notificationCommentEnabled,
+        notificationLikeEnabled: payload.notificationLikeEnabled,
         isFullData,
       });
     }
@@ -478,6 +565,8 @@ export function HeaderProfileLink() {
       setItems([]);
       setUsername(null);
       setEmail(null);
+      setNotificationSettings(normalizeNotificationSettings());
+      notificationSettingsDirtyRef.current = false;
       clearNotificationCacheAll();
       clearNotificationInitialLoadAll();
       try {
@@ -503,12 +592,68 @@ export function HeaderProfileLink() {
       const detail = (e as CustomEvent<{ enabled: boolean }>).detail;
       if (typeof detail?.enabled === "boolean") {
         setNotificationEnabled(detail.enabled);
+        const nextSettings = detail.enabled
+          ? normalizeNotificationSettings({
+              allEnabled: true,
+              commentEnabled: notificationSettingsRef.current.commentEnabled,
+              likeEnabled: notificationSettingsRef.current.likeEnabled,
+            })
+          : normalizeNotificationSettings({
+              allEnabled: false,
+              commentEnabled: false,
+              likeEnabled: false,
+            });
+        setNotificationSettings(nextSettings);
+        persistNotificationSettingsToSession(nextSettings);
         void fetchNotificationItems({ showLoading: false });
       }
     }
     window.addEventListener("notification-setting-updated", handleNotificationSettingUpdated);
     return () => window.removeEventListener("notification-setting-updated", handleNotificationSettingUpdated);
   }, [notificationCacheKey]);
+
+  function cacheFilteredNotificationSlices(baseItems: NotificationItem[]) {
+    if (!user?.id) return;
+    const sortedItems = [...baseItems].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    const commentItems = sortedItems.filter((item) => isCommentNotificationType(item.type)).slice(0, 10);
+    const likeItems = sortedItems.filter((item) => isLikeNotificationType(item.type)).slice(0, 10);
+    writeNotificationCache(getNotificationFilterCacheKey(user.id, "comment"), {
+      unreadCount: commentItems.filter((item) => !item.is_read).length,
+      items: commentItems,
+      isFullData: false,
+    });
+    writeNotificationCache(getNotificationFilterCacheKey(user.id, "like"), {
+      unreadCount: likeItems.filter((item) => !item.is_read).length,
+      items: likeItems,
+      isFullData: false,
+    });
+  }
+
+  function prefetchNotificationFilterCachesOnce() {
+    if (!user?.id) return;
+    const onceKey = getNotificationFilterPrefetchOnceKey(user.id);
+    try {
+      if (sessionStorage.getItem(onceKey) === "1") return;
+    } catch {}
+
+    const commentCache = readNotificationCache(getNotificationFilterCacheKey(user.id, "comment"));
+    const likeCache = readNotificationCache(getNotificationFilterCacheKey(user.id, "like"));
+    const hasCommentCache = Array.isArray(commentCache?.items) && commentCache.items.length > 0;
+    const hasLikeCache = Array.isArray(likeCache?.items) && likeCache.items.length > 0;
+
+    if (!hasCommentCache || !hasLikeCache) {
+      cacheFilteredNotificationSlices(itemsRef.current);
+      void ensureFullNotificationsLoaded().then(() => {
+        cacheFilteredNotificationSlices(itemsRef.current);
+      });
+    }
+
+    try {
+      sessionStorage.setItem(onceKey, "1");
+    } catch {}
+  }
 
   // 드로어 오픈
   function openDrawer() {
@@ -536,6 +681,11 @@ export function HeaderProfileLink() {
       sessionStorage.setItem("header-notification-drawer-opened", "1");
     } catch {}
     setHeaderBadgeCount(0);
+    prefetchNotificationFilterCachesOnce();
+    const sessionSettings = readNotificationSettingsFromSession();
+    if (sessionSettings) {
+      setNotificationSettings(sessionSettings);
+    }
   }
 
   // 드로어 닫기
@@ -586,6 +736,8 @@ export function HeaderProfileLink() {
         keepalive: true,
       }).catch((error) => console.error("consulting batch-mark-read failed:", error));
     }
+
+    void flushNotificationSettingsToDb();
   }
 
   // 정리
@@ -623,6 +775,12 @@ export function HeaderProfileLink() {
     });
   }
 
+  function handleNotificationSettingsChange(next: NotificationSettings) {
+    setNotificationSettings(next);
+    persistNotificationSettingsToSession(next);
+    notificationSettingsDirtyRef.current = true;
+  }
+
   async function ensureFullNotificationsLoaded() {
     if (hasFullNotificationsRef.current) return;
     if (fullLoadPromiseRef.current) {
@@ -634,6 +792,29 @@ export function HeaderProfileLink() {
       await fullLoadPromiseRef.current;
     } finally {
       fullLoadPromiseRef.current = null;
+    }
+  }
+
+  async function flushNotificationSettingsToDb() {
+    if (!notificationSettingsDirtyRef.current) return;
+    const current = notificationSettingsRef.current;
+    try {
+      const response = await fetch("/api/account/general", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "notification-preferences",
+          enabled: current.allEnabled,
+          commentEnabled: current.commentEnabled,
+          likeEnabled: current.likeEnabled,
+        }),
+        keepalive: true,
+      });
+      if (response.ok) {
+        notificationSettingsDirtyRef.current = false;
+      }
+    } catch (error) {
+      console.error("notification preferences flush failed:", error);
     }
   }
 
@@ -681,6 +862,8 @@ export function HeaderProfileLink() {
           onClose={closeDrawer}
           onMarkRead={(id) => applyReadStateToNotificationItem(id, true)}
           onRollbackRead={(id) => applyReadStateToNotificationItem(id, false)}
+          notificationSettings={notificationSettings}
+          onNotificationSettingsChange={handleNotificationSettingsChange}
         />
       )}
     </>

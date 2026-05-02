@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
-import { MessageCircle } from "lucide-react";
+import { Bell, Heart, MessageCircle, ShoppingBag } from "lucide-react";
 import { type NotificationItem } from "@/lib/notifications";
 
 type NotificationDrawerProps = {
@@ -17,7 +17,20 @@ type NotificationDrawerProps = {
   onMarkRead: (id: string) => void;
   onRollbackRead: (id: string) => void;
   onRequestFullLoad?: () => Promise<void>;
+  notificationSettings: NotificationSettings;
+  onNotificationSettingsChange: (next: NotificationSettings) => void;
 };
+
+type NotificationFilter = "all" | "comment" | "like" | "other";
+export type NotificationSettings = {
+  allEnabled: boolean;
+  commentEnabled: boolean;
+  likeEnabled: boolean;
+  orderConsultingEnabled: true;
+};
+
+const COMMENT_TYPES = new Set(["review_comment", "review_reply", "gallery_reply"]);
+const LIKE_TYPES = new Set(["gallery_like", "review_like", "review_comment_like"]);
 
 function appendQueryParam(link: string, key: string, value: string): string {
   const [beforeHash, hash = ""] = link.split("#", 2);
@@ -155,10 +168,19 @@ export function NotificationDrawer({
   onMarkRead,
   onRollbackRead,
   onRequestFullLoad,
+  notificationSettings,
+  onNotificationSettingsChange,
 }: NotificationDrawerProps) {
   const [optimisticReadIds, setOptimisticReadIds] = useState<Set<string>>(new Set());
+  const [activeFilter, setActiveFilter] = useState<NotificationFilter>("all");
   const [showAllRecentSevenDays, setShowAllRecentSevenDays] = useState(false);
   const [recentThirtyLoadSteps, setRecentThirtyLoadSteps] = useState(0);
+  const [filterLoadSteps, setFilterLoadSteps] = useState<Record<Exclude<NotificationFilter, "all">, number>>({
+    comment: 0,
+    like: 0,
+    other: 0,
+  });
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
@@ -169,8 +191,11 @@ export function NotificationDrawer({
 
   useEffect(() => {
     if (!isOpen) {
+      setActiveFilter("all");
       setShowAllRecentSevenDays(false);
       setRecentThirtyLoadSteps(0);
+      setFilterLoadSteps({ comment: 0, like: 0, other: 0 });
+      setSettingsOpen(false);
       return;
     }
     document.body.style.overflow = "hidden";
@@ -249,6 +274,89 @@ export function NotificationDrawer({
   const recentThirtyVisibleCount = 5 + recentThirtyLoadSteps * 30;
   const recentThirtyVisibleItems = allRecentThirtyDays.slice(0, recentThirtyVisibleCount);
 
+  function isCommentItem(item: NotificationItem): boolean {
+    return COMMENT_TYPES.has(item.type);
+  }
+
+  function isLikeItem(item: NotificationItem): boolean {
+    return LIKE_TYPES.has(item.type);
+  }
+
+  function isOtherItem(item: NotificationItem): boolean {
+    return !isCommentItem(item) && !isLikeItem(item);
+  }
+
+  const filteredItemsByTab = {
+    comment: sortedItems.filter((item) => notificationSettings.commentEnabled && isCommentItem(item)),
+    like: sortedItems.filter((item) => notificationSettings.likeEnabled && isLikeItem(item)),
+    other: sortedItems.filter((item) => {
+      if (!isOtherItem(item)) return false;
+      if (item.type === "consulting") return true;
+      if (item.type.startsWith("order_")) return true;
+      return notificationSettings.allEnabled;
+    }),
+  };
+
+  const currentFilteredItems =
+    activeFilter === "all" ? [] : filteredItemsByTab[activeFilter];
+  const currentLoadSteps =
+    activeFilter === "all" ? 0 : filterLoadSteps[activeFilter];
+  const currentVisibleCount =
+    activeFilter === "all" ? 0 : 10 + currentLoadSteps * 30;
+  const currentVisibleItems =
+    activeFilter === "all" ? [] : currentFilteredItems.slice(0, currentVisibleCount);
+
+  const visibleImportantItems = importantItems.filter((item) => {
+    if (isCommentItem(item)) return notificationSettings.commentEnabled;
+    if (isLikeItem(item)) return notificationSettings.likeEnabled;
+    if (item.type === "consulting" || item.type.startsWith("order_")) return true;
+    return notificationSettings.allEnabled;
+  });
+  const visibleRecentSevenItems = recentSevenVisibleItems.filter((item) => {
+    if (isCommentItem(item)) return notificationSettings.commentEnabled;
+    if (isLikeItem(item)) return notificationSettings.likeEnabled;
+    if (item.type === "consulting" || item.type.startsWith("order_")) return true;
+    return notificationSettings.allEnabled;
+  });
+  const visibleRecentThirtyItems = recentThirtyVisibleItems.filter((item) => {
+    if (isCommentItem(item)) return notificationSettings.commentEnabled;
+    if (isLikeItem(item)) return notificationSettings.likeEnabled;
+    if (item.type === "consulting" || item.type.startsWith("order_")) return true;
+    return notificationSettings.allEnabled;
+  });
+
+  function handleToggleAllEnabled(nextEnabled: boolean) {
+    if (!nextEnabled) {
+      onNotificationSettingsChange({
+        allEnabled: false,
+        commentEnabled: false,
+        likeEnabled: false,
+        orderConsultingEnabled: true,
+      });
+      return;
+    }
+    onNotificationSettingsChange({
+      allEnabled: true,
+      commentEnabled: true,
+      likeEnabled: true,
+      orderConsultingEnabled: true,
+    });
+  }
+
+  function handleToggleCommentEnabled(nextEnabled: boolean) {
+    onNotificationSettingsChange({
+      ...notificationSettings,
+      commentEnabled: nextEnabled,
+    });
+  }
+
+  function handleToggleLikeEnabled(nextEnabled: boolean) {
+    onNotificationSettingsChange({
+      ...notificationSettings,
+      likeEnabled: nextEnabled,
+    });
+  }
+
   async function handleExpandRecentSevenDays() {
     if (isLoading) return;
     if (onRequestFullLoad) {
@@ -263,6 +371,24 @@ export function NotificationDrawer({
       await onRequestFullLoad();
     }
     setRecentThirtyLoadSteps((prev) => prev + 1);
+  }
+
+  async function handleFilterSelect(filter: NotificationFilter) {
+    setActiveFilter(filter);
+    if (filter !== "all" && onRequestFullLoad) {
+      void onRequestFullLoad();
+    }
+  }
+
+  async function handleExpandFilteredList() {
+    if (activeFilter === "all" || isLoading) return;
+    if (onRequestFullLoad) {
+      await onRequestFullLoad();
+    }
+    setFilterLoadSteps((prev) => ({
+      ...prev,
+      [activeFilter]: prev[activeFilter] + 1,
+    }));
   }
 
   return createPortal((
@@ -310,11 +436,52 @@ export function NotificationDrawer({
           </Link>
         </div>
 
+        <div className="notif-filter-row" role="tablist" aria-label="알림 필터">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeFilter === "all"}
+            className={`notif-filter-btn${activeFilter === "all" ? " is-active" : ""}`}
+            onClick={() => { void handleFilterSelect("all"); }}
+          >
+            전체
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeFilter === "comment"}
+            className={`notif-filter-btn${activeFilter === "comment" ? " is-active" : ""}`}
+            onClick={() => { void handleFilterSelect("comment"); }}
+          >
+            댓글
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeFilter === "like"}
+            className={`notif-filter-btn${activeFilter === "like" ? " is-active" : ""}`}
+            onClick={() => { void handleFilterSelect("like"); }}
+          >
+            좋아요
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeFilter === "other"}
+            className={`notif-filter-btn${activeFilter === "other" ? " is-active" : ""}`}
+            onClick={() => { void handleFilterSelect("other"); }}
+          >
+            중요
+          </button>
+        </div>
+
         {/* 알림 목록 */}
         {isLoading && items.length === 0 ? (
           <div className="notif-empty">불러오는 중...</div>
-        ) : items.length === 0 ? (
+        ) : activeFilter === "all" && visibleImportantItems.length === 0 && visibleRecentSevenItems.length === 0 && visibleRecentThirtyItems.length === 0 ? (
           <div className="notif-empty">알림이 없습니다.</div>
+        ) : activeFilter !== "all" && currentFilteredItems.length === 0 ? (
+          <div className="notif-empty">선택한 알림이 없습니다.</div>
         ) : (
           <div className="notif-list">
             {(() => {
@@ -388,21 +555,38 @@ export function NotificationDrawer({
                 );
               };
 
+              if (activeFilter !== "all") {
+                return (
+                  <div className="notif-section">
+                    {currentVisibleItems.map((item) => renderItem(item, !item.is_read))}
+                    {currentFilteredItems.length > currentVisibleItems.length && (
+                      <button
+                        className="notif-more-btn"
+                        onClick={() => { void handleExpandFilteredList(); }}
+                        type="button"
+                      >
+                        더 많은 알람 ({currentFilteredItems.length - currentVisibleItems.length}개)
+                      </button>
+                    )}
+                  </div>
+                );
+              }
+
               return (
                 <>
                   {/* 중요알림 섹션 (3개 고정) */}
-                  {importantItems.length > 0 && (
+                  {visibleImportantItems.length > 0 && (
                     <div className="notif-section">
                       <span className="notif-section-title">중요알림</span>
-                      {importantItems.map((item) => renderItem(item, !item.is_read))}
+                      {visibleImportantItems.map((item) => renderItem(item, !item.is_read))}
                     </div>
                   )}
 
                   {/* 최근7일 섹션 (5개 고정) */}
-                  {allRecentSevenDays.length > 0 && (
+                  {visibleRecentSevenItems.length > 0 && (
                     <div className="notif-section">
                       <span className="notif-section-title">최근 7일</span>
-                      {recentSevenVisibleItems.map((item) => renderItem(item))}
+                      {visibleRecentSevenItems.map((item) => renderItem(item))}
                       {!showAllRecentSevenDays && allRecentSevenDays.length > recentSevenVisibleItems.length && (
                         <button
                           className="notif-more-btn"
@@ -416,10 +600,10 @@ export function NotificationDrawer({
                   )}
 
                   {/* 최근 30일 섹션 */}
-                  {allRecentThirtyDays.length > 0 && (
+                  {visibleRecentThirtyItems.length > 0 && (
                     <div className="notif-section">
                       <span className="notif-section-title">최근 30일</span>
-                      {recentThirtyVisibleItems.map((item) => renderItem(item))}
+                      {visibleRecentThirtyItems.map((item) => renderItem(item))}
                       {allRecentThirtyDays.length > recentThirtyVisibleItems.length && (
                         <button
                           className="notif-more-btn"
@@ -439,10 +623,69 @@ export function NotificationDrawer({
 
         {/* 푸터 */}
         <div className="notif-footer">
-          <span className="notif-report-link">
-            &lt; 이용관련 불편신고 &gt;
-          </span>
+          <button
+            type="button"
+            className="notif-settings-panel-btn"
+            onClick={() => setSettingsOpen(true)}
+          >
+            Settting
+          </button>
         </div>
+
+        {settingsOpen && (
+          <>
+            <button
+              type="button"
+              className="notif-settings-panel-backdrop"
+              onClick={() => setSettingsOpen(false)}
+              aria-label="알림 설정 닫기"
+            />
+            <div className="notif-settings-panel" role="dialog" aria-label="알림 설정">
+              <div className="notif-settings-panel-header">
+                <strong>Notification</strong>
+                <button type="button" className="notif-settings-close-btn" onClick={() => setSettingsOpen(false)}>
+                  x
+                </button>
+              </div>
+              <div className="notif-settings-list">
+                <button type="button" className="notif-settings-item" onClick={() => handleToggleAllEnabled(!notificationSettings.allEnabled)}>
+                  <span className="notif-settings-item-label"><Bell size={16} />전체알림</span>
+                  <span className={`notif-ios-switch${notificationSettings.allEnabled ? " is-on" : ""}`}>
+                    <span className="notif-ios-switch-thumb" />
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="notif-settings-item"
+                  onClick={() => handleToggleCommentEnabled(!notificationSettings.commentEnabled)}
+                  disabled={!notificationSettings.allEnabled}
+                >
+                  <span className="notif-settings-item-label"><MessageCircle size={16} />댓글</span>
+                  <span className={`notif-ios-switch${notificationSettings.commentEnabled ? " is-on" : ""}`}>
+                    <span className="notif-ios-switch-thumb" />
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="notif-settings-item"
+                  onClick={() => handleToggleLikeEnabled(!notificationSettings.likeEnabled)}
+                  disabled={!notificationSettings.allEnabled}
+                >
+                  <span className="notif-settings-item-label"><Heart size={16} />좋아요</span>
+                  <span className={`notif-ios-switch${notificationSettings.likeEnabled ? " is-on" : ""}`}>
+                    <span className="notif-ios-switch-thumb" />
+                  </span>
+                </button>
+                <button type="button" className="notif-settings-item" disabled>
+                  <span className="notif-settings-item-label"><ShoppingBag size={16} />주문/상담</span>
+                  <span className="notif-ios-switch is-on is-locked">
+                    <span className="notif-ios-switch-thumb" />
+                  </span>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </>
   ), portalTarget);

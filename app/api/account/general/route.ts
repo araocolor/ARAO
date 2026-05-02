@@ -89,6 +89,8 @@ export async function GET() {
     hasPassword: Boolean(profile.password_hash),
     phone: profile.phone,
     notificationEnabled: profile.notification_enabled ?? true,
+    notificationCommentEnabled: profile.notif_comment_enabled ?? true,
+    notificationLikeEnabled: profile.notif_like_enabled ?? true,
     iconImage: profile.icon_image ?? null,
     role: profile.role,
     tier: profile.tier ?? "general",
@@ -183,6 +185,8 @@ export async function POST(request: Request) {
     password?: string;
     phone?: string;
     enabled?: boolean;
+    commentEnabled?: boolean;
+    likeEnabled?: boolean;
     bio?: string;
   };
   const supabase = createSupabaseAdminClient();
@@ -313,6 +317,34 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ notificationEnabled: enabled });
+  }
+
+  if (body.action === "notification-preferences") {
+    const enabled = typeof body.enabled === "boolean" ? body.enabled : true;
+    const commentEnabled = enabled ? (typeof body.commentEnabled === "boolean" ? body.commentEnabled : true) : false;
+    const likeEnabled = enabled ? (typeof body.likeEnabled === "boolean" ? body.likeEnabled : true) : false;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        notification_enabled: enabled,
+        notif_comment_enabled: commentEnabled,
+        notif_like_enabled: likeEnabled,
+      })
+      .eq("id", profile.id);
+
+    if (error) {
+      if (error.code === "42703") {
+        return NextResponse.json({ message: "세부 알림 설정 칼럼이 아직 준비되지 않았습니다." }, { status: 400 });
+      }
+      return NextResponse.json({ message: "알림 설정 저장 중 오류가 발생했습니다." }, { status: 400 });
+    }
+
+    return NextResponse.json({
+      notificationEnabled: enabled,
+      notificationCommentEnabled: commentEnabled,
+      notificationLikeEnabled: likeEnabled,
+    });
   }
 
   if (body.action === "bio") {
