@@ -10,6 +10,13 @@ function maskEmail(email: string): string {
   return `${email.slice(0, 2)}***${email.slice(at)}`;
 }
 
+function toPreviewText(raw: string | null | undefined): string {
+  const normalized = (raw ?? "").replace(/\s+/g, " ").trim();
+  if (!normalized) return "제목없음";
+  const fetched = normalized.slice(0, 25);
+  return fetched.length > 24 ? `${fetched.slice(0, 24)}...` : fetched;
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -77,7 +84,7 @@ export async function POST(
     const [{ data: review }, { data: liker }] = await Promise.all([
       supabase
         .from("user_reviews")
-        .select("profile_id")
+        .select("profile_id, title")
         .eq("id", id)
         .maybeSingle(),
       supabase
@@ -93,7 +100,7 @@ export async function POST(
       await createNotification(
         review.profile_id,
         "review_like",
-        `${likerName}님이 좋아요를 남겼습니다`,
+        `${likerName}님이 (${toPreviewText(review.title)})에 좋아요 ❤️ 남겼음.`,
         `/user_content/${id}`,
         `review-like:${id}:${profile.id}`,
         liker?.icon_image ?? null,

@@ -139,7 +139,7 @@ export async function POST(
     await createNotification(
       review.profile_id,
       "review_comment",
-      `${commenterName}님이 댓글을 남겼습니다`,
+      `${commenterName}님이 댓글을 남겼습니다||${content}`,
       `/user_content/${id}?commentId=${data.id}`,
       `review-comment:${data.id}:owner`,
       profile.icon_image ?? null,
@@ -155,7 +155,7 @@ export async function POST(
     await createNotification(
       parentCommentAuthorProfileId,
       "review_comment",
-      `${commenterName}님이 답글을 남겼습니다`,
+      `${commenterName}님이 답글을 남겼습니다||${content}`,
       `/user_content/${id}?commentId=${data.id}`,
       `review-comment:${data.id}:parent`,
       profile.icon_image ?? null,

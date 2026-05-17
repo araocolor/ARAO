@@ -77,6 +77,29 @@ function formatTitle(title: string): React.ReactNode {
   return <><strong>{maskedName}</strong>{rest}</>;
 }
 
+function getCommentContentPreview(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  return trimmed.length > 24 ? `${trimmed.slice(0, 24)}...` : trimmed;
+}
+
+function formatNotificationTitle(item: NotificationItem): React.ReactNode {
+  if (item.type === "settings") return item.title;
+  if (item.type === "consulting") {
+    const [titlePart, rest] = item.title.split("||");
+    return <>상담글 <strong>{titlePart}</strong> {rest}</>;
+  }
+
+  if (item.type === "review_comment" || item.type === "gallery_reply") {
+    const [baseTitle, rawContent = ""] = item.title.split("||");
+    const preview = getCommentContentPreview(rawContent);
+    if (!preview) return formatTitle(baseTitle);
+    return <>{formatTitle(baseTitle)} {preview}</>;
+  }
+
+  return formatTitle(item.title);
+}
+
 function getSenderName(title: string): string | null {
   const idx = title.indexOf("님이");
   if (idx <= 0) return null;
@@ -94,23 +117,16 @@ function formatRelativeTime(isoString: string): string {
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
+  const months = Math.floor(days / 30);
+  const years = Math.floor(days / 365);
 
   if (seconds < 60) return `${seconds}초전`;
   if (minutes < 60) return `${minutes}분전`;
   if (hours < 24) return `${hours}시간전`;
-
-  const remainingHours = hours % 24;
-  if (days < 30) {
-    return remainingHours > 0
-      ? `${days}일 ${remainingHours}시간전`
-      : `${days}일전`;
-  }
-
-  // 30일 이상은 날짜로 표시
-  return new Date(isoString).toLocaleDateString("ko-KR", {
-    month: "short",
-    day: "numeric",
-  });
+  if (days < 30) return `${days}일전`;
+  if (days < 60) return "한달전";
+  if (days < 365) return `${months}달전`;
+  return `${Math.max(1, years)}year`;
 }
 
 function getPeriodLabel(isoString: string): string {
@@ -305,6 +321,9 @@ export function NotificationDrawer({
     activeFilter === "all" ? 0 : 10 + currentLoadSteps * 30;
   const currentVisibleItems =
     activeFilter === "all" ? [] : currentFilteredItems.slice(0, currentVisibleCount);
+  const isFilterHiddenBySetting =
+    (activeFilter === "comment" && !notificationSettings.commentEnabled) ||
+    (activeFilter === "like" && !notificationSettings.likeEnabled);
 
   const visibleImportantItems = importantItems.filter((item) => {
     if (isCommentItem(item)) return notificationSettings.commentEnabled;
@@ -471,7 +490,7 @@ export function NotificationDrawer({
             className={`notif-filter-btn${activeFilter === "other" ? " is-active" : ""}`}
             onClick={() => { void handleFilterSelect("other"); }}
           >
-            중요
+            주문/상담
           </button>
         </div>
 
@@ -481,7 +500,9 @@ export function NotificationDrawer({
         ) : activeFilter === "all" && visibleImportantItems.length === 0 && visibleRecentSevenItems.length === 0 && visibleRecentThirtyItems.length === 0 ? (
           <div className="notif-empty">알림이 없습니다.</div>
         ) : activeFilter !== "all" && currentFilteredItems.length === 0 ? (
-          <div className="notif-empty">선택한 알림이 없습니다.</div>
+          <div className="notif-empty">
+            {isFilterHiddenBySetting ? "해당 알림이 꺼져 있습니다." : "선택한 알림이 없습니다."}
+          </div>
         ) : (
           <div className="notif-list">
             {(() => {
@@ -521,12 +542,7 @@ export function NotificationDrawer({
                       </span>
                     )}
                     <div className="notif-item-body">
-                      <p className="notif-item-title">
-                        {item.type === "consulting" ? (() => {
-                          const [titlePart, rest] = item.title.split("||");
-                          return <>상담글 <strong>{titlePart}</strong> {rest}</>;
-                        })() : item.type === "settings" ? item.title : formatTitle(item.title)}
-                      </p>
+                      <p className="notif-item-title">{formatNotificationTitle(item)}</p>
                       {item.type !== "settings" && (
                         <p className="notif-item-time">
                           {formatRelativeTime(item.created_at)}

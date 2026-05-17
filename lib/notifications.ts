@@ -25,6 +25,38 @@ export type NotificationItem = {
   related_image?: string | null;
 };
 
+const DELETED_COMMENT_NOTICE = "현재 해당 댓글이 삭제되었네요.";
+
+function trimCommentPreview(content: string): string {
+  const normalized = content.replace(/\s+/g, " ").trim();
+  if (!normalized) return DELETED_COMMENT_NOTICE;
+  return normalized.length > 24 ? `${normalized.slice(0, 24)}...` : normalized;
+}
+
+function getBaseNotificationTitle(title: string): string {
+  const [base] = title.split("||");
+  return base.trim();
+}
+
+function parseReviewCommentId(sourceId: string | null | undefined): string | null {
+  if (!sourceId) return null;
+  const value = sourceId.trim();
+  if (!value) return null;
+  if (value.startsWith("review-comment:")) {
+    const parts = value.split(":");
+    return parts[1] ?? null;
+  }
+  return value;
+}
+
+function parseGalleryCommentId(sourceId: string | null | undefined): string | null {
+  if (!sourceId) return null;
+  const value = sourceId.trim();
+  if (!value) return null;
+  const parts = value.split(":");
+  return parts[0] ?? null;
+}
+
 function parseGalleryCategoryFromLink(link: string): string | null {
   try {
     const url = new URL(link, "https://arao.local");
@@ -95,6 +127,66 @@ export async function getNotificationsForProfile(
   if (error) {
     console.error("getNotificationsForProfile db notifications error:", error);
   } else if (dbNotifications) {
+    const reviewCommentIds = Array.from(
+      new Set(
+        dbNotifications
+          .filter((n) => n.type === "review_comment")
+          .map((n) => parseReviewCommentId(n.source_id))
+          .filter((id): id is string => Boolean(id))
+      )
+    );
+    const galleryReplyIds = Array.from(
+      new Set(
+        dbNotifications
+          .filter((n) => n.type === "gallery_reply")
+          .map((n) => parseGalleryCommentId(n.source_id))
+          .filter((id): id is string => Boolean(id))
+      )
+    );
+
+    const reviewCommentPreviewMap = new Map<string, string>();
+    if (reviewCommentIds.length > 0) {
+      const { data: reviewComments, error: reviewCommentsError } = await supabase
+        .from("user_review_comments")
+        .select("id, content, is_deleted, deleted_at")
+        .in("id", reviewCommentIds);
+
+      if (reviewCommentsError) {
+        console.error("getNotificationsForProfile review comment resolve error:", reviewCommentsError);
+      } else {
+        for (const comment of reviewComments ?? []) {
+          const isDeleted = Boolean(comment.is_deleted) || Boolean(comment.deleted_at);
+          reviewCommentPreviewMap.set(
+            comment.id,
+            isDeleted ? DELETED_COMMENT_NOTICE : trimCommentPreview(comment.content ?? "")
+          );
+        }
+      }
+    }
+
+    const galleryReplyPreviewMap = new Map<string, string>();
+    if (galleryReplyIds.length > 0) {
+      const { data: galleryComments, error: galleryCommentsError } = await supabase
+        .from("gallery_comments")
+        .select("id, content")
+        .in("id", galleryReplyIds);
+
+      if (galleryCommentsError) {
+        console.error("getNotificationsForProfile gallery reply resolve error:", galleryCommentsError);
+      } else {
+        for (const comment of galleryComments ?? []) {
+          const raw = typeof comment.content === "string" ? comment.content : "";
+          const isDeletedLike =
+            raw.trim().length === 0 ||
+            raw.includes("삭제된 댓글");
+          galleryReplyPreviewMap.set(
+            comment.id,
+            isDeletedLike ? DELETED_COMMENT_NOTICE : trimCommentPreview(raw)
+          );
+        }
+      }
+    }
+
     // 1차: sender_profile_id로 현재 아바타 조회 (이름 변경에도 안전)
     const senderProfileIds = new Set<string>();
     for (const n of dbNotifications) {
@@ -162,10 +254,25 @@ export async function getNotificationsForProfile(
           const senderName = idx > 0 ? n.title.slice(0, idx) : null;
           senderIcon = senderName ? (senderIconMap[senderName] ?? null) : null;
         }
+        let title = n.title;
+        if (n.type === "review_comment") {
+          const commentId = parseReviewCommentId(n.source_id);
+          const latestPreview = commentId
+            ? (reviewCommentPreviewMap.get(commentId) ?? DELETED_COMMENT_NOTICE)
+            : DELETED_COMMENT_NOTICE;
+          title = `${getBaseNotificationTitle(n.title)}||${latestPreview}`;
+        } else if (n.type === "gallery_reply") {
+          const commentId = parseGalleryCommentId(n.source_id);
+          const latestPreview = commentId
+            ? (galleryReplyPreviewMap.get(commentId) ?? DELETED_COMMENT_NOTICE)
+            : DELETED_COMMENT_NOTICE;
+          title = `${getBaseNotificationTitle(n.title)}||${latestPreview}`;
+        }
+
         return {
           id: n.id,
           type: n.type,
-          title: n.title,
+          title,
           link: n.link,
           source_id: n.source_id,
           is_read: n.is_read,

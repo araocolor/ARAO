@@ -13,6 +13,13 @@ function maskEmail(email: string): string {
   return `${local.slice(0, 2)}***${domain}`;
 }
 
+function toPreviewText(raw: string | null | undefined): string {
+  const normalized = (raw ?? "").replace(/\s+/g, " ").trim();
+  if (!normalized) return "댓글없음";
+  const fetched = normalized.slice(0, 25);
+  return fetched.length > 24 ? `${fetched.slice(0, 24)}...` : fetched;
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -43,7 +50,7 @@ export async function POST(
     const supabase = createSupabaseAdminClient();
     const { data: comment, error: commentError } = await supabase
       .from("gallery_comments")
-      .select("profile_id, item_category, item_index")
+      .select("profile_id, item_category, item_index, content")
       .eq("id", id)
       .single();
 
@@ -62,7 +69,7 @@ export async function POST(
       await createNotification(
         comment.profile_id,
         "gallery_like",
-        `${profile.username || (profile.email ? maskEmail(profile.email) : null) || "사용자"}님이 좋아요를 남겼습니다`,
+        `${profile.username || (profile.email ? maskEmail(profile.email) : null) || "사용자"}님이 (${toPreviewText(comment.content)}) 댓글에 ❤️ 남겼습니다.`,
         `/gallery?category=${comment.item_category}&index=${comment.item_index}&commentId=${id}`,
         id,
         profile.icon_image ?? null,

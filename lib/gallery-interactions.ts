@@ -280,7 +280,7 @@ export async function createGalleryComment(
       await createNotification(
         parentComment.profile_id,
         "gallery_reply",
-        `${commenterName}님이 댓글을 남겼습니다`,
+        `${commenterName}님이 댓글을 남겼습니다||${content}`,
         `/gallery?category=${parentComment.item_category}&index=${parentComment.item_index}&commentId=${data.id}`,
         data.id,
         normalizeIconImage(profile?.icon_image),

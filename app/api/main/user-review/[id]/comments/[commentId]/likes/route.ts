@@ -10,6 +10,13 @@ function maskEmail(email: string): string {
   return `${email.slice(0, 2)}***${email.slice(at)}`;
 }
 
+function toPreviewText(raw: string | null | undefined): string {
+  const normalized = (raw ?? "").replace(/\s+/g, " ").trim();
+  if (!normalized) return "댓글없음";
+  const fetched = normalized.slice(0, 25);
+  return fetched.length > 24 ? `${fetched.slice(0, 24)}...` : fetched;
+}
+
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string; commentId: string }> }
@@ -26,7 +33,7 @@ export async function POST(
   const supabase = createSupabaseAdminClient();
   const { data: targetComment } = await supabase
     .from("user_review_comments")
-    .select("id, review_id, profile_id")
+    .select("id, review_id, profile_id, content")
     .eq("id", commentId)
     .maybeSingle();
 
@@ -73,7 +80,7 @@ export async function POST(
     await createNotification(
       targetComment.profile_id,
       "review_comment_like",
-      `${likerName}님이 댓글 좋아요를 남겼습니다`,
+      `${likerName}님이 (${toPreviewText(targetComment.content)}) 댓글에 ❤️ 남겼습니다.`,
       `/user_content/${targetComment.review_id}?commentId=${commentId}`,
       `review-comment-like:${commentId}:${profile.id}`,
       liker?.icon_image ?? null,
